@@ -1,0 +1,1716 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Prénom ♡</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap');
+:root{--cream:#FAF7F2;--warm:#F0E8DC;--blush:#E8C4B8;--rose:#C97B6B;--deep:#3D2B2B;--sage:#7A9E8E;--gold:#C9A96E;--yes:#7DC4A8;--no:#E8877A;--sh:rgba(61,43,43,0.12);}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+body{font-family:'DM Sans',sans-serif;background:var(--cream);min-height:100dvh;overflow:hidden;}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 60% 40% at 20% 10%,rgba(232,196,184,.38) 0%,transparent 70%),radial-gradient(ellipse 50% 60% at 85% 90%,rgba(122,158,142,.22) 0%,transparent 70%);pointer-events:none;z-index:0;}
+#app{position:relative;z-index:1;height:100dvh;display:flex;flex-direction:column;}
+.screen{display:none;flex-direction:column;height:100%;}.screen.active{display:flex;}
+
+/* HOME */
+#home{align-items:center;justify-content:center;padding:40px 32px;}
+.logo{text-align:center;margin-bottom:48px;}
+.logo .eye{font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--rose);margin-bottom:12px;}
+.logo h1{font-family:'Playfair Display',serif;font-size:56px;font-weight:400;color:var(--deep);line-height:1;}
+.logo h1 em{font-style:italic;color:var(--rose);}
+.logo .tag{margin-top:14px;font-size:13px;color:#7A6060;font-weight:300;}
+.home-btns{display:flex;flex-direction:column;gap:12px;width:100%;max-width:310px;}
+.btn-p{background:var(--deep);color:var(--cream);border:none;border-radius:100px;padding:18px 32px;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:500;cursor:pointer;transition:transform .15s;}
+.btn-p:active{transform:scale(.97);}
+.btn-s{background:transparent;color:var(--deep);border:1.5px solid var(--blush);border-radius:100px;padding:17px 32px;font-family:'DM Sans',sans-serif;font-size:15px;cursor:pointer;transition:transform .15s,background .2s;}
+.btn-s:active{transform:scale(.97);background:var(--warm);}
+.div-line{display:flex;align-items:center;gap:12px;width:100%;max-width:310px;margin:4px 0;}
+.div-line::before,.div-line::after{content:'';flex:1;height:1px;background:var(--blush);}
+.div-line span{font-size:12px;color:var(--rose);letter-spacing:1px;}
+
+/* SESSION SCREEN */
+#session-screen{align-items:center;justify-content:center;padding:32px 28px;gap:20px;}
+#session-screen h2{font-family:'Playfair Display',serif;font-size:28px;color:var(--deep);font-weight:400;text-align:center;}
+#session-screen p{color:#7A6060;font-size:13px;text-align:center;max-width:280px;line-height:1.6;font-weight:300;}
+.sess-box{width:100%;max-width:340px;background:white;border-radius:20px;padding:22px;box-shadow:0 4px 20px var(--sh);display:flex;flex-direction:column;gap:14px;}
+.sess-box label{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--rose);font-weight:500;}
+.sess-input{width:100%;padding:14px 18px;border:1.5px solid var(--blush);border-radius:14px;background:var(--cream);font-family:'DM Sans',sans-serif;font-size:16px;color:var(--deep);outline:none;text-transform:uppercase;letter-spacing:3px;}
+.sess-input:focus{border-color:var(--rose);}
+.sess-input::placeholder{text-transform:none;letter-spacing:0;color:#BBA8A8;}
+.code-big{font-family:'Playfair Display',serif;font-size:42px;font-weight:400;color:var(--rose);letter-spacing:8px;text-align:center;background:var(--warm);border-radius:16px;padding:18px;margin:4px 0;}
+.sess-hint{font-size:12px;color:#9A8080;text-align:center;}
+
+/* SETUP */
+#setup{overflow-y:auto;}
+.hdr{padding:18px 22px 14px;display:flex;align-items:center;gap:14px;background:var(--cream);border-bottom:1px solid var(--warm);position:sticky;top:0;z-index:10;}
+.back{background:var(--warm);border:none;border-radius:50%;width:38px;height:38px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;color:var(--deep);flex-shrink:0;}
+.hdr h2{font-family:'Playfair Display',serif;font-size:22px;font-weight:400;color:var(--deep);}
+.setup-body{padding:22px;display:flex;flex-direction:column;gap:22px;padding-bottom:40px;}
+.slab{display:flex;flex-direction:column;gap:10px;}
+.slab label{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--rose);font-weight:500;}
+.ninput{width:100%;padding:14px 18px;border:1.5px solid var(--blush);border-radius:14px;background:white;font-family:'DM Sans',sans-serif;font-size:16px;color:var(--deep);outline:none;}
+.ninput:focus{border-color:var(--rose);}
+.chips{display:flex;flex-wrap:wrap;gap:8px;}
+.chip{padding:9px 18px;border:1.5px solid var(--blush);border-radius:100px;background:white;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--deep);cursor:pointer;transition:all .15s;}
+.chip.on{background:var(--deep);border-color:var(--deep);color:var(--cream);}
+.count-hint{font-size:12px;color:var(--rose);margin-top:2px;}
+
+/* SWIPE */
+#swipe{flex-direction:column;}
+.sw-hdr{padding:12px 18px 8px;display:flex;align-items:center;gap:10px;flex-shrink:0;}
+.upill{background:var(--warm);border-radius:100px;padding:6px 12px;font-size:11px;color:var(--deep);font-weight:500;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.session-pill{background:var(--blush);border-radius:100px;padding:6px 12px;font-size:11px;color:var(--deep);font-weight:500;letter-spacing:1px;}
+.pbar-wrap{flex:1;}.pbar{height:3px;background:var(--warm);border-radius:10px;overflow:hidden;}
+.pfill{height:100%;background:linear-gradient(90deg,var(--rose),var(--gold));border-radius:10px;transition:width .4s ease;width:0%;}
+.lcnt{font-size:12px;color:var(--rose);font-weight:500;white-space:nowrap;}
+.card-area{flex:1;position:relative;display:flex;align-items:center;justify-content:center;padding:4px 18px;overflow:hidden;}
+.card{position:absolute;width:100%;max-width:340px;background:white;border-radius:28px;box-shadow:0 8px 40px var(--sh),0 2px 8px rgba(61,43,43,.06);padding:30px 26px 26px;display:flex;flex-direction:column;align-items:center;gap:10px;user-select:none;touch-action:none;cursor:grab;}
+.card:active{cursor:grabbing;}.card.drag{box-shadow:0 20px 60px rgba(61,43,43,.22);}
+.card.fly-l{animation:fL .35s cubic-bezier(.4,0,.6,1) forwards;}
+.card.fly-r{animation:fR .35s cubic-bezier(.4,0,.6,1) forwards;}
+.card.fly-b{animation:fB .3s cubic-bezier(.34,1.56,.64,1) forwards;}
+@keyframes fL{to{transform:translateX(-120vw) rotate(-18deg);opacity:0;}}
+@keyframes fR{to{transform:translateX(120vw) rotate(18deg);opacity:0;}}
+@keyframes fB{from{transform:translateX(-120vw) rotate(-18deg);opacity:0;}to{transform:translateX(0) rotate(0);opacity:1;}}
+.cbg{position:absolute;inset:0;border-radius:28px;overflow:hidden;pointer-events:none;}
+.cbg::before{content:'';position:absolute;top:-40px;right:-40px;width:160px;height:160px;border-radius:50%;background:radial-gradient(circle,rgba(232,196,184,.28) 0%,transparent 70%);}
+.c-origin{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--rose);opacity:.7;font-weight:500;}
+.c-name{font-family:'Playfair Display',serif;font-size:50px;font-weight:400;color:var(--deep);text-align:center;line-height:1.05;}
+.c-vars{font-size:12px;color:#9A8080;text-align:center;font-style:italic;min-height:16px;}
+.c-mean{font-size:13px;color:#6A5252;text-align:center;line-height:1.6;font-weight:300;max-width:240px;}
+.c-tag{padding:5px 14px;border-radius:100px;font-size:11px;letter-spacing:1px;font-weight:500;text-transform:uppercase;margin-top:2px;}
+.tf{background:rgba(201,123,107,.12);color:var(--rose);}.tm{background:rgba(122,158,142,.15);color:var(--sage);}.tmx{background:rgba(201,169,110,.15);color:var(--gold);}
+.stamp{position:absolute;top:24px;padding:8px 18px;border-radius:8px;font-family:'Playfair Display',serif;font-size:22px;font-weight:700;border:3px solid;opacity:0;pointer-events:none;}
+.sy{right:18px;color:var(--yes);border-color:var(--yes);transform:rotate(-12deg);}
+.sn{left:18px;color:var(--no);border-color:var(--no);transform:rotate(12deg);}
+.act-row{display:flex;align-items:center;justify-content:center;gap:16px;padding:10px 18px 18px;flex-shrink:0;}
+.abtn{border:none;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:transform .15s;box-shadow:0 4px 16px var(--sh);}
+.abtn:active{transform:scale(.9);}
+.a-no{width:56px;height:56px;background:white;color:var(--no);font-size:22px;box-shadow:0 4px 20px rgba(232,135,122,.25);}
+.a-yes{width:66px;height:66px;background:var(--deep);color:var(--yes);font-size:24px;box-shadow:0 6px 24px rgba(61,43,43,.25);}
+.a-back{width:44px;height:44px;background:var(--warm);color:var(--deep);font-size:16px;}
+.a-match{width:44px;height:44px;background:var(--warm);color:var(--rose);font-size:16px;}
+.empty-card{background:var(--warm);border-radius:28px;width:100%;max-width:340px;padding:50px 26px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:12px;}
+.empty-card .be{font-size:48px;}.empty-card h3{font-family:'Playfair Display',serif;font-size:22px;color:var(--deep);font-weight:400;}
+.empty-card p{font-size:13px;color:#9A8080;line-height:1.6;}
+
+/* MATCH LIVE */
+#match-screen{align-items:center;justify-content:center;padding:24px;gap:16px;text-align:center;overflow-y:auto;}
+.mhdr .meye{font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--rose);margin-bottom:8px;}
+.mhdr h2{font-family:'Playfair Display',serif;font-size:32px;font-weight:400;color:var(--deep);}
+.session-info{background:var(--warm);border-radius:14px;padding:12px 20px;font-size:12px;color:var(--deep);}
+.session-info span{font-weight:600;letter-spacing:2px;color:var(--rose);}
+.mgrid{display:flex;flex-direction:column;gap:10px;width:100%;max-width:340px;max-height:340px;overflow-y:auto;}
+.mcard{background:white;border-radius:16px;padding:15px 20px;box-shadow:0 4px 20px var(--sh);display:flex;align-items:center;gap:14px;text-align:left;}
+.mcard.new-match{animation:popIn .4s cubic-bezier(.34,1.56,.64,1);}
+@keyframes popIn{from{transform:scale(.8);opacity:0;}to{transform:scale(1);opacity:1;}}
+.mheart{font-size:20px;}.mname{font-family:'Playfair Display',serif;font-size:22px;font-weight:400;color:var(--deep);font-style:italic;}
+.mvars{font-size:11px;color:#9A8080;}
+.no-match{color:#9A8080;font-size:14px;font-style:italic;padding:20px;}
+.live-dot{display:inline-block;width:7px;height:7px;background:var(--yes);border-radius:50%;margin-right:6px;animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+.likes-summary{width:100%;max-width:340px;display:flex;gap:10px;}
+.likes-col{flex:1;background:white;border-radius:16px;padding:14px;box-shadow:0 4px 20px var(--sh);}
+.likes-col-title{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--rose);margin-bottom:8px;font-weight:500;}
+.likes-names{font-size:12px;color:var(--deep);line-height:1.8;}
+
+
+/* RESUME SCREEN */
+#resume-screen{align-items:center;justify-content:center;padding:40px 28px;gap:20px;}
+.resume-card{width:100%;max-width:320px;background:white;border-radius:24px;padding:28px 24px;box-shadow:0 8px 40px var(--sh);display:flex;flex-direction:column;align-items:center;gap:16px;text-align:center;}
+.resume-card .hi{font-size:13px;color:#9A8080;font-weight:300;}
+.resume-card .rname{font-family:'Playfair Display',serif;font-size:32px;font-weight:400;color:var(--deep);font-style:italic;}
+.resume-card .rsess{background:var(--warm);border-radius:100px;padding:8px 20px;font-size:14px;letter-spacing:2px;color:var(--rose);font-weight:500;}
+.resume-card .rstats{font-size:12px;color:#9A8080;}
+
+/* TOAST */
+.toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--deep);color:var(--cream);padding:12px 24px;border-radius:100px;font-size:13px;opacity:0;transition:all .3s;pointer-events:none;white-space:nowrap;z-index:999;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.loading{position:fixed;inset:0;background:rgba(250,247,242,.85);display:flex;align-items:center;justify-content:center;z-index:100;font-family:'Playfair Display',serif;font-size:18px;color:var(--deep);display:none;}
+.loading.show{display:flex;}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- HOME -->
+<div id="home" class="screen active">
+  <div class="logo">
+    <div class="eye">Le jeu des futurs parents</div>
+    <h1>Pré<em>nom</em></h1>
+    <div class="tag">Swipez ensemble, trouvez le prénom parfait ♡</div>
+  </div>
+  <div class="home-btns">
+    <button class="btn-p" onclick="checkAndShowResume()">Commencer</button>
+  </div>
+</div>
+
+
+<!-- RESUME -->
+<div id="resume-screen" class="screen">
+  <div class="logo" style="margin-bottom:0;text-align:center">
+    <div class="eye">Bon retour !</div>
+  </div>
+  <div class="resume-card">
+    <div class="hi">Vous étiez ici avant…</div>
+    <div class="rname" id="resumeName">Sophie</div>
+    <div class="rsess" id="resumeCode">TULIPE</div>
+    <div class="rstats" id="resumeStats">0 coups de cœur</div>
+    <button class="btn-p" style="width:100%" onclick="resumeSession()">Reprendre ♡</button>
+    <button class="btn-s" style="width:100%" onclick="clearSaved();S('session-screen')">Nouvelle session</button>
+  </div>
+</div>
+
+<!-- SESSION -->
+<div id="session-screen" class="screen">
+  <div class="logo" style="margin-bottom:0">
+    <h1 style="font-size:36px">Votre session</h1>
+  </div>
+  <div class="sess-box">
+    <label>Votre prénom</label>
+    <input class="ninput" id="uname" type="text" placeholder="ex : Sophie" maxlength="20">
+    <label>Code de session</label>
+    <input class="sess-input" id="sessCode" type="text" placeholder="ex : SAKURA" maxlength="6" oninput="this.value=this.value.toUpperCase()">
+    <div class="sess-hint">Créez un code ou entrez celui de l'autre parent</div>
+    <button class="btn-p" onclick="joinSession()">Rejoindre ♡</button>
+    <button class="btn-s" onclick="createSession()">Créer une nouvelle session</button>
+  </div>
+</div>
+
+<!-- SETUP -->
+<div id="setup" class="screen">
+  <div class="hdr">
+    <button class="back" onclick="S('session-screen')">←</button>
+    <h2>Préférences</h2>
+  </div>
+  <div class="setup-body">
+    <div class="slab">
+      <label>Genre du bébé</label>
+      <div class="chips">
+        <button class="chip on" data-g="f" onclick="tG(this)">Fille ♀</button>
+        <button class="chip on" data-g="m" onclick="tG(this)">Garçon ♂</button>
+        <button class="chip on" data-g="mx" onclick="tG(this)">Mixte ⚡</button>
+      </div>
+    </div>
+    <div class="slab">
+      <label>Origines</label>
+      <div class="chips" id="origChips"></div>
+      <div class="count-hint" id="cntHint"></div>
+    </div>
+    <button class="btn-p" onclick="startSwipe()">C'est parti !</button>
+  </div>
+</div>
+
+<!-- SWIPE -->
+<div id="swipe" class="screen">
+  <div class="sw-hdr">
+    <div class="upill" id="upill">Moi</div>
+    <div class="session-pill" id="sessionPill">···</div>
+    <div class="pbar-wrap"><div class="pbar"><div class="pfill" id="pfill"></div></div></div>
+    <div class="lcnt" id="lcnt">0 ♡</div>
+  </div>
+  <div class="card-area" id="cardArea"></div>
+  <div class="act-row">
+    <button class="abtn a-back" onclick="goBack()" title="Annuler">↩</button>
+    <button class="abtn a-no" onclick="swipeNo()">✕</button>
+    <button class="abtn a-yes" onclick="swipeYes()">♡</button>
+    <button class="abtn a-match" onclick="S('match-screen');loadMatches()" title="Voir les matchs">⚡</button>
+  </div>
+</div>
+
+<!-- MATCH LIVE -->
+<div id="match-screen" class="screen">
+  <div class="mhdr">
+    <div class="meye"><span class="live-dot"></span>En direct</div>
+    <h2>Vos matchs ♡</h2>
+  </div>
+  <div class="session-info">Session : <span id="matchSessionCode">···</span></div>
+  <div class="mgrid" id="matchGrid"><div class="no-match">Chargement…</div></div>
+  <div class="likes-summary">
+    <div class="likes-col">
+      <div class="likes-col-title" id="col1title">Moi</div>
+      <div class="likes-names" id="col1names">—</div>
+    </div>
+    <div class="likes-col">
+      <div class="likes-col-title" id="col2title">Partenaire</div>
+      <div class="likes-names" id="col2names">—</div>
+    </div>
+  </div>
+  <button class="btn-s" style="width:100%;max-width:340px" onclick="S('swipe')">← Continuer à swiper</button>
+  <button class="btn-s" style="width:100%;max-width:340px" onclick="S('home');resetAll()">Nouvelle session</button>
+</div>
+
+<div class="loading" id="loading">Chargement…</div>
+<div class="toast" id="toast"></div>
+</div>
+
+<script>
+const NAMES = [
+  ["alice","Alice","f","fran\u00e7ais","Noble et lumineuse",["Alyce"]],
+  ["amelie","Am\u00e9lie","f","fran\u00e7ais","Travailleuse et \u00e9nergique",["Ameline"]],
+  ["ambre","Ambre","f","fran\u00e7ais","R\u00e9sine dor\u00e9e pr\u00e9cieuse",["Amber"]],
+  ["agathe","Agathe","f","fran\u00e7ais","Bonne et vertueuse",[]],
+  ["adele","Ad\u00e8le","f","fran\u00e7ais","Noble et douce",["Adéla", "Adélaïde"]],
+  ["aurelie","Aur\u00e9lie","f","fran\u00e7ais","Dor\u00e9e comme le soleil",["Aurore"]],
+  ["beatrice","B\u00e9atrice","f","fran\u00e7ais","Qui rend heureux",["Béa"]],
+  ["camille","Camille","mx","fran\u00e7ais","Servante aux rituels",["Kamille"]],
+  ["capucine","Capucine","f","fran\u00e7ais","Fleur vive et espi\u00e8gle",[]],
+  ["caroline","Caroline","f","fran\u00e7ais","Femme libre et forte",["Caro"]],
+  ["cecile","C\u00e9cile","f","fran\u00e7ais","Pure et lumineuse",["Cecilia"]],
+  ["charlotte","Charlotte","f","fran\u00e7ais","Femme libre et forte",["Lotte"]],
+  ["chloe","Chlo\u00e9","f","fran\u00e7ais","Jeune pousse verte",["Kloé"]],
+  ["claire","Claire","f","fran\u00e7ais","Claire et brillante",["Clarisse"]],
+  ["clementine","Cl\u00e9mentine","f","fran\u00e7ais","Douce et indulgente",["Clémence"]],
+  ["constance","Constance","f","fran\u00e7ais","Stable et pers\u00e9v\u00e9rante",[]],
+  ["delphine","Delphine","f","fran\u00e7ais","Gr\u00e2ce du dauphin",[]],
+  ["diane","Diane","f","fran\u00e7ais","Divine, d\u00e9esse de la chasse",[]],
+  ["eleonore","\u00c9l\u00e9onore","f","fran\u00e7ais","Piti\u00e9 et compassion",["Aliénor", "Eleanor"]],
+  ["elise","\u00c9lise","f","fran\u00e7ais","Mon Dieu est serment",["Elisa", "Eliza"]],
+  ["eloise","\u00c9lo\u00efse","f","fran\u00e7ais","Sant\u00e9 et gloire",["Héloïse"]],
+  ["elodie","\u00c9lodie","f","fran\u00e7ais","Richesse \u00e9trang\u00e8re",[]],
+  ["emma","Emma","f","fran\u00e7ais","Enti\u00e8re et universelle",["Ema"]],
+  ["estelle","Estelle","f","fran\u00e7ais","\u00c9toile brillante",["Stella"]],
+  ["faustine","Faustine","f","fran\u00e7ais","Fortun\u00e9e et chanceuse",[]],
+  ["florence","Florence","f","fran\u00e7ais","Fleurissante et prosp\u00e8re",["Flora"]],
+  ["francoise","Fran\u00e7oise","f","fran\u00e7ais","Femme libre",["Fanny"]],
+  ["gabrielle","Gabrielle","f","fran\u00e7ais","Dieu est ma force",[]],
+  ["genevieve","Genevi\u00e8ve","f","fran\u00e7ais","Race des femmes",[]],
+  ["helene","H\u00e9l\u00e8ne","f","fran\u00e7ais","Lumi\u00e8re du soleil",["Elena", "Hélena"]],
+  ["ines","In\u00e8s","f","fran\u00e7ais","Pure et sainte",[]],
+  ["iris","Iris","f","fran\u00e7ais","Arc-en-ciel, messag\u00e8re",[]],
+  ["isabelle","Isabelle","f","fran\u00e7ais","Mon Dieu est abondance",["Isabel", "Isabeau", "Bella"]],
+  ["jade","Jade","f","fran\u00e7ais","Pierre pr\u00e9cieuse verte",[]],
+  ["joelle","Jo\u00eblle","f","fran\u00e7ais","Dieu est Dieu",[]],
+  ["juliette","Juliette","f","fran\u00e7ais","Jeune et vitale",["Julie"]],
+  ["laure","Laure","f","fran\u00e7ais","Couronn\u00e9e de lauriers",["Laura", "Laurie", "Laurène"]],
+  ["lea","L\u00e9a","f","fran\u00e7ais","Lumineuse et douce",["Lia"]],
+  ["lena","L\u00e9na","f","fran\u00e7ais","Lumi\u00e8re et \u00e9clat",["Lena"]],
+  ["lilou","Lilou","f","fran\u00e7ais","Lys, puret\u00e9",["Lily", "Lili"]],
+  ["lola","Lola","f","fran\u00e7ais","Forte et pleine de vie",[]],
+  ["louise","Louise","f","fran\u00e7ais","Guerri\u00e8re glorieuse",["Louisa"]],
+  ["lucie","Lucie","f","fran\u00e7ais","Lumi\u00e8re et clart\u00e9",["Lucy", "Luce"]],
+  ["luna","Luna","f","fran\u00e7ais","La lune, myst\u00e9rieuse",["Louna"]],
+  ["manon","Manon","f","fran\u00e7ais","Gr\u00e2ce divine",[]],
+  ["margot","Margot","f","fran\u00e7ais","Perle pr\u00e9cieuse",["Margaux", "Margo", "Margaud", "Margault"]],
+  ["marine","Marine","f","fran\u00e7ais","De la mer",[]],
+  ["mathilde","Mathilde","f","fran\u00e7ais","Puissante au combat",["Mahaut", "Matilde"]],
+  ["melanie","M\u00e9lanie","f","fran\u00e7ais","Sombre et myst\u00e9rieuse",["Mélany"]],
+  ["mia","Mia","f","fran\u00e7ais","Ch\u00e9rie, la mienne",["Mya"]],
+  ["nina","Nina","f","fran\u00e7ais","Gr\u00e2ce et faveur divine",[]],
+  ["noemie","No\u00e9mie","f","fran\u00e7ais","Douce et agr\u00e9able",[]],
+  ["nora","Nora","f","fran\u00e7ais","Honneur et lumi\u00e8re",["Norah"]],
+  ["oceane","Oc\u00e9ane","f","fran\u00e7ais","Vaste comme la mer",[]],
+  ["olivia","Olivia","f","fran\u00e7ais","Symbole de paix",["Alivia"]],
+  ["pauline","Pauline","f","fran\u00e7ais","Petite et humble",[]],
+  ["penelope","P\u00e9n\u00e9lope","f","fran\u00e7ais","Tisseuse et fid\u00e8le",["Penny"]],
+  ["rose","Rose","f","fran\u00e7ais","La fleur des rois",["Rosalie", "Rosine"]],
+  ["sarah","Sarah","f","fran\u00e7ais","Princesse et reine",["Sara"]],
+  ["solange","Solange","f","fran\u00e7ais","Solennelle et sacr\u00e9e",[]],
+  ["sophie","Sophie","f","fran\u00e7ais","Sagesse et connaissance",["Sofia"]],
+  ["stephanie","St\u00e9phanie","f","fran\u00e7ais","Couronn\u00e9e",[]],
+  ["sylvie","Sylvie","f","fran\u00e7ais","De la for\u00eat",["Sylvia"]],
+  ["valentine","Valentine","f","fran\u00e7ais","Forte et en bonne sant\u00e9",[]],
+  ["valerie","Val\u00e9rie","f","fran\u00e7ais","Forte et vigoureuse",[]],
+  ["victoire","Victoire","f","fran\u00e7ais","La victoire",["Victoria"]],
+  ["virginie","Virginie","f","fran\u00e7ais","Pure et intacte",[]],
+  ["viviane","Viviane","f","fran\u00e7ais","Pleine de vie",[]],
+  ["zoe","Zo\u00e9","f","fran\u00e7ais","Vie et vivacit\u00e9",["Zoée"]],
+  ["eva","Eva","f","fran\u00e7ais","Vie et vivante",["Ève", "Eve"]],
+  ["elsa","Elsa","f","fran\u00e7ais","Mon Dieu est abondance",["Elza"]],
+  ["alba","Alba","f","fran\u00e7ais","Aube, naissance du jour",[]],
+  ["aurelie2","Aurore","f","fran\u00e7ais","Aube lumineuse",[]],
+  ["agnes","Agn\u00e8s","f","fran\u00e7ais","Pure et douce",["Agnese"]],
+  ["albertine","Albertine","f","fran\u00e7ais","Noble et brillante",[]],
+  ["alienor","Ali\u00e9nor","f","fran\u00e7ais","Autre El\u00e9onore",["Éléonore"]],
+  ["andrea","Andrea","f","fran\u00e7ais","Virile et courageuse",[]],
+  ["angele","Ang\u00e8le","f","fran\u00e7ais","Ange, messag\u00e8re divine",[]],
+  ["annie","Annie","f","fran\u00e7ais","Gr\u00e2ce de Dieu",[]],
+  ["antoinette","Antoinette","f","fran\u00e7ais","Inestimable et pr\u00e9cieuse",[]],
+  ["ariane","Ariane","f","fran\u00e7ais","Tr\u00e8s sainte",["Arianne"]],
+  ["armelle","Armelle","f","fran\u00e7ais","Chef, prince breton",[]],
+  ["astrid","Astrid","f","fran\u00e7ais","Beaut\u00e9 divine",[]],
+  ["bernadette","Bernadette","f","fran\u00e7ais","Ours courageux",[]],
+  ["blanche","Blanche","f","fran\u00e7ais","Blanche, pure",[]],
+  ["brigitte","Brigitte","f","fran\u00e7ais","Force et vigueur",["Britt"]],
+  ["carole","Carole","f","fran\u00e7ais","Femme libre",[]],
+  ["cassandre","Cassandre","f","fran\u00e7ais","Qui brille comme l'homme",[]],
+  ["christelle","Christelle","f","fran\u00e7ais","Chr\u00e9tienne consacr\u00e9e",[]],
+  ["clarisse","Clarisse","f","fran\u00e7ais","Illustre et brillante",[]],
+  ["clotilde","Clotilde","f","fran\u00e7ais","Glorieuse au combat",[]],
+  ["colette","Colette","f","fran\u00e7ais","Victoire du peuple",[]],
+  ["coralie","Coralie","f","fran\u00e7ais","Du corail",[]],
+  ["corinne","Corinne","f","fran\u00e7ais","Jeune fille",[]],
+  ["crystel","Cristel","f","fran\u00e7ais","Pierre cristalline",[]],
+  ["dorothee","Doroth\u00e9e","f","fran\u00e7ais","Don de Dieu",[]],
+  ["edith","Edith","f","fran\u00e7ais","Richesse et combat",[]],
+  ["eliane","\u00c9liane","f","fran\u00e7ais","Du soleil",[]],
+  ["emilie","\u00c9milie","f","fran\u00e7ais","Rivale \u00e9mule",["Émilia"]],
+  ["eugenie","Eug\u00e9nie","f","fran\u00e7ais","Noble et bien n\u00e9e",[]],
+  ["eve","Eve","f","fran\u00e7ais","Vie et vivante",[]],
+  ["fanny","Fanny","f","fran\u00e7ais","Femme libre",[]],
+  ["flora","Flora","f","fran\u00e7ais","Fleur \u00e9panouie",[]],
+  ["gisele","Gis\u00e8le","f","fran\u00e7ais","Otage, gage de paix",[]],
+  ["gwenaelle","Gwena\u00eblle","f","breton","Blanche et g\u00e9n\u00e9reuse",[]],
+  ["hildegarde","Hildegarde","f","fran\u00e7ais","Gardienne noble de bataille",[]],
+  ["honorine","Honorine","f","fran\u00e7ais","Honor\u00e9e et digne",[]],
+  ["ingrid","Ingrid","f","fran\u00e7ais","Beaut\u00e9 divine nordique",[]],
+  ["irene","Ir\u00e8ne","f","fran\u00e7ais","Paix",[]],
+  ["isaure","Isaure","f","fran\u00e7ais","De la r\u00e9gion d'Isauria",[]],
+  ["josephine","Jos\u00e9phine","f","fran\u00e7ais","Dieu augmente",[]],
+  ["judith","Judith","f","fran\u00e7ais","Lou\u00e9e, femme de Jud\u00e9e",[]],
+  ["julianne","Juliane","f","fran\u00e7ais","Jeune et vitale",[]],
+  ["justine","Justine","f","fran\u00e7ais","Juste et \u00e9quitable",[]],
+  ["laetitia","Laetitia","f","fran\u00e7ais","Joie et all\u00e9gresse",["Léticia"]],
+  ["leonie","L\u00e9onie","f","fran\u00e7ais","Lionne courageuse",[]],
+  ["liliane","Liliane","f","fran\u00e7ais","Lys, puret\u00e9",[]],
+  ["lise","Lise","f","fran\u00e7ais","Mon Dieu est abondance",[]],
+  ["lisette","Lisette","f","fran\u00e7ais","Mon Dieu est abondance",[]],
+  ["lorraine","Lorraine","f","fran\u00e7ais","De la Lorraine",[]],
+  ["louison","Louison","f","fran\u00e7ais","Guerri\u00e8re glorieuse",[]],
+  ["lucile","Lucile","f","fran\u00e7ais","Lumi\u00e8re et clart\u00e9",[]],
+  ["madeleine","Madeleine","f","fran\u00e7ais","De Magdala",["Madeline"]],
+  ["marguerite","Marguerite","f","fran\u00e7ais","Perle pr\u00e9cieuse",["Margot", "Margaux"]],
+  ["marianne","Marianne","f","fran\u00e7ais","Gr\u00e2ce de Dieu",[]],
+  ["marie","Marie","f","fran\u00e7ais","Gr\u00e2ce de Dieu",["Maria"]],
+  ["marthe","Marthe","f","fran\u00e7ais","Ma\u00eetresse, dame",["Marta"]],
+  ["mathilde2","Ma\u00eft\u00e9","f","fran\u00e7ais","Aim\u00e9e de Dieu",[]],
+  ["maureen","Mauren","f","fran\u00e7ais","Grande, sombre",[]],
+  ["micheline","Micheline","f","fran\u00e7ais","Qui est comme Dieu",[]],
+  ["mireille","Mireille","f","fran\u00e7ais","Admirable",[]],
+  ["monique","Monique","f","fran\u00e7ais","Conseill\u00e8re unique",[]],
+  ["muriel","Muriel","f","fran\u00e7ais","Mer brillante",[]],
+  ["mylene","Myl\u00e8ne","f","fran\u00e7ais","Douce lumi\u00e8re",[]],
+  ["nathalie","Nathalie","f","fran\u00e7ais","N\u00e9e \u00e0 No\u00ebl",["Natalie"]],
+  ["nicolle","Nicole","f","fran\u00e7ais","Victoire du peuple",[]],
+  ["odile","Odile","f","fran\u00e7ais","Richesse",[]],
+  ["pascale","Pascale","f","fran\u00e7ais","De P\u00e2ques",[]],
+  ["patrizia","Patricia","f","fran\u00e7ais","Noble patricienne",[]],
+  ["perrine","Perrine","f","fran\u00e7ais","Petite pierre",[]],
+  ["priscille","Priscille","f","fran\u00e7ais","Antique et v\u00e9n\u00e9rable",[]],
+  ["raphaelle","Rapha\u00eblle","f","fran\u00e7ais","Dieu gu\u00e9rit",[]],
+  ["regine","R\u00e9gine","f","fran\u00e7ais","Reine",[]],
+  ["renee","Ren\u00e9e","f","fran\u00e7ais","Renaissante",[]],
+  ["sabine","Sabine","f","fran\u00e7ais","Femme sabine",[]],
+  ["sandrine","Sandrine","f","fran\u00e7ais","D\u00e9fenseure des hommes",[]],
+  ["servane","Servane","f","fran\u00e7ais","Servante consacr\u00e9e",[]],
+  ["severine","S\u00e9verine","f","fran\u00e7ais","S\u00e9v\u00e8re, grave",[]],
+  ["sibylle","Sibylle","f","fran\u00e7ais","Proph\u00e9tesse",[]],
+  ["solene","Sol\u00e8ne","f","fran\u00e7ais","Solennelle et lumineuse",["Solenne"]],
+  ["sonia","Sonia","f","fran\u00e7ais","Sagesse",["Sonya"]],
+  ["tiphaine","Tiphaine","f","fran\u00e7ais","Manifestation de Dieu",["Typhaine"]],
+  ["veronique","V\u00e9ronique","f","fran\u00e7ais","Image vraie",[]],
+  ["violette","Violette","f","fran\u00e7ais","Fleur violette",[]],
+  ["yolande","Yolande","f","fran\u00e7ais","Violette",[]],
+  ["yvonne","Yvonne","f","fran\u00e7ais","If, archer",[]],
+  ["zelia","Z\u00e9lia","f","fran\u00e7ais","Jalouse, ardente",[]],
+  ["adam","Adam","m","fran\u00e7ais","Fait de terre, homme",[]],
+  ["adrien","Adrien","m","fran\u00e7ais","De la mer Adriatique",[]],
+  ["alexandre","Alexandre","m","fran\u00e7ais","D\u00e9fenseur des hommes",["Alex", "Sasha"]],
+  ["alexis","Alexis","mx","fran\u00e7ais","D\u00e9fenseur et protecteur",["Alex"]],
+  ["antoine","Antoine","m","fran\u00e7ais","Inestimable et digne",[]],
+  ["armand","Armand","m","fran\u00e7ais","Soldat et guerrier",[]],
+  ["arnaud","Arnaud","m","fran\u00e7ais","Aigle puissant",["Arnold"]],
+  ["arthur","Arthur","m","fran\u00e7ais","Ours noble et fort",[]],
+  ["axel","Axel","m","fran\u00e7ais","P\u00e8re de la paix",[]],
+  ["baptiste","Baptiste","m","fran\u00e7ais","Celui qui baptise",[]],
+  ["bastien","Bastien","m","fran\u00e7ais","V\u00e9n\u00e9rable et respect\u00e9",["Sébastien"]],
+  ["benoit","Beno\u00eet","m","fran\u00e7ais","B\u00e9ni et consacr\u00e9",["Benedict"]],
+  ["charles","Charles","m","fran\u00e7ais","Homme libre et fort",[]],
+  ["clement","Cl\u00e9ment","m","fran\u00e7ais","Doux et indulgent",[]],
+  ["cyril","Cyril","m","fran\u00e7ais","Seigneur et ma\u00eetre",["Cyrille"]],
+  ["damien","Damien","m","fran\u00e7ais","Dompteur qui apprivoise",[]],
+  ["edouard","\u00c9douard","m","fran\u00e7ais","Gardien de la richesse",[]],
+  ["emile","\u00c9mile","m","fran\u00e7ais","Rival et \u00e9mule",["Émilien"]],
+  ["enzo","Enzo","m","fran\u00e7ais","Ma\u00eetre du foyer",[]],
+  ["ethan","Ethan","m","fran\u00e7ais","Fort et solide",[]],
+  ["felix","F\u00e9lix","m","fran\u00e7ais","Heureux et chanceux",[]],
+  ["florian","Florian","m","fran\u00e7ais","Fleurissant et prosp\u00e8re",[]],
+  ["francois","Fran\u00e7ois","m","fran\u00e7ais","Homme libre",["Franz"]],
+  ["gabriel","Gabriel","m","fran\u00e7ais","Dieu est ma force",[]],
+  ["gael","Ga\u00ebl","mx","fran\u00e7ais","G\u00e9n\u00e9reux et magnanime",["Gael"]],
+  ["gauthier","Gauthier","m","fran\u00e7ais","Arm\u00e9e puissante",["Gautier"]],
+  ["gilles","Gilles","m","fran\u00e7ais","Bouclier et protecteur",[]],
+  ["guillaume","Guillaume","m","fran\u00e7ais","Volont\u00e9 de protection",[]],
+  ["hugo","Hugo","m","fran\u00e7ais","Intelligence et esprit",[]],
+  ["jean","Jean","m","fran\u00e7ais","Dieu est gracieux",["Jeannot"]],
+  ["julien","Julien","m","fran\u00e7ais","Jeune et vital",["Jules"]],
+  ["leo","L\u00e9o","m","fran\u00e7ais","Lion courageux",["Léon"]],
+  ["louis","Louis","m","fran\u00e7ais","Guerrier glorieux",[]],
+  ["lucas","Lucas","m","fran\u00e7ais","Lumi\u00e8re qui illumine",["Luca"]],
+  ["martin","Martin","m","fran\u00e7ais","De Mars, guerrier",[]],
+  ["mathieu","Mathieu","m","fran\u00e7ais","Don de Dieu",["Matthieu"]],
+  ["mathis","Mathis","m","fran\u00e7ais","Don de Dieu",["Mathys", "Mattis"]],
+  ["maxime","Maxime","m","fran\u00e7ais","Le plus grand",["Maxi"]],
+  ["nathan","Nathan","m","fran\u00e7ais","Cadeau de Dieu",["Natan"]],
+  ["nicolas","Nicolas","m","fran\u00e7ais","Victoire du peuple",[]],
+  ["noel","No\u00ebl","m","fran\u00e7ais","N\u00e9 \u00e0 No\u00ebl",[]],
+  ["nolan","Nolan","m","fran\u00e7ais","Descendant de champions",[]],
+  ["oscar","Oscar","m","fran\u00e7ais","Ami des dieux",["Oskar"]],
+  ["paul","Paul","m","fran\u00e7ais","Petit et humble",[]],
+  ["philippe","Philippe","m","fran\u00e7ais","Ami des chevaux",[]],
+  ["pierre","Pierre","m","fran\u00e7ais","Roc et pierre solide",["Pierrick"]],
+  ["quentin","Quentin","m","fran\u00e7ais","Le cinqui\u00e8me",[]],
+  ["raphael","Rapha\u00ebl","m","fran\u00e7ais","Dieu gu\u00e9rit",["Rafael"]],
+  ["remy","R\u00e9my","m","fran\u00e7ais","Rameur et navigateur",["Rémi"]],
+  ["renaud","Renaud","m","fran\u00e7ais","Conseil puissant",["Reynaud"]],
+  ["robin","Robin","mx","fran\u00e7ais","Gloire brillante",[]],
+  ["romain","Romain","m","fran\u00e7ais","De Rome, citoyen",["Roman"]],
+  ["samuel","Samuel","m","fran\u00e7ais","Dieu a entendu",["Sam"]],
+  ["simon","Simon","m","fran\u00e7ais","Qui \u00e9coute",[]],
+  ["theo","Th\u00e9o","m","fran\u00e7ais","Don de Dieu",["Téo"]],
+  ["thibault","Thibault","m","fran\u00e7ais","Peuple courageux",["Thibaut", "Thiébault"]],
+  ["thomas","Thomas","m","fran\u00e7ais","Jumeau",["Tom"]],
+  ["timeo","Tim\u00e9o","m","fran\u00e7ais","Honor\u00e9 de Dieu",["Timothée"]],
+  ["tristan","Tristan","m","fran\u00e7ais","Tumulte h\u00e9ro\u00efque",[]],
+  ["valentin","Valentin","m","fran\u00e7ais","Fort et en bonne sant\u00e9",[]],
+  ["victor","Victor","m","fran\u00e7ais","Vainqueur et victorieux",[]],
+  ["vincent","Vincent","m","fran\u00e7ais","Qui conquiert",[]],
+  ["xavier","Xavier","m","fran\u00e7ais","La nouvelle maison",[]],
+  ["yann","Yann","m","fran\u00e7ais","Dieu est gracieux",["Yan"]],
+  ["albert","Albert","m","fran\u00e7ais","Noble et brillant",[]],
+  ["aldric","Aldric","m","fran\u00e7ais","Noble et puissant",[]],
+  ["alexis2","Alexi","m","fran\u00e7ais","D\u00e9fenseur",[]],
+  ["alphonse","Alphonse","m","fran\u00e7ais","Noble et pr\u00eat au combat",[]],
+  ["ambroise","Ambroise","m","fran\u00e7ais","Immortel et divin",[]],
+  ["anatole","Anatole","m","fran\u00e7ais","De l'Orient, soleil levant",[]],
+  ["andre","Andr\u00e9","m","fran\u00e7ais","Viril et courageux",[]],
+  ["augustin","Augustin","m","fran\u00e7ais","Majestueux et v\u00e9n\u00e9rable",[]],
+  ["aurelien","Aur\u00e9lien","m","fran\u00e7ais","Dor\u00e9 comme le soleil",[]],
+  ["barnabe","Barnab\u00e9","m","fran\u00e7ais","Fils de la consolation",[]],
+  ["barthelemy","Barth\u00e9lemy","m","fran\u00e7ais","Fils de Talmai",[]],
+  ["basile","Basile","m","fran\u00e7ais","Royal, digne d'un roi",[]],
+  ["baudouin","Baudouin","m","fran\u00e7ais","Ami courageux",[]],
+  ["bertrand","Bertrand","m","fran\u00e7ais","Corbeau brillant",[]],
+  ["blaise","Blaise","m","fran\u00e7ais","B\u00e8gue, qui balbutie",[]],
+  ["brice","Brice","m","fran\u00e7ais","Fils de brique",[]],
+  ["bruno","Bruno","m","fran\u00e7ais","Brun, sombre",[]],
+  ["celestin","C\u00e9lestin","m","fran\u00e7ais","Du ciel, divin",[]],
+  ["clovis","Clovis","m","fran\u00e7ais","Guerrier glorieux",[]],
+  ["constant","Constant","m","fran\u00e7ais","Constant et pers\u00e9v\u00e9rant",[]],
+  ["corentin","Corentin","m","breton","Tourbillon de mer",[]],
+  ["cyprien","Cyprien","m","fran\u00e7ais","De Chypre",[]],
+  ["davy","Davy","m","fran\u00e7ais","Bien-aim\u00e9",[]],
+  ["denis","Denis","m","fran\u00e7ais","De Dionysos",[]],
+  ["didier","Didier","m","fran\u00e7ais","D\u00e9sir ardent",[]],
+  ["donatien","Donatien","m","fran\u00e7ais","Don de Dieu",[]],
+  ["eloi","\u00c9loi","m","fran\u00e7ais","Choisi, \u00e9lu",[]],
+  ["emmanuel","Emmanuel","m","fran\u00e7ais","Dieu est avec nous",[]],
+  ["eudes","Eudes","m","fran\u00e7ais","Richesse",[]],
+  ["eustache","Eustache","m","fran\u00e7ais","Abondant en \u00e9pis",[]],
+  ["evan","Evan","m","fran\u00e7ais","N\u00e9 du if, noble",[]],
+  ["evrard","\u00c9vrard","m","fran\u00e7ais","Sanglier fort",[]],
+  ["fabien","Fabien","m","fran\u00e7ais","Cultivateur de f\u00e8ves",[]],
+  ["fabrice","Fabrice","m","fran\u00e7ais","Artisan forgeron",[]],
+  ["faustin","Faustin","m","fran\u00e7ais","Fortun\u00e9 et chanceux",[]],
+  ["fernand","Fernand","m","fran\u00e7ais","Courageux et aventurier",[]],
+  ["firmin","Firmin","m","fran\u00e7ais","Ferme et solide",[]],
+  ["flore","Florentin","m","fran\u00e7ais","Fleurissant et prosp\u00e8re",[]],
+  ["frederic","Fr\u00e9d\u00e9ric","m","fran\u00e7ais","Paix du peuple",["Fred"]],
+  ["fulgence","Fulgence","m","fran\u00e7ais","Brillant et resplendissant",[]],
+  ["gaston","Gaston","m","fran\u00e7ais","H\u00f4te, \u00e9tranger",[]],
+  ["gautier","Gautier","m","fran\u00e7ais","Arm\u00e9e puissante",[]],
+  ["geoffroy","Geoffroy","m","fran\u00e7ais","Paix du voyage",["Geoffrey"]],
+  ["gerard","G\u00e9rard","m","fran\u00e7ais","Lance puissante",[]],
+  ["germain","Germain","m","fran\u00e7ais","Fr\u00e8re, germanique",[]],
+  ["ghislain","Ghislain","m","fran\u00e7ais","Otage noble",[]],
+  ["gilbert","Gilbert","m","fran\u00e7ais","Brillant otage",[]],
+  ["godefroy","Godefroi","m","fran\u00e7ais","Paix de Dieu",[]],
+  ["gr\u00e9goire","Gr\u00e9goire","m","fran\u00e7ais","Vigilant et \u00e9veill\u00e9",[]],
+  ["guy","Guy","m","fran\u00e7ais","Bois, for\u00eat",[]],
+  ["henri","Henri","m","fran\u00e7ais","Chef du foyer",["Henry"]],
+  ["hercule","Hercule","m","fran\u00e7ais","Gloire de H\u00e9ra",[]],
+  ["herve","Herv\u00e9","m","fran\u00e7ais","Guerrier ardent",[]],
+  ["hippolyte","Hippolyte","m","fran\u00e7ais","Qui l\u00e2che les chevaux",[]],
+  ["honor\u00e9","Honor\u00e9","m","fran\u00e7ais","Honor\u00e9 et digne",[]],
+  ["hubert","Hubert","m","fran\u00e7ais","Esprit brillant",[]],
+  ["hyacinthe","Hyacinthe","mx","fran\u00e7ais","Fleur de jacinthe",[]],
+  ["ignace","Ignace","m","fran\u00e7ais","Du feu, ardent",[]],
+  ["isaure2","Isambert","m","fran\u00e7ais","Brillant gage de paix",[]],
+  ["isidore","Isidore","m","fran\u00e7ais","Don d'Isis",[]],
+  ["ivan2","Ivain","m","fran\u00e7ais","Dieu est gracieux",[]],
+  ["jacquelin","Jacquelin","m","fran\u00e7ais","Supplanteur",[]],
+  ["jacques","Jacques","m","fran\u00e7ais","Supplanteur",["Jacquot"]],
+  ["jeremie","J\u00e9r\u00e9mie","m","fran\u00e7ais","Dieu \u00e9l\u00e8ve",[]],
+  ["jerome","J\u00e9r\u00f4me","m","fran\u00e7ais","Nom sacr\u00e9",[]],
+  ["jo\u00ebl","Jo\u00ebl","m","fran\u00e7ais","Dieu est Dieu",[]],
+  ["joseph","Joseph","m","fran\u00e7ais","Dieu augmente",["Jo"]],
+  ["josselin","Josselin","m","fran\u00e7ais","Petit Goth",[]],
+  ["jourdain","Jourdain","m","fran\u00e7ais","Qui descend",[]],
+  ["justin","Justin","m","fran\u00e7ais","Juste et \u00e9quitable",[]],
+  ["killian","Killian","m","fran\u00e7ais","Petit guerrier",["Kilian", "Kylian"]],
+  ["lambert","Lambert","m","fran\u00e7ais","Brillant pays",[]],
+  ["lazare","Lazare","m","fran\u00e7ais","Dieu a aid\u00e9",[]],
+  ["lilian","Lilian","m","fran\u00e7ais","Lys, puret\u00e9",[]],
+  ["lionel","Lionel","m","fran\u00e7ais","Petit lion",[]],
+  ["loic","Lo\u00efc","m","fran\u00e7ais","Guerrier glorieux",[]],
+  ["lothaire","Lothaire","m","fran\u00e7ais","Arm\u00e9e glorieuse",[]],
+  ["loup","Loup","m","fran\u00e7ais","Loup, sauvage",[]],
+  ["luc","Luc","m","fran\u00e7ais","Lumi\u00e8re qui illumine",[]],
+  ["ludovic","Ludovic","m","fran\u00e7ais","Guerrier glorieux",[]],
+  ["mael","Ma\u00ebl","mx","breton","Prince et chef",[]],
+  ["marceau","Marceau","m","fran\u00e7ais","Petit guerrier de Mars",[]],
+  ["marc","Marc","m","fran\u00e7ais","De Mars, guerrier",[]],
+  ["mathieu2","Mathis","m","fran\u00e7ais","Don de Dieu",[]],
+  ["matthieu","Matthieu","m","fran\u00e7ais","Don de Dieu",[]],
+  ["maure","Maure","m","fran\u00e7ais","De Maur\u00e9tanie, sombre",[]],
+  ["maximin","Maximin","m","fran\u00e7ais","Le plus grand",[]],
+  ["methode","M\u00e9thode","m","fran\u00e7ais","Chemin, m\u00e9thode",[]],
+  ["mickael","Micka\u00ebl","m","fran\u00e7ais","Qui est comme Dieu",["Michaël"]],
+  ["mime","M\u00e9dard","m","fran\u00e7ais","Fort et puissant",[]],
+  ["narcisse","Narcisse","m","fran\u00e7ais","Fleur de narcisse",[]],
+  ["ney","Nehemia","m","fran\u00e7ais","Dieu console",[]],
+  ["norbert","Norbert","m","fran\u00e7ais","Lumi\u00e8re du Nord",[]],
+  ["odilon","Odilon","m","fran\u00e7ais","Richesse",[]],
+  ["olivier","Olivier","m","fran\u00e7ais","Olivier, symbole de paix",[]],
+  ["onesime","On\u00e9sime","m","fran\u00e7ais","Utile, profitable",[]],
+  ["pacome","Pac\u00f4me","m","fran\u00e7ais","Aigle",[]],
+  ["pascal","Pascal","m","fran\u00e7ais","De P\u00e2ques",[]],
+  ["patrice","Patrice","m","fran\u00e7ais","Noble patricien",[]],
+  ["philibert","Philibert","m","fran\u00e7ais","Tr\u00e8s brillant",[]],
+  ["pierre2","Pierrot","m","fran\u00e7ais","Petite pierre",[]],
+  ["placide","Placide","m","fran\u00e7ais","Calme et tranquille",[]],
+  ["prosper","Prosper","m","fran\u00e7ais","Prosp\u00e8re et chanceux",[]],
+  ["prudent","Prudent","m","fran\u00e7ais","Prudent et sage",[]],
+  ["raymond","Raymond","m","fran\u00e7ais","Conseil puissant",["Raimond"]],
+  ["regis","R\u00e9gis","m","fran\u00e7ais","Roi, qui gouverne",[]],
+  ["rene","Ren\u00e9","m","fran\u00e7ais","Renaissant",[]],
+  ["rigobert","Rigobert","m","fran\u00e7ais","Lance brillante",[]],
+  ["robert","Robert","m","fran\u00e7ais","Gloire brillante",["Bobby"]],
+  ["rodrigue","Rodrigue","m","fran\u00e7ais","Gloire puissante",[]],
+  ["romaric","Romaric","m","fran\u00e7ais","Gloire puissante",[]],
+  ["rupert","Rupert","m","fran\u00e7ais","Gloire brillante",[]],
+  ["saint","Saturnin","m","fran\u00e7ais","De Saturne",[]],
+  ["sebastien","S\u00e9bastien","m","fran\u00e7ais","V\u00e9n\u00e9rable et respect\u00e9",[]],
+  ["sylvain","Sylvain","m","fran\u00e7ais","De la for\u00eat",[]],
+  ["tanguy","Tanguy","m","breton","Chien de feu, guerrier",[]],
+  ["tancrede","Tancr\u00e8de","m","fran\u00e7ais","Conseil prudent",[]],
+  ["theophile","Th\u00e9ophile","m","fran\u00e7ais","Ami de Dieu",[]],
+  ["thibaud","Thibaud","m","fran\u00e7ais","Peuple courageux",[]],
+  ["timothee","Timoth\u00e9e","m","fran\u00e7ais","Honor\u00e9 de Dieu",["Tim"]],
+  ["titouan","Titouan","m","breton","Peuple de la mer",[]],
+  ["ulysse","Ulysse","m","fran\u00e7ais","Qui d\u00e9teste",[]],
+  ["urbain","Urbain","m","fran\u00e7ais","De la ville",[]],
+  ["venceslas","Venceslas","m","fran\u00e7ais","Grande gloire slave",[]],
+  ["vital","Vital","m","fran\u00e7ais","Plein de vie",[]],
+  ["vivien","Vivien","m","fran\u00e7ais","Plein de vie",[]],
+  ["wilfried","Wilfried","m","fran\u00e7ais","Volont\u00e9 de paix",[]],
+  ["wulfran","Wulfran","m","fran\u00e7ais","Loup et corbeau",[]],
+  ["yves","Yves","m","fran\u00e7ais","If, archer",[]],
+  ["anaelle","Ana\u00eblle","f","breton","Gr\u00e2ce et Dieu r\u00e9unis",["Anaelle"]],
+  ["aziliz","Aziliz","f","breton","Noble et pure",[]],
+  ["brendan","Brendan","m","breton","Prince aux cheveux noirs",[]],
+  ["enora","Enora","f","breton","Honneur et lumi\u00e8re",[]],
+  ["erwan","Erwan","m","breton","N\u00e9 du if, noble",["Erwann"]],
+  ["ewen","Ewen","m","breton","N\u00e9 du if, noble",[]],
+  ["gaelle","Ga\u00eblle","f","breton","G\u00e9n\u00e9reuse",["Gaelle"]],
+  ["gurvan","Gurvan","m","breton","Blanc et petit",[]],
+  ["loan","Loan","mx","breton","Lumi\u00e8re de Dieu",["Loane", "Loann"]],
+  ["louane","Louane","f","breton","Lumi\u00e8re de Dieu",["Loane"]],
+  ["maelle","Ma\u00eblle","f","breton","Princesse et chef",["Maelle"]],
+  ["maelys","Ma\u00eblys","f","breton","Princesse lumineuse",["Maëlis"]],
+  ["morgane","Morgane","f","breton","N\u00e9e de la mer",["Morgan"]],
+  ["nael","Na\u00ebl","m","breton","G\u00e9n\u00e9reux et magnanime",["Nael"]],
+  ["nolwenn","Nolwenn","f","breton","Sainte venue de Noyal",[]],
+  ["ronan","Ronan","m","breton","Petit phoque",[]],
+  ["rozenn","Rozenn","f","breton","Rose et fleur",[]],
+  ["solenn","Solenn","f","breton","Solennelle",[]],
+  ["sterenn","St\u00e9renn","f","breton","\u00c9toile",[]],
+  ["tugdual","Tugdual","m","breton","Peuple de la valeur",[]],
+  ["youenn","Youenn","m","breton","Dieu est gracieux",[]],
+  ["yuna","Yuna","f","breton","Douceur et soleil",[]],
+  ["armael","Arma\u00ebl","m","breton","Prince de la mer",[]],
+  ["jaouen","Jaouen","m","breton","Dieu est gracieux",[]],
+  ["kelig","Kelig","m","breton","Disciple",[]],
+  ["loena","Lo\u00e9na","f","breton","Lumi\u00e8re",[]],
+  ["meven","M\u00e9ven","m","breton","Qui vit longtemps",[]],
+  ["patern","Patern","m","breton","P\u00e8re, paternel",[]],
+  ["riwal","Riwal","m","breton","Roi de la g\u00e9n\u00e9rosit\u00e9",[]],
+  ["sezny","Sezny","m","breton","Sacr\u00e9",[]],
+  ["soazig","Soazig","f","breton","Douce et agr\u00e9able",[]],
+  ["tual","Tual","m","breton","Peuple de la valeur",[]],
+  ["alize","Aliz\u00e9","f","occitan","Vent libre et l\u00e9ger",["Alise"]],
+  ["arnaut","Arnaut","m","occitan","Aigle puissant",[]],
+  ["bertran","Bertran","m","occitan","Corbeau brillant",["Bertrand"]],
+  ["guilhem","Guilhem","m","occitan","Volont\u00e9 de protection",[]],
+  ["raimon","Raimon","m","occitan","Conseil sage",["Raymond"]],
+  ["almodovar","Almodovar","m","occitan","Forgeron puissant",[]],
+  ["almodis","Almodis","f","occitan","Noble et douce",[]],
+  ["daufina","Daufina","f","occitan","Dauphine, princesse",[]],
+  ["esclarmonde","Esclarmonde","f","occitan","Monde de lumi\u00e8re",[]],
+  ["flamenca","Flamenca","f","occitan","Flamande, ardente",[]],
+  ["guilhameta","Guilhameta","f","occitan","Petite protectrice",[]],
+  ["jaufre","Jaufre","m","occitan","Paix du voyage",[]],
+  ["peire","Peire","m","occitan","Pierre, roc",[]],
+  ["riqueta","Riqueta","f","occitan","Qui r\u00e8gne puissamment",[]],
+  ["tiborgs","Tibors","f","occitan","Noble et brillante",[]],
+  ["uc","Uc","m","occitan","Intelligence et esprit",[]],
+  ["ainara","Ainara","f","basque","Hirondelle",[]],
+  ["alaitz","Alaitz","f","basque","Joie",[]],
+  ["amaia","Amaia","f","basque","L'aboutissement",["Amaya"]],
+  ["ander","Ander","m","basque","Homme et viril",[]],
+  ["asier","Asier","m","basque","Le commencement",[]],
+  ["ekhi","Ekhi","m","basque","Soleil",[]],
+  ["gaizka","Gaizka","m","basque","Sauveur",[]],
+  ["garazi","Garazi","f","basque","Gr\u00e2ce",[]],
+  ["gorka","Gorka","m","basque","Agriculteur",[]],
+  ["iker","Iker","m","basque","Visitation",[]],
+  ["itziar","Itziar","f","basque","Refuge dans les hauteurs",[]],
+  ["leire","Leire","f","basque","Du monast\u00e8re de Leyre",[]],
+  ["mikel","Mikel","m","basque","Qui est comme Dieu",[]],
+  ["nahia","Nahia","f","basque","D\u00e9sir et volont\u00e9",[]],
+  ["nerea","Nerea","f","basque","La mienne",[]],
+  ["unai","Unai","m","basque","Gardien de troupeaux",[]],
+  ["alazne","Alazne","f","basque","Miracle",[]],
+  ["amets","Amets","mx","basque","R\u00eave",[]],
+  ["eider","Eider","f","basque","Belle",[]],
+  ["eneko","Eneko","m","basque","Mon ma\u00eetre",[]],
+  ["ibone","Ibone","f","basque","If, archer",[]],
+  ["izaro","Izaro","f","basque","\u00cele",[]],
+  ["kepa","Kepa","m","basque","Pierre, roc",[]],
+  ["larraitz","Larraitz","f","basque","Prairie",[]],
+  ["maddi","Maddi","f","basque","Gr\u00e2ce de Dieu",[]],
+  ["oihane","Oihane","f","basque","De la for\u00eat",[]],
+  ["ortzi","Ortzi","m","basque","Ciel",[]],
+  ["patxi","Patxi","m","basque","Homme libre",[]],
+  ["xabier","Xabier","m","basque","La nouvelle maison",[]],
+  ["zuri\u00f1e","Zuri\u00f1e","f","basque","Blanche",[]],
+  ["andria","Andria","m","corse","Viril et courageux",[]],
+  ["antone","Antone","m","corse","Inestimable",[]],
+  ["antonia","Antonia","f","corse","Inestimable",[]],
+  ["corsina","Corsina","f","corse","De Corse",[]],
+  ["francescu","Francescu","m","corse","Homme libre",[]],
+  ["ghjuvan","Ghjuvan","m","corse","Dieu est gracieux",[]],
+  ["lisandrina","Lisandrina","f","corse","D\u00e9fenseure des hommes",[]],
+  ["lucia_co","Lucia","f","corse","Lumi\u00e8re",[]],
+  ["paulu","Paulu","m","corse","Petit et humble",[]],
+  ["petru","Petru","m","corse","Pierre et roc",[]],
+  ["santina","Santina","f","corse","Petite sainte",[]],
+  ["simone_co","Simonine","f","corse","Qui \u00e9coute",[]],
+  ["toussainte","Toussainte","f","corse","Tous les saints",[]],
+  ["vincente","Vincente","f","corse","Qui conquiert",[]],
+  ["frieda","Frieda","f","alsacien","Paix",["Frida"]],
+  ["hannelore","Hannelore","f","alsacien","Gr\u00e2ce et gloire r\u00e9unies",[]],
+  ["liesel","Liesel","f","alsacien","Mon Dieu est abondance",[]],
+  ["maximiliane","Maximiliane","f","alsacien","La plus grande",[]],
+  ["otto","Otto","m","alsacien","Richesse et fortune",[]],
+  ["trudi","Trudi","f","alsacien","Force et puissance",[]],
+  ["wilhelmine","Wilhelmine","f","alsacien","Volont\u00e9 de protection",[]],
+  ["agnia","Agnia","f","russe","Pure et sainte",["Agnya"]],
+  ["aleksandra","Aleksandra","f","russe","D\u00e9fenseure des hommes",["Sacha", "Sasha"]],
+  ["alena","Alena","f","russe","Lumi\u00e8re de soleil",["Alyona"]],
+  ["anastasia","Anastasia","f","russe","R\u00e9surrection et renouveau",["Nastia", "Stasia"]],
+  ["anna_r","Anna","f","russe","Gr\u00e2ce et faveur divine",["Ania", "Anya"]],
+  ["antonina","Antonina","f","russe","Inestimable",["Tonya"]],
+  ["daria","Daria","f","russe","Qui maintient le bien",["Dacha"]],
+  ["ekaterina","Ekaterina","f","russe","Pure et nette",["Katia", "Katya", "Katioucha"]],
+  ["galina","Galina","f","russe","Calme et sereine",[]],
+  ["irina","Irina","f","russe","Paix",["Ira"]],
+  ["katia","Katia","f","russe","Pure et nette",["Katya"]],
+  ["ksenia","Ksenia","f","russe","\u00c9trang\u00e8re et hospitali\u00e8re",["Xenia", "Oxana"]],
+  ["larissa","Larissa","f","russe","Citadelle, joyeuse",["Lara"]],
+  ["liudmila","Liudmila","f","russe","Ch\u00e8re au peuple",["Mila"]],
+  ["masha","Masha","f","russe","Gr\u00e2ce de Dieu",["Maria", "Macha"]],
+  ["milena","Milena","f","russe","Gr\u00e2ce et douceur",["Mila"]],
+  ["nadia","Nadia","f","russe","Espoir",["Nadège", "Nadejda"]],
+  ["natasha","Natasha","f","russe","N\u00e9e \u00e0 No\u00ebl",["Natacha", "Natalya"]],
+  ["nina_r","Nina","f","russe","Reine et gracieuse",[]],
+  ["olga","Olga","f","russe","Sainte et b\u00e9nie",[]],
+  ["polina","Polina","f","russe","Petite et humble",[]],
+  ["sofia_r","Sofia","f","russe","Sagesse",["Sofi", "Sofiya"]],
+  ["sonya","Sonya","f","russe","Sagesse",["Sonia", "Sonietchka"]],
+  ["svetlana","Svetlana","f","russe","Lumineuse",["Sveta"]],
+  ["tania","Tania","f","russe","F\u00e9e des for\u00eats",["Tatiana", "Tanya"]],
+  ["valeria_r","Valeria","f","russe","Forte et vigoureuse",["Valera"]],
+  ["valentina_r","Valentina","f","russe","Forte et en bonne sant\u00e9",[]],
+  ["vera","Vera","f","russe","Foi et v\u00e9rit\u00e9",[]],
+  ["veronika","Veronika","f","russe","Image vraie",[]],
+  ["viktoria","Viktoria","f","russe","Victoire",["Vika"]],
+  ["xenia","Xenia","f","russe","Hospitali\u00e8re et \u00e9trang\u00e8re",["Ksenia"]],
+  ["yulia","Yulia","f","russe","Jeune et pleine de vie",["Julia", "Youlia"]],
+  ["zoya","Zoya","f","russe","Vie et vivacit\u00e9",[]],
+  ["vasilisa","Vasilisa","f","russe","Royale, de roi",[]],
+  ["feodora","Feodora","f","russe","Don de Dieu",[]],
+  ["zinaida","Zinaida","f","russe","De Zeus",[]],
+  ["pelageya","Pelageya","f","russe","De la mer",["Polina"]],
+  ["praskovya","Praskovya","f","russe","Veille de f\u00eate",[]],
+  ["aglaia","Aglaia","f","russe","Splendeur et \u00e9clat",[]],
+  ["aksinia","Aksinia","f","russe","\u00c9trang\u00e8re hospitali\u00e8re",[]],
+  ["alevtina","Alevtina","f","russe","Puissante et forte",[]],
+  ["alina","Alina","f","russe","Douce et noble",[]],
+  ["alla","Alla","f","russe","Autre, diff\u00e9rente",[]],
+  ["angelina","Angelina","f","russe","Ange messager",[]],
+  ["arina","Arina","f","russe","Paix",[]],
+  ["bogdana","Bogdana","f","russe","Donn\u00e9e par Dieu",[]],
+  ["darya","Darya","f","russe","Qui poss\u00e8de le bien",[]],
+  ["diana_r","Diana","f","russe","Divine d\u00e9esse",[]],
+  ["dominika","Dominika","f","russe","Du Seigneur",[]],
+  ["emiliya","Emiliya","f","russe","Rivale et \u00e9mule",[]],
+  ["evgenia","Evgenia","f","russe","Noble et bien n\u00e9e",[]],
+  ["inga","Inga","f","russe","Prot\u00e9g\u00e9e par Ing",[]],
+  ["inna","Inna","f","russe","Fort comme un torrent",[]],
+  ["iraida","Iraida","f","russe","Paix de H\u00e9ra",[]],
+  ["irma","Irma","f","russe","Toute enti\u00e8re",[]],
+  ["iskra","Iskra","f","russe","\u00c9tincelle",[]],
+  ["isolde","Isolde","f","russe","Douce et belle",[]],
+  ["kira","Kira","f","russe","Soleil ou seigneur",["Kyra"]],
+  ["klavdia","Klavdia","f","russe","Boiteuse, claudicante",[]],
+  ["kseniya","Kseniya","f","russe","Hospitali\u00e8re",[]],
+  ["larisa","Larisa","f","russe","Joyeuse citadelle",[]],
+  ["lidia","Lidia","f","russe","De Lydie",["Lydia"]],
+  ["liliya","Liliya","f","russe","Lys, puret\u00e9",[]],
+  ["ljubov","Ljubov","f","russe","Amour",[]],
+  ["lola_r","Lola","f","russe","Pleine de vie",[]],
+  ["luba","Luba","f","russe","Amour cher",["Lyuba"]],
+  ["lyubov","Lyubov","f","russe","Amour",[]],
+  ["marguerita","Margarita","f","russe","Perle pr\u00e9cieuse",["Rita"]],
+  ["marina_r","Marina","f","russe","De la mer",[]],
+  ["mariya","Mariya","f","russe","Gr\u00e2ce de Dieu",["Masha", "Manya"]],
+  ["natalya","Natalya","f","russe","N\u00e9e \u00e0 No\u00ebl",["Natasha", "Tasha"]],
+  ["oksana","Oksana","f","russe","Louange \u00e0 Dieu",["Oxana"]],
+  ["olia","Olia","f","russe","Sainte et b\u00e9nie",["Olya"]],
+  ["roksana","Roksana","f","russe","Aube brillante",["Roxane"]],
+  ["svetla","Svetla","f","russe","Lumi\u00e8re",[]],
+  ["tamara","Tamara","f","russe","Palmier dattier",["Tama"]],
+  ["varvara","Varvara","f","russe","\u00c9trang\u00e8re barbare",["Varya"]],
+  ["vassa","Vassa","f","russe","Royale",[]],
+  ["zina","Zina","f","russe","De Zeus",[]],
+  ["aleksei","Alekse\u00ef","m","russe","D\u00e9fenseur",["Alexeï", "Alexa"]],
+  ["andrei","Andre\u00ef","m","russe","Viril et courageux",["Andrey"]],
+  ["artem","Artem","m","russe","Sain et vigoureux",["Artemi"]],
+  ["bogdan","Bogdan","m","russe","Donn\u00e9 par Dieu",[]],
+  ["boris","Boris","m","russe","Combat et lutteur",[]],
+  ["danil","Danil","m","russe","Dieu est mon juge",["Daniil", "Danila"]],
+  ["dmitri","Dmitri","m","russe","De D\u00e9m\u00e9ter, terre nourrici\u00e8re",["Dimitri", "Mitia"]],
+  ["evgeny","Evgeny","m","russe","Noble et bien n\u00e9",["Evgueni", "Jenia"]],
+  ["fedor","Fedor","m","russe","Don de Dieu",["Fiodor", "Fedya"]],
+  ["gleb","Gleb","m","russe","H\u00e9ritier de Dieu",[]],
+  ["grigory","Grigory","m","russe","Vigilant et \u00e9veill\u00e9",["Gricha"]],
+  ["igor","Igor","m","russe","Guerrier d'Ing",[]],
+  ["ilya","Ilya","m","russe","Mon Dieu est Dieu",["Ilia"]],
+  ["ivan","Ivan","m","russe","Dieu est gracieux",["Vanya"]],
+  ["kirill","Kirill","m","russe","Seigneur et ma\u00eetre",["Kyrill"]],
+  ["konstantin","Konstantin","m","russe","Constant et pers\u00e9v\u00e9rant",["Kostia"]],
+  ["lev","Lev","m","russe","Lion",[]],
+  ["maxim","Maxim","m","russe","Le plus grand",["Maksim"]],
+  ["mikhail","Mikha\u00efl","m","russe","Qui est comme Dieu",["Mischa", "Micha"]],
+  ["nikita","Nikita","mx","russe","Victoire du peuple",[]],
+  ["nikolai","Nikola\u00ef","m","russe","Victoire du peuple",["Kolya"]],
+  ["oleg","Oleg","m","russe","Saint et sacr\u00e9",[]],
+  ["pavel","Pavel","m","russe","Petit et humble",["Pacha"]],
+  ["pyotr","Pyotr","m","russe","Pierre et roc",["Petia"]],
+  ["roman_r","Roman","m","russe","De Rome",[]],
+  ["ruslan","Ruslan","m","russe","Lion",[]],
+  ["sergei","Sergue\u00ef","m","russe","Gardien et protecteur",["Serge", "Serioja"]],
+  ["stanislav","Stanislav","m","russe","Gloire constante",["Stas"]],
+  ["stepan","Stepan","m","russe","Couronn\u00e9",[]],
+  ["timur","Timur","m","russe","Fer, invincible",[]],
+  ["vadim","Vadim","m","russe","Habile avec les mots",[]],
+  ["vasily","Vasily","m","russe","Royal et majestueux",["Vasia"]],
+  ["viktor","Viktor","m","russe","Vainqueur",["Vitia"]],
+  ["vladislav","Vladislav","m","russe","Gloire et pouvoir",["Vlad", "Vladik"]],
+  ["vyacheslav","Viatcheslav","m","russe","Grande gloire",["Slava"]],
+  ["yuri","Yuri","m","russe","Agriculteur",["Iouri"]],
+  ["artyom","Artyom","m","russe","Sain et vigoureux",[]],
+  ["matvei","Matvei","m","russe","Don de Dieu",["Matveï"]],
+  ["rodion","Rodion","m","russe","Chant h\u00e9ro\u00efque",[]],
+  ["semyon","Semyon","m","russe","Dieu a entendu",["Siméon"]],
+  ["zakhar","Zakhar","m","russe","Dieu se souvient",[]],
+  ["afanasy","Afanasy","m","russe","Immortel",[]],
+  ["agafon","Agafon","m","russe","Bon et bienveillant",[]],
+  ["akim","Akim","m","russe","Dieu \u00e9tablit",[]],
+  ["aksenty","Aksenty","m","russe","Qui fleurit",[]],
+  ["alexander_r","Alexander","m","russe","D\u00e9fenseur des hommes",["Sasha", "Shura"]],
+  ["alexey","Alexey","m","russe","D\u00e9fenseur",["Lyosha"]],
+  ["alyosha","Alyosha","m","russe","D\u00e9fenseur",[]],
+  ["anatoly","Anatoly","m","russe","De l'Orient",["Tolya"]],
+  ["antip","Antip","m","russe","Contre, oppos\u00e9",[]],
+  ["arkady","Arkady","m","russe","D'Arcadie, pastoral",["Arkasha"]],
+  ["arseny","Arseny","m","russe","Viril et fort",[]],
+  ["artur_r","Artur","m","russe","Ours noble et fort",[]],
+  ["benedikt","Benedikt","m","russe","B\u00e9ni et consacr\u00e9",[]],
+  ["bronislav","Bronislav","m","russe","Gloire de l'armure",[]],
+  ["cyrus","Cyrus","m","russe","Soleil ou tr\u00f4ne",[]],
+  ["danila","Danila","m","russe","Dieu est mon juge",[]],
+  ["demyan","Demyan","m","russe","Qui apprivoise",[]],
+  ["denis_r","Denis","m","russe","De Dionysos",[]],
+  ["dmitry","Dmitry","m","russe","De la terre nourrici\u00e8re",["Dima"]],
+  ["dobrynya","Dobrynya","m","russe","Bon et bienveillant",[]],
+  ["efim","Efim","m","russe","Qui parle bien",[]],
+  ["egor","Egor","m","russe","Agriculteur",[]],
+  ["emelyan","Emelyan","m","russe","Rival \u00e9mule",["Emilyan"]],
+  ["evsei","Evsei","m","russe","Pieux et d\u00e9vot",[]],
+  ["fadei","Fadei","m","russe","Courageux",[]],
+  ["filat","Filat","m","russe","Ami de Dieu",[]],
+  ["filipp","Filipp","m","russe","Ami des chevaux",[]],
+  ["foma","Foma","m","russe","Jumeau",[]],
+  ["gavriil","Gavriil","m","russe","Dieu est ma force",[]],
+  ["gennady","Gennady","m","russe","Noble et bien n\u00e9",[]],
+  ["georgy","Georgy","m","russe","Agriculteur",["Zhora", "Gosha"]],
+  ["goran","Goran","m","russe","De la montagne",[]],
+  ["innokenty","Innokenty","m","russe","Innocent",[]],
+  ["ioann","Ioann","m","russe","Dieu est gracieux",[]],
+  ["kuzma","Kuzma","m","russe","Ordonn\u00e9 et harmonieux",[]],
+  ["lavr","Lavr","m","russe","Laurier, victoire",[]],
+  ["lavrentiy","Lavrentiy","m","russe","De Laurentum",[]],
+  ["leonid","Leonid","m","russe","Lion puissant",[]],
+  ["luka","Luka","m","russe","Lumi\u00e8re",[]],
+  ["makar","Makar","m","russe","Heureux et b\u00e9ni",[]],
+  ["marat","Marat","m","russe","Qui est en col\u00e8re",[]],
+  ["methodiy","Methodiy","m","russe","Chemin et m\u00e9thode",[]],
+  ["miroslav","Miroslav","m","russe","Gloire paisible",[]],
+  ["mitrofan","Mitrofan","m","russe","Montr\u00e9 par la m\u00e8re",[]],
+  ["modest","Modest","m","russe","Modeste et simple",[]],
+  ["mstislav","Mstislav","m","russe","Gloire vengeresse",[]],
+  ["nazariy","Nazariy","m","russe","De Nazareth",[]],
+  ["nestor","Nestor","m","russe","Sage et revenu",[]],
+  ["nikifor","Nikifor","m","russe","Porteur de victoire",[]],
+  ["onufry","Onufry","m","russe","Taureau puissant",[]],
+  ["panteleimon","Panteleimon","m","russe","Tout mis\u00e9ricordieux",[]],
+  ["platon","Platon","m","russe","Large et fort",[]],
+  ["porfiry","Porfiry","m","russe","Pourpre royal",[]],
+  ["prokhor","Prokhor","m","russe","Qui dirige le ch\u0153ur",[]],
+  ["savely","Savely","m","russe","Demand\u00e9 \u00e0 Dieu",[]],
+  ["savva","Savva","m","russe","Vieux sage",[]],
+  ["svyatoslav","Svyatoslav","m","russe","Gloire sacr\u00e9e",[]],
+  ["taras","Taras","m","russe","De Tarente",[]],
+  ["timofei","Timofei","m","russe","Honor\u00e9 de Dieu",[]],
+  ["tikhon","Tikhon","m","russe","Chance et fortune",[]],
+  ["trofim","Trofim","m","russe","Nourricier",[]],
+  ["varfolomei","Varfolomei","m","russe","Fils de Talmai",[]],
+  ["veniamin","Veniamin","m","russe","Fils du c\u00f4t\u00e9 droit",[]],
+  ["vladilen","Vladilen","m","russe","Gloire de L\u00e9nine",[]],
+  ["vladimir","Vladimir","m","russe","Grand souverain",["Volodya", "Vova"]],
+  ["vsevolod","Vsevolod","m","russe","Ma\u00eetre de tout",[]],
+  ["yakov","Yakov","m","russe","Supplanteur",["Yasha"]],
+  ["yaroslav","Yaroslav","m","russe","Gloire ardente",[]],
+  ["yegor","Yegor","m","russe","Agriculteur",[]],
+  ["yermolai","Yermolai","m","russe","Peuple d'Herm\u00e8s",[]],
+  ["yevseviy","Yevseviy","m","russe","Pieux",[]],
+  ["zachar","Zachar","m","russe","Dieu se souvient",[]],
+  ["zinovy","Zinovy","m","russe","Vie de Zeus",[]],
+  ["alessia","Alessia","f","italien","D\u00e9fenseure des hommes",[]],
+  ["angela","Angela","f","italien","Ange et messag\u00e8re de Dieu",[]],
+  ["arianna","Arianna","f","italien","Tr\u00e8s sainte",["Ariane", "Ariadne"]],
+  ["aurora","Aurora","f","italien","Aube et naissance du jour",[]],
+  ["azzurra","Azzurra","f","italien","Bleu azur comme le ciel",[]],
+  ["beatrice_i","Beatrice","f","italien","Qui rend heureux",["Bea"]],
+  ["benedetta","Benedetta","f","italien","B\u00e9nie et consacr\u00e9e",[]],
+  ["camilla_i","Camilla","f","italien","Servante aux rituels",[]],
+  ["caterina","Caterina","f","italien","Pure et nette",["Katerina"]],
+  ["chiara","Chiara","f","italien","Claire et lumineuse",["Clara"]],
+  ["concetta","Concetta","f","italien","Conception immacul\u00e9e",[]],
+  ["cristina","Cristina","f","italien","Chr\u00e9tienne et consacr\u00e9e",[]],
+  ["eleonora","Eleonora","f","italien","Piti\u00e9 et compassion",[]],
+  ["emanuela","Emanuela","f","italien","Dieu avec nous",[]],
+  ["federica","Federica","f","italien","Paix du peuple",[]],
+  ["fiamma","Fiamma","f","italien","Flamme ardente",[]],
+  ["fiora","Fiora","f","italien","Fleur \u00e9panouie",[]],
+  ["francesca","Francesca","f","italien","Femme libre",[]],
+  ["gaia","Gaia","f","italien","D\u00e9esse de la Terre",[]],
+  ["ginevra","Ginevra","f","italien","Blanche vague",[]],
+  ["giorgia","Giorgia","f","italien","Agricultrice",[]],
+  ["giovanna","Giovanna","f","italien","Dieu est gracieux",[]],
+  ["giulia","Giulia","f","italien","Jeune et vitale",["Giuliana"]],
+  ["grazia","Grazia","f","italien","Gr\u00e2ce divine",["Graziella"]],
+  ["ilaria","Ilaria","f","italien","Joyeuse et gaie",[]],
+  ["immacolata","Immacolata","f","italien","Immacul\u00e9e et pure",[]],
+  ["lavinia","Lavinia","f","italien","De Lavinium, ancienne ville",[]],
+  ["leonora","Leonora","f","italien","Lumineuse et forte",[]],
+  ["loredana","Loredana","f","italien","Laurier dor\u00e9",[]],
+  ["lucia_i","Lucia","f","italien","Lumi\u00e8re",[]],
+  ["ludovica","Ludovica","f","italien","Guerri\u00e8re glorieuse",[]],
+  ["luisa","Luisa","f","italien","Guerri\u00e8re glorieuse",[]],
+  ["margherita","Margherita","f","italien","Perle pr\u00e9cieuse",[]],
+  ["mariella","Mariella","f","italien","Gr\u00e2ce de Dieu",[]],
+  ["martina","Martina","f","italien","De Mars, guerri\u00e8re",[]],
+  ["michela","Michela","f","italien","Qui est comme Dieu",[]],
+  ["paola","Paola","f","italien","Petite et humble",[]],
+  ["roberta","Roberta","f","italien","Gloire brillante",[]],
+  ["rosa","Rosa","f","italien","Rose et fleur",["Rosaria"]],
+  ["rossella","Rossella","f","italien","Rousse et ardente",[]],
+  ["serena","Serena","f","italien","Sereine et tranquille",[]],
+  ["silvana","Silvana","f","italien","De la for\u00eat",["Silvia"]],
+  ["simonetta","Simonetta","f","italien","Qui \u00e9coute",[]],
+  ["sofia_i","Sofia","f","italien","Sagesse",["Sofie"]],
+  ["stefania","Stefania","f","italien","Couronn\u00e9e",[]],
+  ["tiziana","Tiziana","f","italien","Dor\u00e9e et titianique",[]],
+  ["valentina_i","Valentina","f","italien","Forte et vitale",[]],
+  ["vittoria","Vittoria","f","italien","Victoire",[]],
+  ["ambra","Ambra","f","italien","Ambre dor\u00e9e",[]],
+  ["agnese","Agnese","f","italien","Pure et douce",[]],
+  ["alba_i","Alba","f","italien","Aube lumineuse",[]],
+  ["alberta","Alberta","f","italien","Noble et brillante",[]],
+  ["amalia","Amalia","f","italien","Travailleuse et z\u00e9l\u00e9e",[]],
+  ["anita","Anita","f","italien","Gr\u00e2ce divine",[]],
+  ["annalisa","Annalisa","f","italien","Gr\u00e2ce et lumi\u00e8re",[]],
+  ["antonella","Antonella","f","italien","Inestimable",[]],
+  ["assunta","Assunta","f","italien","Assomption divine",[]],
+  ["bianca","Bianca","f","italien","Blanche et pure",[]],
+  ["brunella","Brunella","f","italien","Brune et sombre",[]],
+  ["carla","Carla","f","italien","Femme libre et forte",[]],
+  ["carmela","Carmela","f","italien","Jardin de Carmel",[]],
+  ["carolina","Carolina","f","italien","Femme libre",[]],
+  ["cinzia","Cinzia","f","italien","De la montagne Cynthos",[]],
+  ["claudia","Claudia","f","italien","De la famille Claudia",[]],
+  ["clorinda","Clorinda","f","italien","Verte et fleurissante",[]],
+  ["colomba","Colomba","f","italien","Colombe, paix",[]],
+  ["costanza","Costanza","f","italien","Constante et pers\u00e9v\u00e9rante",[]],
+  ["dalila","Dalila","f","italien","Qui affaiblit",[]],
+  ["daniela","Daniela","f","italien","Dieu est mon juge",[]],
+  ["daria_i","Daria","f","italien","Qui poss\u00e8de le bien",[]],
+  ["delia","Delia","f","italien","De l'\u00eele de D\u00e9los",[]],
+  ["diana_i","Diana","f","italien","Divine d\u00e9esse de la chasse",[]],
+  ["donatella","Donatella","f","italien","Don de Dieu",[]],
+  ["elena","Elena","f","italien","Lumi\u00e8re du soleil",[]],
+  ["elisa","Elisa","f","italien","Mon Dieu est serment",[]],
+  ["elisabetta","Elisabetta","f","italien","Mon Dieu est abondance",[]],
+  ["elvira","Elvira","f","italien","Aimable et douce",[]],
+  ["enrica","Enrica","f","italien","Chef du foyer",[]],
+  ["erminia","Erminia","f","italien","De la for\u00eat",[]],
+  ["eugenia","Eugenia","f","italien","Noble et bien n\u00e9e",[]],
+  ["eufemia","Eufemia","f","italien","Bonne r\u00e9putation",[]],
+  ["eva_i","Eva","f","italien","Vie et vivante",[]],
+  ["fatima_i","Fatima","f","italien","Qui s\u00e8vre, chaste",[]],
+  ["fernanda","Fernanda","f","italien","Courageuse et aventuri\u00e8re",[]],
+  ["filomena","Filomena","f","italien","Amie des chants",[]],
+  ["fiorella","Fiorella","f","italien","Petite fleur",[]],
+  ["fulvia","Fulvia","f","italien","Aux cheveux roux",[]],
+  ["gemma","Gemma","f","italien","Pierre pr\u00e9cieuse",[]],
+  ["giacinta","Giacinta","f","italien","Jacinthe, fleur",[]],
+  ["gioconda","Gioconda","f","italien","Joyeuse et gaie",[]],
+  ["grazia2","Graziella","f","italien","Petite gr\u00e2ce divine",[]],
+  ["ida","Ida","f","italien","Du mont Ida",[]],
+  ["ines_i","Ines","f","italien","Pure et douce",[]],
+  ["irene_i","Irene","f","italien","Paix",[]],
+  ["isabella","Isabella","f","italien","Mon Dieu est abondance",[]],
+  ["lara","Lara","f","italien","C\u00e9l\u00e8bre et lumineuse",[]],
+  ["laura","Laura","f","italien","Couronn\u00e9e de lauriers",[]],
+  ["letizia","Letizia","f","italien","Joie et all\u00e9gresse",[]],
+  ["lia","Lia","f","italien","Fatigu\u00e9e et lumineuse",[]],
+  ["liliana","Liliana","f","italien","Lys et puret\u00e9",[]],
+  ["livia","Livia","f","italien","De la couleur bleue-verte",[]],
+  ["lorella","Lorella","f","italien","Laurier et victoire",[]],
+  ["lorenza","Lorenza","f","italien","De Laurentum",[]],
+  ["luana","Luana","f","italien","Gr\u00e2ce guerri\u00e8re",[]],
+  ["luisella","Luisella","f","italien","Petite guerri\u00e8re glorieuse",[]],
+  ["maddalena","Maddalena","f","italien","De Magdala",[]],
+  ["maristella","Maristella","f","italien","\u00c9toile de Marie",[]],
+  ["marta","Marta","f","italien","Ma\u00eetresse et dame",[]],
+  ["matilde","Matilde","f","italien","Puissante au combat",[]],
+  ["maura","Maura","f","italien","Sombre, de Maur\u00e9tanie",[]],
+  ["mirella","Mirella","f","italien","Admirable",[]],
+  ["miriam","Miriam","f","italien","Gr\u00e2ce de Dieu",[]],
+  ["morena","Morena","f","italien","Brune et sombre",[]],
+  ["nadia_i","Nadia","f","italien","Espoir",[]],
+  ["natalia","Natalia","f","italien","N\u00e9e \u00e0 No\u00ebl",[]],
+  ["nicoletta","Nicoletta","f","italien","Petite victoire du peuple",[]],
+  ["noemi","Noemi","f","italien","Douce et agr\u00e9able",[]],
+  ["olimpia","Olimpia","f","italien","De l'Olympe divin",[]],
+  ["oriana","Oriana","f","italien","Dor\u00e9e comme l'aurore",[]],
+  ["ornella","Ornella","f","italien","Arbre \u00e0 fleurs orn\u00e9",[]],
+  ["paola2","Pina","f","italien","Petite et humble",[]],
+  ["pierina","Pierina","f","italien","Petite pierre",[]],
+  ["primavera","Primavera","f","italien","Printemps",[]],
+  ["rachele","Rachele","f","italien","Brebis et douce",[]],
+  ["raffaella","Raffaella","f","italien","Dieu gu\u00e9rit",[]],
+  ["renata","Renata","f","italien","Renaissante",[]],
+  ["rita","Rita","f","italien","Perle pr\u00e9cieuse",[]],
+  ["romana","Romana","f","italien","De Rome",[]],
+  ["romilda","Romilda","f","italien","Glorieuse combattante",[]],
+  ["rosalba","Rosalba","f","italien","Rose et aube blanche",[]],
+  ["rosalia","Rosalia","f","italien","Rose et sainte",[]],
+  ["rosetta","Rosetta","f","italien","Petite rose",[]],
+  ["sabrina","Sabrina","f","italien","De la Severn, rivi\u00e8re",[]],
+  ["Sandra","Sandra","f","italien","D\u00e9fenseure des hommes",[]],
+  ["sara","Sara","f","italien","Princesse et reine",[]],
+  ["savina","Savina","f","italien","De la tribu des Sabins",[]],
+  ["smeralda","Smeralda","f","italien","\u00c9meraude pr\u00e9cieuse",[]],
+  ["teresa","Teresa","f","italien","Chasseresse de l'\u00e9t\u00e9",["Tere"]],
+  ["titiana","Titiana","f","italien","G\u00e9ante et puissante",[]],
+  ["ulrica","Ulrica","f","italien","Puissance et richesse",[]],
+  ["valentina2","Valentina","f","italien","Belle et forte",[]],
+  ["vanna","Vanna","f","italien","Gr\u00e2ce de Dieu",[]],
+  ["vera_i","Vera","f","italien","Foi et v\u00e9rit\u00e9",[]],
+  ["violetta","Violetta","f","italien","Petite violette",[]],
+  ["viviana","Viviana","f","italien","Pleine de vie",[]],
+  ["antonio","Antonio","m","italien","Inestimable",[]],
+  ["carlo","Carlo","m","italien","Homme libre et fort",[]],
+  ["dante","Dante","m","italien","Ferme et constant",[]],
+  ["davide","Davide","m","italien","Bien-aim\u00e9",[]],
+  ["emanuele","Emanuele","m","italien","Dieu avec nous",[]],
+  ["enzo_i","Enzo","m","italien","Ma\u00eetre du foyer",[]],
+  ["fabio","Fabio","m","italien","Cultivateur de f\u00e8ves",[]],
+  ["filippo","Filippo","m","italien","Ami des chevaux",[]],
+  ["franco","Franco","m","italien","Homme libre",[]],
+  ["gabriele","Gabriele","m","italien","Dieu est ma force",[]],
+  ["giacomo","Giacomo","m","italien","Supplanteur",[]],
+  ["gianni","Gianni","m","italien","Dieu est gracieux",[]],
+  ["giorgio","Giorgio","m","italien","Agriculteur",[]],
+  ["giovanni","Giovanni","m","italien","Dieu est gracieux",[]],
+  ["giulio","Giulio","m","italien","Jeune et vital",[]],
+  ["giuseppe","Giuseppe","m","italien","Dieu augmente",[]],
+  ["luca","Luca","m","italien","Lumi\u00e8re",[]],
+  ["luigi","Luigi","m","italien","Guerrier glorieux",[]],
+  ["marco","Marco","m","italien","De Mars, guerrier",[]],
+  ["mario","Mario","m","italien","De Mars, guerrier",[]],
+  ["matteo","Matteo","m","italien","Don de Dieu",[]],
+  ["nicola","Nicola","m","italien","Victoire du peuple",[]],
+  ["niccolo","Niccol\u00f2","m","italien","Victoire du peuple",[]],
+  ["paolo","Paolo","m","italien","Petit et humble",[]],
+  ["pietro","Pietro","m","italien","Pierre et roc",[]],
+  ["riccardo","Riccardo","m","italien","Roi puissant",[]],
+  ["roberto","Roberto","m","italien","Gloire brillante",[]],
+  ["romeo","Romeo","m","italien","P\u00e8lerin de Rome",[]],
+  ["salvatore","Salvatore","m","italien","Sauveur",[]],
+  ["sergio_i","Sergio","m","italien","Gardien et protecteur",[]],
+  ["simone_i","Simone","m","italien","Qui \u00e9coute",[]],
+  ["stefano","Stefano","m","italien","Couronn\u00e9 de gloire",[]],
+  ["tommaso","Tommaso","m","italien","Jumeau",[]],
+  ["vincenzo","Vincenzo","m","italien","Qui conquiert",[]],
+  ["lorenzo","Lorenzo","m","italien","De Laurentum",[]],
+  ["leonardo","Leonardo","m","italien","Lion courageux",[]],
+  ["alessio","Alessio","m","italien","D\u00e9fenseur des hommes",[]],
+  ["edoardo","Edoardo","m","italien","Gardien de la richesse",[]],
+  ["adriano","Adriano","m","italien","De la mer Adriatique",[]],
+  ["benedetto","Benedetto","m","italien","B\u00e9ni et consacr\u00e9",[]],
+  ["cesare","Cesare","m","italien","Chevelure abondante",[]],
+  ["corrado","Corrado","m","italien","Conseil courageux",[]],
+  ["domenico","Domenico","m","italien","Du Seigneur",[]],
+  ["ernesto","Ernesto","m","italien","S\u00e9rieux et r\u00e9solu",[]],
+  ["eugenio","Eugenio","m","italien","Noble et bien n\u00e9",[]],
+  ["flavio","Flavio","m","italien","Aux cheveux dor\u00e9s",[]],
+  ["leandro","Leandro","m","italien","Lion courageux",[]],
+  ["marcello","Marcello","m","italien","Petit guerrier de Mars",[]],
+  ["massimo","Massimo","m","italien","Le plus grand",[]],
+  ["ottavio","Ottavio","m","italien","Le huiti\u00e8me",[]],
+  ["renato","Renato","m","italien","Renaissant",[]],
+  ["rocco","Rocco","m","italien","Reposant et paisible",[]],
+  ["silvio","Silvio","m","italien","De la for\u00eat",[]],
+  ["tiziano","Tiziano","m","italien","Dorure titianique",[]],
+  ["umberto","Umberto","m","italien","Ours brillant",[]],
+  ["ugo","Ugo","m","italien","Intelligence et esprit",[]],
+  ["adolfo","Adolfo","m","italien","Loup noble",[]],
+  ["agostino","Agostino","m","italien","Majestueux et v\u00e9n\u00e9rable",[]],
+  ["alarico","Alarico","m","italien","Roi de tous",[]],
+  ["alberico","Alberico","m","italien","Noble et puissant",[]],
+  ["alberto","Alberto","m","italien","Noble et brillant",[]],
+  ["alcide","Alcide","m","italien","Fils d'Alc\u00e9e",[]],
+  ["aldo","Aldo","m","italien","Noble et vieux",[]],
+  ["alfio","Alfio","m","italien","Blanc comme l'alfa",[]],
+  ["alfredo","Alfredo","m","italien","Conseil des elfes",[]],
+  ["amedeo","Amedeo","m","italien","Qui aime Dieu",[]],
+  ["amerigo","Amerigo","m","italien","Puissant et maison",[]],
+  ["andrea_i","Andrea","m","italien","Viril et courageux",[]],
+  ["angelo","Angelo","m","italien","Ange et messager",[]],
+  ["annibale","Annibale","m","italien","Gr\u00e2ce de Baal",[]],
+  ["arcangelo","Arcangelo","m","italien","Archange divin",[]],
+  ["aroldo","Aroldo","m","italien","Arm\u00e9e puissante",[]],
+  ["arrigo","Arrigo","m","italien","Chef du foyer",[]],
+  ["arturo","Arturo","m","italien","Ours noble et fort",[]],
+  ["ascanio","Ascanio","m","italien","De l'Ascanie",[]],
+  ["attilio","Attilio","m","italien","De la famille Attilius",[]],
+  ["augusto","Augusto","m","italien","Majestueux et v\u00e9n\u00e9rable",[]],
+  ["aurelio","Aurelio","m","italien","Dor\u00e9 comme le soleil",[]],
+  ["baldassarre","Baldassarre","m","italien","Baal prot\u00e8ge le roi",[]],
+  ["barnaba","Barnaba","m","italien","Fils de la consolation",[]],
+  ["bartolomeo","Bartolomeo","m","italien","Fils de Talmai",[]],
+  ["basilio","Basilio","m","italien","Royal et majestueux",[]],
+  ["bastiano","Bastiano","m","italien","V\u00e9n\u00e9rable",[]],
+  ["battista","Battista","m","italien","Qui baptise",[]],
+  ["bernardino","Bernardino","m","italien","Ours courageux",[]],
+  ["bernardo","Bernardo","m","italien","Ours fort et courageux",[]],
+  ["biagio","Biagio","m","italien","B\u00e8gue et qui balbutie",[]],
+  ["bonifacio","Bonifacio","m","italien","Bon destin",[]],
+  ["brunello","Brunello","m","italien","Brun et sombre",[]],
+  ["buonaventura","Buonaventura","m","italien","Bonne fortune",[]],
+  ["calogero","Calogero","m","italien","Belle vieillesse",[]],
+  ["camillo","Camillo","m","italien","Servant aux rituels",[]],
+  ["carmelo","Carmelo","m","italien","Jardin de Carmel",[]],
+  ["castore","Castore","m","italien","Brillant et pur",[]],
+  ["cataldo","Cataldo","m","italien","Chef de la guerre",[]],
+  ["cecchino","Cecchino","m","italien","Homme libre",[]],
+  ["celestino","Celestino","m","italien","Du ciel et divin",[]],
+  ["cicero","Cicero","m","italien","Pois chiche",[]],
+  ["ciro","Ciro","m","italien","Soleil ou tr\u00f4ne",[]],
+  ["clemente","Clemente","m","italien","Doux et indulgent",[]],
+  ["colombano","Colombano","m","italien","Colombe et paix",[]],
+  ["cornelio","Cornelio","m","italien","Corne et force",[]],
+  ["cosimo","Cosimo","m","italien","Ordre et harmonie",[]],
+  ["costantino","Costantino","m","italien","Constant et pers\u00e9v\u00e9rant",[]],
+  ["cristoforo","Cristoforo","m","italien","Porteur du Christ",[]],
+  ["damiano","Damiano","m","italien","Qui apprivoise",[]],
+  ["daniele","Daniele","m","italien","Dieu est mon juge",[]],
+  ["dario","Dario","m","italien","Qui maintient le bien",[]],
+  ["deodato","Deodato","m","italien","Don de Dieu",[]],
+  ["diodato","Diodato","m","italien","Don de Dieu",[]],
+  ["donato","Donato","m","italien","Don de Dieu",[]],
+  ["edgardo","Edgardo","m","italien","Lance pr\u00e9cieuse",[]],
+  ["edmondo","Edmondo","m","italien","Protecteur de la richesse",[]],
+  ["egidio","Egidio","m","italien","Bouclier de ch\u00e8vre",[]],
+  ["elio","Elio","m","italien","Du soleil",[]],
+  ["emilio","Emilio","m","italien","Rival et \u00e9mule",[]],
+  ["enrico","Enrico","m","italien","Chef du foyer",[]],
+  ["eolo","Eolo","m","italien","Dieu des vents",[]],
+  ["ercole","Ercole","m","italien","Gloire de H\u00e9ra",[]],
+  ["ettore","Ettore","m","italien","Qui retient et poss\u00e8de",[]],
+  ["ezio","Ezio","m","italien","Aigle imp\u00e9rial",[]],
+  ["fanfulla","Fanfulla","m","italien","Archer renomm\u00e9",[]],
+  ["fausto","Fausto","m","italien","Fortun\u00e9 et chanceux",[]],
+  ["federico","Federico","m","italien","Paix du peuple",[]],
+  ["felice","Felice","m","italien","Heureux et chanceux",[]],
+  ["ferrante","Ferrante","m","italien","Courageux et aventurier",[]],
+  ["ferruccio","Ferruccio","m","italien","Petit fer forg\u00e9",[]],
+  ["fiore","Fiore","m","italien","Fleur \u00e9panouie",[]],
+  ["fiorenzo","Fiorenzo","m","italien","Fleurissant et prosp\u00e8re",[]],
+  ["flaviano","Flaviano","m","italien","Aux cheveux dor\u00e9s",[]],
+  ["folco","Folco","m","italien","Du peuple",[]],
+  ["fortunato","Fortunato","m","italien","Fortun\u00e9 et chanceux",[]],
+  ["fra","Frate","m","italien","Fr\u00e8re religieux",[]],
+  ["furio","Furio","m","italien","Fougueux et ardent",[]],
+  ["galeazzo","Galeazzo","m","italien","Puissant souverain",[]],
+  ["galeotto","Galeotto","m","italien","Batelier galeux",[]],
+  ["gaspare","Gaspare","m","italien","Porteur du tr\u00e9sor",[]],
+  ["gastone","Gastone","m","italien","H\u00f4te et \u00e9tranger",[]],
+  ["gerardo","Gerardo","m","italien","Lance puissante",[]],
+  ["gerlando","Gerlando","m","italien","Lance et pays",[]],
+  ["geronimo","Geronimo","m","italien","Nom sacr\u00e9",[]],
+  ["giambattista","Giambattista","m","italien","Dieu gracieux et baptiseur",[]],
+  ["gianfranco","Gianfranco","m","italien","Dieu gracieux et libre",[]],
+  ["gianluca","Gianluca","m","italien","Dieu gracieux et lumi\u00e8re",[]],
+  ["gianluigi","Gianluigi","m","italien","Dieu gracieux et guerrier",[]],
+  ["giannino","Giannino","m","italien","Petit Dieu gracieux",[]],
+  ["gioachino","Gioachino","m","italien","Dieu a \u00e9tabli",[]],
+  ["giordano","Giordano","m","italien","Qui descend",[]],
+  ["girolamo","Girolamo","m","italien","Nom sacr\u00e9",[]],
+  ["giuglio","Giuglio","m","italien","De Jules C\u00e9sar",[]],
+  ["gregorio","Gregorio","m","italien","Vigilant et \u00e9veill\u00e9",[]],
+  ["guglielmo","Guglielmo","m","italien","Volont\u00e9 de protection",[]],
+  ["guidobaldo","Guidobaldo","m","italien","For\u00eat courageuse",[]],
+  ["guido","Guido","m","italien","Bois et for\u00eat",[]],
+  ["ilario","Ilario","m","italien","Joyeux et gai",[]],
+  ["innocenzo","Innocenzo","m","italien","Innocent et pur",[]],
+  ["ippolito","Ippolito","m","italien","Qui l\u00e2che les chevaux",[]],
+  ["ireneo","Ireneo","m","italien","Paix",[]],
+  ["isaia","Isaia","m","italien","Dieu est salut",[]],
+  ["jacopo","Jacopo","m","italien","Supplanteur",[]],
+  ["lamberto","Lamberto","m","italien","Pays brillant",[]],
+  ["lapo","Lapo","m","italien","Dieu est gr\u00e2ce",[]],
+  ["lelio","Lelio","m","italien","Du soleil",[]],
+  ["leone","Leone","m","italien","Lion courageux",[]],
+  ["leonello","Leonello","m","italien","Petit lion",[]],
+  ["liberato","Liberato","m","italien","Lib\u00e9r\u00e9 et libre",[]],
+  ["lino","Lino","m","italien","Du lin ou de l'olivier",[]],
+  ["livio","Livio","m","italien","De la couleur bleue-verte",[]],
+  ["lodovico","Lodovico","m","italien","Guerrier glorieux",[]],
+  ["luciano","Luciano","m","italien","De la lumi\u00e8re",[]],
+  ["lucio","Lucio","m","italien","Lumi\u00e8re et clart\u00e9",[]],
+  ["macario","Macario","m","italien","Heureux et b\u00e9ni",[]],
+  ["maffeo","Maffeo","m","italien","Don de Dieu",[]],
+  ["manfredi","Manfredi","m","italien","Puissance et paix",[]],
+  ["manlio","Manlio","m","italien","N\u00e9 t\u00f4t le matin",[]],
+  ["mauro","Mauro","m","italien","De Maur\u00e9tanie, sombre",[]],
+  ["medardo","Medardo","m","italien","Fort et puissant",[]],
+  ["melchiorre","Melchiorre","m","italien","Roi de la lumi\u00e8re",[]],
+  ["michele","Michele","m","italien","Qui est comme Dieu",[]],
+  ["natale","Natale","m","italien","N\u00e9 \u00e0 No\u00ebl",[]],
+  ["nino","Nino","m","italien","Dieu est gracieux",[]],
+  ["nunzio","Nunzio","m","italien","Messager et annonciateur",[]],
+  ["oreste","Oreste","m","italien","De la montagne",[]],
+  ["orfeo","Orfeo","m","italien","Obscurit\u00e9 et nuit",[]],
+  ["oriano","Oriano","m","italien","Dor\u00e9 comme l'aurore",[]],
+  ["orlando","Orlando","m","italien","Gloire du pays",[]],
+  ["osvaldo","Osvaldo","m","italien","Puissance divine",[]],
+  ["ovidio","Ovidio","m","italien","Mouton et brebis",[]],
+  ["pacifico","Pacifico","m","italien","Pacifique et calme",[]],
+  ["pancrazio","Pancrazio","m","italien","Tout puissant",[]],
+  ["pasquale","Pasquale","m","italien","De P\u00e2ques",[]],
+  ["pellegrino","Pellegrino","m","italien","P\u00e8lerin et voyageur",[]],
+  ["primo","Primo","m","italien","Le premier",[]],
+  ["prospero","Prospero","m","italien","Prosp\u00e8re et chanceux",[]],
+  ["publio","Publio","m","italien","Du peuple",[]],
+  ["raffaele","Raffaele","m","italien","Dieu gu\u00e9rit",[]],
+  ["raimondo","Raimondo","m","italien","Conseil puissant",[]],
+  ["raniero","Raniero","m","italien","Arm\u00e9e d\u00e9cisive",[]],
+  ["renzo","Renzo","m","italien","De Laurentum",[]],
+  ["rinaldo","Rinaldo","m","italien","Conseil puissant",[]],
+  ["rinieri","Rinieri","m","italien","Arm\u00e9e d\u00e9cisive",[]],
+  ["ruggero","Ruggero","m","italien","Lance et gloire",[]],
+  ["sandro","Sandro","m","italien","D\u00e9fenseur des hommes",[]],
+  ["saturnino","Saturnino","m","italien","De Saturne",[]],
+  ["sauro","Sauro","m","italien","L\u00e9zard brillant",[]],
+  ["sebastiano","Sebastiano","m","italien","V\u00e9n\u00e9rable et respect\u00e9",[]],
+  ["sigismondo","Sigismondo","m","italien","Victoire et protection",[]],
+  ["silvano","Silvano","m","italien","De la for\u00eat",[]],
+  ["stanislao","Stanislao","m","italien","Gloire constante",[]],
+  ["tancredi","Tancredi","m","italien","Conseil prudent",[]],
+  ["teodoro","Teodoro","m","italien","Don de Dieu",[]],
+  ["timoteo","Timoteo","m","italien","Honor\u00e9 de Dieu",[]],
+  ["ubaldo","Ubaldo","m","italien","Esprit brillant",[]],
+  ["ugone","Ugone","m","italien","Grand intelligence",[]],
+  ["ulisse","Ulisse","m","italien","Qui d\u00e9teste",[]],
+  ["urbano","Urbano","m","italien","De la ville",[]],
+  ["valerio","Valerio","m","italien","Fort et vigoureux",[]],
+  ["vespasiano","Vespasiano","m","italien","Du soir",[]],
+  ["virgilio","Virgilio","m","italien","De la famille Vergilius",[]],
+  ["vitale","Vitale","m","italien","Plein de vie",[]],
+  ["vito","Vito","m","italien","Plein de vie et vivant",[]],
+  ["vladimiro","Vladimiro","m","italien","Grand souverain",[]],
+  ["zaccaria","Zaccaria","m","italien","Dieu se souvient",[]],
+  ["zeno","Zeno","m","italien","De Zeus ou vie",[]],
+];
+
+const ORIGINS = [...new Set(NAMES.map(n=>n[3]))].sort();
+// ══════════════════════════════════════════════
+//  CONFIG SUPABASE
+// ══════════════════════════════════════════════
+const SB_URL = 'https://krrkhibxsmbhtvisgsav.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtycmtoaWJ4c21iaHR2aXNnc2F2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3ODQyOTUsImV4cCI6MjA5NDM2MDI5NX0.B0sP7EstdrudlrK_wuTPhzOGbce67yTHpeIEM8uclpg';
+
+const HDR = {'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY};
+
+async function sbGet(table, params='') {
+  const r = await fetch(`${SB_URL}/rest/v1/${table}?${params}`, {headers:{...HDR,'Prefer':'return=representation'}});
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+async function sbPost(table, body) {
+  const r = await fetch(`${SB_URL}/rest/v1/${table}`, {method:'POST',headers:{...HDR,'Prefer':'return=representation'},body:JSON.stringify(body)});
+  if (!r.ok) { const t=await r.text(); if(!t.includes('23505')) throw new Error(t); } // ignore unique violation
+  return r.ok;
+}
+async function sbDelete(table, params) {
+  const r = await fetch(`${SB_URL}/rest/v1/${table}?${params}`, {method:'DELETE',headers:HDR});
+  return r.ok;
+}
+
+// ══════════════════════════════════════════════
+//  ÉTAT
+// ══════════════════════════════════════════════
+const st = {
+  userName: '',
+  sessionCode: '',
+  genders: new Set(['f','m','mx']),
+  origins: new Set(),
+  deck: [],
+  idx: 0,
+  likes: [],      // ids likés localement
+  history: [],
+  dragging: false,
+  realtimeSub: null,
+};
+
+// ══════════════════════════════════════════════
+//  NAVIGATION
+// ══════════════════════════════════════════════
+function S(id) {
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function loading(show) {
+  document.getElementById('loading').classList.toggle('show', show);
+}
+
+// ══════════════════════════════════════════════
+//  SESSION
+// ══════════════════════════════════════════════
+function randomCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+  return Array.from({length:6}, ()=>chars[Math.floor(Math.random()*chars.length)]).join('');
+}
+
+async function createSession() {
+  const name = document.getElementById('uname').value.trim();
+  if (!name) { toast('Entre ton prénom !'); return; }
+  const code = randomCode();
+  document.getElementById('sessCode').value = code;
+  loading(true);
+  try {
+    await sbPost('sessions', {code});
+    st.userName = name;
+    st.sessionCode = code;
+    saveLocal();
+    toast('Session créée : ' + code);
+    goSetup();
+  } catch(e) { toast('Erreur : ' + e.message); }
+  loading(false);
+}
+
+async function joinSession() {
+  const name = document.getElementById('uname').value.trim();
+  const code = document.getElementById('sessCode').value.trim().toUpperCase();
+  if (!name) { toast('Entre ton prénom !'); return; }
+  if (!code || code.length < 4) { toast('Entre un code de session !'); return; }
+  loading(true);
+  try {
+    // Vérifier si session existe, sinon la créer
+    const existing = await sbGet('sessions', `code=eq.${code}`);
+    if (!existing.length) {
+      await sbPost('sessions', {code});
+    }
+    st.userName = name;
+    st.sessionCode = code;
+    // Charger les likes déjà faits par cet utilisateur dans cette session
+    const myLikes = await sbGet('likes', `session_code=eq.${code}&user_name=eq.${encodeURIComponent(name)}&select=name_id`);
+    st.likes = myLikes.map(l=>l.name_id);
+    saveLocal();
+    toast('Session rejointe : ' + code);
+    goSetup();
+  } catch(e) { toast('Erreur : ' + e.message); }
+  loading(false);
+}
+
+// ══════════════════════════════════════════════
+//  SETUP
+// ══════════════════════════════════════════════
+function goSetup() {
+  buildOrigins();
+  S('setup');
+}
+
+function buildOrigins() {
+  const wrap = document.getElementById('origChips');
+  wrap.innerHTML = '';
+  ORIGINS.forEach(o => {
+    const already = st.origins.size === 0 || st.origins.has(o);
+    const b = document.createElement('button');
+    b.className = 'chip' + (already ? ' on' : '');
+    b.textContent = o; b.dataset.o = o;
+    b.onclick = () => {
+      b.classList.toggle('on');
+      st.origins.has(o) ? st.origins.delete(o) : st.origins.add(o);
+      updateCount();
+    };
+    wrap.appendChild(b);
+    if (already) st.origins.add(o);
+  });
+  updateCount();
+}
+
+function updateCount() {
+  const n = NAMES.filter(x=>st.genders.has(x[2])&&st.origins.has(x[3])).length;
+  document.getElementById('cntHint').textContent = n + ' prénoms dans votre sélection';
+}
+
+function tG(btn) {
+  const g = btn.dataset.g;
+  btn.classList.toggle('on');
+  st.genders.has(g) ? st.genders.delete(g) : st.genders.add(g);
+  updateCount();
+}
+
+// ══════════════════════════════════════════════
+//  SWIPE
+// ══════════════════════════════════════════════
+function startSwipe() {
+  if (!st.genders.size) { toast('Choisissez au moins un genre !'); return; }
+  if (!st.origins.size) { toast('Choisissez au moins une origine !'); return; }
+
+  let pool = NAMES.filter(n=>st.genders.has(n[2])&&st.origins.has(n[3]));
+  // Retirer ceux déjà likés / vus (on reprend là où on en était)
+  const likedSet = new Set(st.likes);
+  // Mettre les non-vus en premier, mélangés
+  const unseen = shuffle(pool.filter(n=>!likedSet.has(n[0])));
+  const seen = pool.filter(n=>likedSet.has(n[0]));
+  st.deck = [...unseen, ...seen];
+  st.idx = 0;
+
+  document.getElementById('upill').textContent = st.userName;
+  document.getElementById('sessionPill').textContent = st.sessionCode;
+  document.getElementById('matchSessionCode').textContent = st.sessionCode;
+
+  // Realtime : écouter les nouveaux likes
+  subscribeRealtime();
+
+  S('swipe');
+  renderCard();
+  updateBar();
+}
+
+function subscribeRealtime() {
+  // Supabase Realtime via WebSocket
+  if (st.realtimeSub) return;
+  const wsUrl = SB_URL.replace('https','wss') + '/realtime/v1/websocket?apikey=' + SB_KEY + '&vsn=1.0.0';
+  const ws = new WebSocket(wsUrl);
+  st.realtimeSub = ws;
+
+  ws.onopen = () => {
+    ws.send(JSON.stringify({topic:'realtime:public:likes',event:'phx_join',payload:{config:{broadcast:{self:false},presence:{key:''},postgres_changes:[{event:'INSERT',schema:'public',table:'likes',filter:`session_code=eq.${st.sessionCode}`}]}},ref:'1'}));
+  };
+
+  ws.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+    if (msg.event === 'postgres_changes' || (msg.payload && msg.payload.data)) {
+      const data = msg.payload?.data || msg.payload;
+      if (data?.record && data.record.session_code === st.sessionCode) {
+        // Nouveau like d'un autre user → vérifier si c'est un match
+        checkNewMatch(data.record.name_id, data.record.user_name);
+      }
+    }
+    // Heartbeat
+    if (msg.event === 'phx_reply' || msg.event === 'heartbeat') {
+      setTimeout(()=>ws.send(JSON.stringify({topic:'phoenix',event:'heartbeat',payload:{},ref:'hb'})), 25000);
+    }
+  };
+
+  ws.onerror = () => {}; // silencieux
+}
+
+function checkNewMatch(nameId, fromUser) {
+  if (fromUser === st.userName) return;
+  if (st.likes.includes(nameId)) {
+    const n = NAMES.find(x=>x[0]===nameId);
+    if (n) toast('💥 Match ! ' + n[1] + ' vous plaît à tous les deux !');
+  }
+}
+
+// ══════════════════════════════════════════════
+//  RENDU CARTE
+// ══════════════════════════════════════════════
+function cardHTML(n) {
+  const gtag = n[2]==='f'?'<span class="c-tag tf">Fille</span>':n[2]==='m'?'<span class="c-tag tm">Garçon</span>':'<span class="c-tag tmx">Mixte</span>';
+  const vars = n[5].length ? 'aussi : '+n[5].join(', ') : '';
+  return `<div class="cbg"></div>
+    <div class="stamp sy" id="sy">♡ OUI</div>
+    <div class="stamp sn" id="sn">✕ NON</div>
+    <div class="c-origin">${n[3]}</div>
+    <div class="c-name">${n[1]}</div>
+    <div class="c-vars">${vars}</div>
+    <div class="c-mean">${n[4]}</div>
+    ${gtag}`;
+}
+
+function renderCard() {
+  const area = document.getElementById('cardArea');
+  area.innerHTML = '';
+  if (st.idx >= st.deck.length) {
+    area.innerHTML = '<div class="empty-card"><div class="be">✨</div><h3>C\'est fini !</h3><p>Vous avez vu tous les prénoms.<br>Consultez vos matchs !</p><button class="btn-p" style="margin-top:16px" onclick="S(\'match-screen\');loadMatches()">Voir les matchs ⚡</button></div>';
+    return;
+  }
+  const card = document.createElement('div');
+  card.className = 'card'; card.id = 'cc';
+  card.innerHTML = cardHTML(st.deck[st.idx]);
+  area.appendChild(card);
+  setupDrag(card);
+}
+
+// ══════════════════════════════════════════════
+//  DRAG
+// ══════════════════════════════════════════════
+function setupDrag(card) {
+  let sx=0, sy_=0, cx=0;
+  const onStart=(x,y)=>{sx=x;sy_=y;cx=0;st.dragging=true;card.classList.add('drag');};
+  const onMove=(x,y)=>{
+    if(!st.dragging)return;
+    cx=x-sx; const dy=(y-sy_)*0.25; const rot=cx*0.07;
+    card.style.transform=`translateX(${cx}px) translateY(${dy}px) rotate(${rot}deg)`;
+    const r=Math.min(Math.abs(cx)/(window.innerWidth*0.33),1);
+    document.getElementById('sy').style.opacity=cx>0?r:0;
+    document.getElementById('sn').style.opacity=cx<0?r:0;
+  };
+  const onEnd=()=>{
+    if(!st.dragging)return;
+    st.dragging=false; card.classList.remove('drag');
+    const thr=window.innerWidth*0.28;
+    if(cx>thr) decide(true);
+    else if(cx<-thr) decide(false);
+    else{
+      card.style.transition='transform .3s cubic-bezier(.34,1.56,.64,1)';
+      card.style.transform='';
+      document.getElementById('sy').style.opacity=0;
+      document.getElementById('sn').style.opacity=0;
+      setTimeout(()=>card.style.transition='',300);
+    }
+    cx=0;
+  };
+  card.addEventListener('touchstart',e=>onStart(e.touches[0].clientX,e.touches[0].clientY),{passive:true});
+  card.addEventListener('touchmove',e=>onMove(e.touches[0].clientX,e.touches[0].clientY),{passive:true});
+  card.addEventListener('touchend',onEnd);
+  card.addEventListener('mousedown',e=>onStart(e.clientX,e.clientY));
+  window.addEventListener('mousemove',e=>{if(st.dragging)onMove(e.clientX,e.clientY);});
+  window.addEventListener('mouseup',onEnd);
+}
+
+// ══════════════════════════════════════════════
+//  DÉCISION + SUPABASE
+// ══════════════════════════════════════════════
+async function decide(liked) {
+  const card = document.getElementById('cc'); if(!card)return;
+  const n = st.deck[st.idx];
+  st.history.push({id:n[0], liked});
+
+  if (liked) {
+    if (!st.likes.includes(n[0])) st.likes.push(n[0]);
+    // Sauvegarder dans Supabase (fire & forget)
+    sbPost('likes', {session_code:st.sessionCode, user_name:st.userName, name_id:n[0]}).catch(()=>{});
+    saveLocal();
+  } else {
+    // Retirer si existait (on a changé d'avis via back)
+    if (st.likes.includes(n[0])) {
+      st.likes = st.likes.filter(id=>id!==n[0]);
+      sbDelete('likes', `session_code=eq.${st.sessionCode}&user_name=eq.${encodeURIComponent(st.userName)}&name_id=eq.${n[0]}`).catch(()=>{});
+    }
+  }
+
+  card.classList.add(liked?'fly-r':'fly-l');
+  setTimeout(()=>{st.idx++;renderCard();updateBar();}, 360);
+}
+
+function swipeYes(){decide(true);}
+function swipeNo(){decide(false);}
+
+function goBack() {
+  if(!st.history.length){toast('Pas d\'historique !');return;}
+  const last = st.history.pop();
+  if (last.liked) {
+    st.likes = st.likes.filter(id=>id!==last.id);
+    sbDelete('likes', `session_code=eq.${st.sessionCode}&user_name=eq.${encodeURIComponent(st.userName)}&name_id=eq.${last.id}`).catch(()=>{});
+    saveLocal();
+  }
+  st.idx--;
+  const area = document.getElementById('cardArea'); area.innerHTML='';
+  const n = st.deck[st.idx];
+  const card = document.createElement('div');
+  card.className='card fly-b'; card.id='cc';
+  card.innerHTML = cardHTML(n);
+  area.appendChild(card);
+  setTimeout(()=>{card.classList.remove('fly-b');setupDrag(card);},320);
+  updateBar();
+}
+
+function updateBar() {
+  const pct = st.deck.length ? (st.idx/st.deck.length)*100 : 0;
+  document.getElementById('pfill').style.width = pct+'%';
+  document.getElementById('lcnt').textContent = st.likes.length+' ♡';
+}
+
+// ══════════════════════════════════════════════
+//  MATCHS EN TEMPS RÉEL
+// ══════════════════════════════════════════════
+async function loadMatches() {
+  document.getElementById('matchGrid').innerHTML = '<div class="no-match">Chargement…</div>';
+  try {
+    const allLikes = await sbGet('likes', `session_code=eq.${st.sessionCode}&select=user_name,name_id`);
+
+    // Grouper par user
+    const byUser = {};
+    allLikes.forEach(l=>{
+      if(!byUser[l.user_name]) byUser[l.user_name]=[];
+      byUser[l.user_name].push(l.name_id);
+    });
+
+    const users = Object.keys(byUser);
+    const myIds = byUser[st.userName] || st.likes;
+    const otherUser = users.find(u=>u!==st.userName);
+    const otherIds = otherUser ? byUser[otherUser] : [];
+
+    // Matchs = intersection
+    const matchIds = myIds.filter(id=>otherIds.includes(id));
+
+    // Afficher matchs
+    const grid = document.getElementById('matchGrid');
+    grid.innerHTML='';
+    if(!matchIds.length){
+      grid.innerHTML='<div class="no-match">Pas encore de match…<br>Continuez à swiper !</div>';
+    } else {
+      matchIds.forEach(id=>{
+        const n=NAMES.find(x=>x[0]===id); if(!n)return;
+        const c=document.createElement('div'); c.className='mcard new-match';
+        c.innerHTML=`<div class="mheart">♡</div><div><div class="mname">${n[1]}</div>${n[5].length?`<div class="mvars">aussi : ${n[5].join(', ')}</div>`:''}</div>`;
+        grid.appendChild(c);
+      });
+    }
+
+    // Résumé par colonne
+    document.getElementById('col1title').textContent = st.userName;
+    document.getElementById('col1names').innerHTML = myIds.map(id=>{const n=NAMES.find(x=>x[0]===id);return n?n[1]:'';}).filter(Boolean).join('<br>') || '—';
+    document.getElementById('col2title').textContent = otherUser || 'Partenaire';
+    document.getElementById('col2names').innerHTML = otherIds.map(id=>{const n=NAMES.find(x=>x[0]===id);return n?n[1]:'';}).filter(Boolean).join('<br>') || '—';
+
+  } catch(e) { toast('Erreur chargement : '+e.message); }
+}
+
+// ══════════════════════════════════════════════
+//  LOCALSTORAGE — RECONNAISSANCE
+// ══════════════════════════════════════════════
+function saveLocal() {
+  localStorage.setItem('prenomApp', JSON.stringify({
+    userName: st.userName,
+    sessionCode: st.sessionCode,
+    likes: st.likes,
+    savedAt: Date.now()
+  }));
+}
+
+function loadLocal() {
+  try { return JSON.parse(localStorage.getItem('prenomApp')); }
+  catch { return null; }
+}
+
+function clearSaved() {
+  localStorage.removeItem('prenomApp');
+}
+
+async function resumeSession() {
+  const saved = loadLocal();
+  if (!saved) { S('session-screen'); return; }
+  loading(true);
+  try {
+    st.userName = saved.userName;
+    st.sessionCode = saved.sessionCode;
+    st.likes = saved.likes || [];
+    // Resync les likes depuis Supabase (au cas où on a swipy sur l'autre téléphone)
+    const remoteLikes = await sbGet('likes', `session_code=eq.${st.sessionCode}&user_name=eq.${encodeURIComponent(st.userName)}&select=name_id`);
+    const remoteIds = remoteLikes.map(l=>l.name_id);
+    // Fusionner local + remote
+    const merged = [...new Set([...st.likes, ...remoteIds])];
+    st.likes = merged;
+    saveLocal();
+    goSetup();
+  } catch(e) { toast('Erreur : ' + e.message); S('session-screen'); }
+  loading(false);
+}
+
+function checkAndShowResume() {
+  const saved = loadLocal();
+  if (saved && saved.userName && saved.sessionCode) {
+    document.getElementById('resumeName').textContent = saved.userName;
+    document.getElementById('resumeCode').textContent = saved.sessionCode;
+    const n = (saved.likes||[]).length;
+    document.getElementById('resumeStats').textContent = n + ' coup' + (n>1?'s':'') + ' de cœur sauvegardé' + (n>1?'s':'');
+    S('resume-screen');
+  } else {
+    S('session-screen');
+  }
+}
+
+function resetAll() {
+  if(st.realtimeSub){st.realtimeSub.close();st.realtimeSub=null;}
+  st.userName='';st.sessionCode='';st.likes=[];st.history=[];st.deck=[];st.idx=0;
+  document.getElementById('uname').value='';
+  document.getElementById('sessCode').value='';
+  clearSaved();
+}
+
+// ══════════════════════════════════════════════
+//  UTILS
+// ══════════════════════════════════════════════
+function shuffle(a){const b=[...a];for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]];}return b;}
+function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),3000);}
+
+// Init origins
+ORIGINS.forEach(o=>st.origins.add(o));
+
+// Auto-check localStorage au chargement
+window.addEventListener('load', () => {
+  const saved = loadLocal();
+  if (saved && saved.userName && saved.sessionCode) {
+    // Pré-remplir les champs au cas où
+    document.getElementById('uname').value = saved.userName;
+    document.getElementById('sessCode').value = saved.sessionCode;
+  }
+});
+</script>
+</body>
+</html>
