@@ -95,25 +95,38 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 .empty-card .be{font-size:48px;}.empty-card h3{font-family:'Playfair Display',serif;font-size:22px;color:var(--deep);font-weight:400;}
 .empty-card p{font-size:13px;color:#9A8080;line-height:1.6;}
 
-/* MATCH LIVE */
-#match-screen{align-items:center;justify-content:center;padding:24px;gap:16px;text-align:center;overflow-y:auto;}
-.mhdr .meye{font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--rose);margin-bottom:8px;}
-.mhdr h2{font-family:'Playfair Display',serif;font-size:32px;font-weight:400;color:var(--deep);}
-.session-info{background:var(--warm);border-radius:14px;padding:12px 20px;font-size:12px;color:var(--deep);}
+/* SWIPE NAV */
+.sw-links{display:flex;gap:8px;padding:0 18px 8px;flex-shrink:0;}
+.sw-link{flex:1;background:white;border:1.5px solid var(--blush);border-radius:100px;padding:8px 6px;font-family:'DM Sans',sans-serif;font-size:11px;color:var(--deep);cursor:pointer;transition:background .15s;}
+.sw-link:active{background:var(--warm);}
+.match-badge{background:var(--rose);color:white;border-radius:100px;padding:1px 7px;font-size:10px;margin-left:3px;font-weight:600;}
+.match-badge:empty{display:none;}
+
+/* MATCHS COMMUNS */
+#match-screen{flex-direction:column;overflow:hidden;}
+.match-hdr-bar .match-sub{font-size:12px;color:#7A6060;font-weight:300;}
+.match-meta{padding:12px 24px 0;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;flex-shrink:0;}
+.match-partner{font-size:13px;color:#7A6060;}
+.match-count{font-family:'Playfair Display',serif;font-size:20px;color:var(--rose);font-weight:400;}
+.live-strip{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--sage);padding:4px 0 8px;flex-shrink:0;}
+.session-info{background:var(--warm);border-radius:14px;padding:10px 18px;font-size:12px;color:var(--deep);}
 .session-info span{font-weight:600;letter-spacing:2px;color:var(--rose);}
-.mgrid{display:flex;flex-direction:column;gap:10px;width:100%;max-width:340px;max-height:340px;overflow-y:auto;}
-.mcard{background:white;border-radius:16px;padding:15px 20px;box-shadow:0 4px 20px var(--sh);display:flex;align-items:center;gap:14px;text-align:left;}
+.mgrid{display:flex;flex-direction:column;gap:10px;width:100%;flex:1;min-height:0;overflow-y:auto;padding:0 24px;}
+.mcard{background:white;border-radius:16px;padding:15px 20px;box-shadow:0 4px 20px var(--sh);display:flex;align-items:flex-start;gap:14px;text-align:left;}
 .mcard.new-match{animation:popIn .4s cubic-bezier(.34,1.56,.64,1);}
 @keyframes popIn{from{transform:scale(.8);opacity:0;}to{transform:scale(1);opacity:1;}}
-.mheart{font-size:20px;}.mname{font-family:'Playfair Display',serif;font-size:22px;font-weight:400;color:var(--deep);font-style:italic;}
-.mvars{font-size:11px;color:#9A8080;}
-.no-match{color:#9A8080;font-size:14px;font-style:italic;padding:20px;}
+.mheart{font-size:20px;flex-shrink:0;margin-top:2px;}
+.mname{font-family:'Playfair Display',serif;font-size:22px;font-weight:400;color:var(--deep);font-style:italic;}
+.morigin{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--rose);opacity:.85;margin-bottom:2px;}
+.mmean{font-size:12px;color:#6A5252;line-height:1.5;margin-top:4px;}
+.mvars{font-size:11px;color:#9A8080;margin-top:4px;}
+.no-match{color:#9A8080;font-size:14px;font-style:italic;padding:20px;text-align:center;}
 .live-dot{display:inline-block;width:7px;height:7px;background:var(--yes);border-radius:50%;margin-right:6px;animation:pulse 2s infinite;}
 @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
-.likes-summary{width:100%;max-width:340px;display:flex;gap:10px;}
-.likes-col{flex:1;background:white;border-radius:16px;padding:14px;box-shadow:0 4px 20px var(--sh);}
-.likes-col-title{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--rose);margin-bottom:8px;font-weight:500;}
-.likes-names{font-size:12px;color:var(--deep);line-height:1.8;}
+.match-actions{width:100%;padding:12px 24px 20px;display:flex;flex-direction:column;gap:10px;flex-shrink:0;}
+.match-banner{margin:12px 20px 0;background:linear-gradient(135deg,rgba(232,196,184,.5),var(--warm));border-radius:16px;padding:14px 18px;cursor:pointer;text-align:center;font-size:13px;color:var(--deep);flex-shrink:0;border:none;width:calc(100% - 40px);font-family:'DM Sans',sans-serif;}
+.match-banner strong{color:var(--rose);}
+.match-banner.hidden{display:none;}
 
 
 /* RESUME SCREEN */
@@ -160,6 +173,7 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 .match-big .mh{font-size:22px;}
 .match-vars-s{font-size:12px;color:#9A8080;display:block;font-style:normal;}
 .col-likes{display:flex;flex-wrap:wrap;gap:7px;}
+.lchip{background:white;border:1.5px solid var(--blush);border-radius:100px;padding:8px 14px;font-family:'Playfair Display',serif;font-size:14px;color:var(--deep);font-style:italic;}
 .refresh-btn{background:var(--warm);border:none;border-radius:100px;padding:8px 18px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--deep);cursor:pointer;}
 
 /* TOAST */
@@ -248,35 +262,41 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
     <div class="pbar-wrap"><div class="pbar"><div class="pfill" id="pfill"></div></div></div>
     <div class="lcnt" id="lcnt">0 ♡</div>
   </div>
+  <div class="sw-links">
+    <button type="button" class="sw-link" onclick="openCommonMatches()">♡ Matchs<span id="matchBadge" class="match-badge"></span></button>
+    <button type="button" class="sw-link" onclick="openLists()">Nos listes</button>
+    <button type="button" class="sw-link" onclick="openBrowse()">Annuaire</button>
+  </div>
   <div class="card-area" id="cardArea"></div>
   <div class="act-row">
     <button class="abtn a-back" onclick="goBack()" title="Annuler">↩</button>
     <button class="abtn a-no" onclick="swipeNo()">✕</button>
     <button class="abtn a-yes" onclick="swipeYes()">♡</button>
-    <button class="abtn a-match" onclick="S('match-screen');loadMatches()" title="Voir les matchs">⚡</button>
+    <button class="abtn a-match" onclick="openCommonMatches()" title="Matchs communs">♡</button>
   </div>
 </div>
 
-<!-- MATCH LIVE -->
+<!-- MATCHS COMMUNS -->
 <div id="match-screen" class="screen">
-  <div class="mhdr">
-    <div class="meye"><span class="live-dot"></span>En direct</div>
-    <h2>Vos matchs ♡</h2>
+  <div class="hdr match-hdr-bar">
+    <button class="back" onclick="S('swipe')">←</button>
+    <div>
+      <h2>Matchs communs</h2>
+      <p class="match-sub">Prénoms aimés par vous deux</p>
+    </div>
   </div>
-  <div class="session-info">Session : <span id="matchSessionCode">···</span></div>
+  <div class="match-meta">
+    <div class="session-info">Session <span id="matchSessionCode">···</span></div>
+    <p class="match-partner" id="matchPartnerInfo"></p>
+    <p class="match-count" id="matchCount"></p>
+    <div class="live-strip"><span class="live-dot"></span>Mise à jour en direct</div>
+  </div>
   <div class="mgrid" id="matchGrid"><div class="no-match">Chargement…</div></div>
-  <div class="likes-summary">
-    <div class="likes-col">
-      <div class="likes-col-title" id="col1title">Moi</div>
-      <div class="likes-names" id="col1names">—</div>
-    </div>
-    <div class="likes-col">
-      <div class="likes-col-title" id="col2title">Partenaire</div>
-      <div class="likes-names" id="col2names">—</div>
-    </div>
+  <div class="match-actions">
+    <button class="btn-p" onclick="S('swipe')">Continuer à swiper</button>
+    <button class="btn-s" onclick="openLists()">Comparer nos listes</button>
+    <button class="btn-s" style="opacity:.75" onclick="S('home');resetAll()">Nouvelle session</button>
   </div>
-  <button class="btn-s" style="width:100%;max-width:340px" onclick="S('swipe')">← Continuer à swiper</button>
-  <button class="btn-s" style="width:100%;max-width:340px" onclick="S('home');resetAll()">Nouvelle session</button>
 </div>
 
 <div class="loading" id="loading">Chargement…</div>
@@ -299,13 +319,14 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
   <div class="list-body" id="listBody"></div>
 </div>
 
-<!-- FULL MATCH -->
+<!-- NOS LISTES -->
 <div id="fullmatch-screen" class="screen">
   <div class="fullmatch-hdr">
     <button class="back" onclick="S('swipe')">←</button>
-    <h2>Matchs &amp; listes</h2>
-    <button class="refresh-btn" onclick="loadFullMatch()">↻</button>
+    <h2>Nos listes</h2>
+    <button class="refresh-btn" onclick="loadLists()">↻</button>
   </div>
+  <button type="button" id="listsMatchBanner" class="match-banner hidden" onclick="openCommonMatches()"></button>
   <div class="fullmatch-body" id="fullmatchBody"><div class="no-match">Chargement…</div></div>
 </div>
 
@@ -1486,6 +1507,7 @@ function startSwipe() {
   S('swipe');
   renderCard();
   updateBar();
+  refreshMatchBadge();
 }
 
 function subscribeRealtime() {
@@ -1522,6 +1544,7 @@ function checkNewMatch(nameId, fromUser) {
   if (st.likes.includes(nameId)) {
     const n = NAMES.find(x=>x[0]===nameId);
     if (n) toast('💥 Match ! ' + n[1] + ' vous plaît à tous les deux !');
+    refreshMatchBadge();
   }
 }
 
@@ -1542,7 +1565,7 @@ function renderCard() {
   const area = document.getElementById('cardArea');
   area.innerHTML = '';
   if (st.idx >= st.deck.length) {
-    area.innerHTML = '<div class="empty-card"><div class="be">✨</div><h3>C\'est fini !</h3><p>Vous avez vu tous les prénoms.<br>Consultez vos matchs !</p><button class="btn-p" style="margin-top:16px" onclick="S(\'match-screen\');loadMatches()">Voir les matchs ⚡</button></div>';
+    area.innerHTML = '<div class="empty-card"><div class="be">✨</div><h3>C\'est fini !</h3><p>Vous avez vu tous les prénoms.<br>Consultez vos matchs !</p><button class="btn-p" style="margin-top:16px" onclick="openCommonMatches()">Voir les matchs communs ♡</button></div>';
     return;
   }
   const card = document.createElement('div');
@@ -1611,7 +1634,7 @@ async function decide(liked) {
   }
 
   card.classList.add(liked?'fly-r':'fly-l');
-  setTimeout(()=>{st.idx++;renderCard();updateBar();}, 360);
+  setTimeout(()=>{st.idx++;renderCard();updateBar();if(liked)refreshMatchBadge();}, 360);
 }
 
 function swipeYes(){decide(true);}
@@ -1643,49 +1666,94 @@ function updateBar() {
 }
 
 // ══════════════════════════════════════════════
+
+async function fetchSessionLikes() {
+  if (!st.sessionCode) return { myIds: [...st.likes], otherUser: null, otherIds: [], matchIds: [] };
+  const allLikes = await sbGet('likes', `session_code=eq.${st.sessionCode}&select=user_name,name_id`);
+  const byUser = {};
+  allLikes.forEach(l => {
+    if (!byUser[l.user_name]) byUser[l.user_name] = [];
+    byUser[l.user_name].push(l.name_id);
+  });
+  const myIds = byUser[st.userName] || [...st.likes];
+  const otherUser = Object.keys(byUser).find(u => u !== st.userName) || null;
+  const otherIds = otherUser ? byUser[otherUser] : [];
+  const matchIds = myIds.filter(id => otherIds.includes(id));
+  return { myIds, otherUser, otherIds, matchIds };
+}
+
+function setMatchBadge(count) {
+  const badge = document.getElementById('matchBadge');
+  if (!badge) return;
+  badge.textContent = count > 0 ? count : '';
+}
+
+async function refreshMatchBadge() {
+  try {
+    const { matchIds } = await fetchSessionLikes();
+    setMatchBadge(matchIds.length);
+  } catch (_) {}
+}
+
+function openCommonMatches() {
+  S('match-screen');
+  loadMatches();
+}
+
+function openLists() {
+  S('fullmatch-screen');
+  loadLists();
+}
+
+function openBrowse() {
+  S('list-screen');
+  filterList();
+}
+
 //  MATCHS EN TEMPS RÉEL
 // ══════════════════════════════════════════════
 async function loadMatches() {
-  document.getElementById('matchGrid').innerHTML = '<div class="no-match">Chargement…</div>';
+  const grid = document.getElementById('matchGrid');
+  const countEl = document.getElementById('matchCount');
+  const partnerEl = document.getElementById('matchPartnerInfo');
+  grid.innerHTML = '<div class="no-match">Chargement…</div>';
   try {
-    const allLikes = await sbGet('likes', `session_code=eq.${st.sessionCode}&select=user_name,name_id`);
+    const { otherUser, matchIds } = await fetchSessionLikes();
+    setMatchBadge(matchIds.length);
 
-    // Grouper par user
-    const byUser = {};
-    allLikes.forEach(l=>{
-      if(!byUser[l.user_name]) byUser[l.user_name]=[];
-      byUser[l.user_name].push(l.name_id);
-    });
+    partnerEl.textContent = otherUser
+      ? 'Avec ' + otherUser
+      : 'En attente du partenaire (même code session)…';
 
-    const users = Object.keys(byUser);
-    const myIds = byUser[st.userName] || st.likes;
-    const otherUser = users.find(u=>u!==st.userName);
-    const otherIds = otherUser ? byUser[otherUser] : [];
-
-    // Matchs = intersection
-    const matchIds = myIds.filter(id=>otherIds.includes(id));
-
-    // Afficher matchs
-    const grid = document.getElementById('matchGrid');
-    grid.innerHTML='';
-    if(!matchIds.length){
-      grid.innerHTML='<div class="no-match">Pas encore de match…<br>Continuez à swiper !</div>';
+    if (!matchIds.length) {
+      countEl.textContent = otherUser ? "Aucun match pour l\'instant" : '';
     } else {
-      matchIds.forEach(id=>{
-        const n=NAMES.find(x=>x[0]===id); if(!n)return;
-        const c=document.createElement('div'); c.className='mcard new-match';
-        c.innerHTML=`<div class="mheart">♡</div><div><div class="mname">${n[1]}</div>${n[5].length?`<div class="mvars">aussi : ${n[5].join(', ')}</div>`:''}</div>`;
+      const w = matchIds.length > 1 ? 's' : '';
+      countEl.textContent = matchIds.length + ' prénom' + w + ' en commun';
+    }
+
+    grid.innerHTML = '';
+    if (!matchIds.length) {
+      grid.innerHTML = '<div class="no-match">' + (otherUser
+        ? 'Swipez encore — un match apparaît quand vous aimez le même prénom !'
+        : 'Partagez votre code session pour que votre partenaire puisse swiper.') + '</div>';
+    } else {
+      matchIds.forEach(id => {
+        const n = NAMES.find(x => x[0] === id);
+        if (!n) return;
+        const c = document.createElement('div');
+        c.className = 'mcard';
+        let html = '<div class="mheart">♡</div><div><div class="morigin">' + n[3] + '</div><div class="mname">' + n[1] + '</div>';
+        if (n[4]) html += '<div class="mmean">' + n[4] + '</div>';
+        if (n[5].length) html += '<div class="mvars">aussi : ' + n[5].join(', ') + '</div>';
+        html += '</div>';
+        c.innerHTML = html;
         grid.appendChild(c);
       });
     }
-
-    // Résumé par colonne
-    document.getElementById('col1title').textContent = st.userName;
-    document.getElementById('col1names').innerHTML = myIds.map(id=>{const n=NAMES.find(x=>x[0]===id);return n?n[1]:'';}).filter(Boolean).join('<br>') || '—';
-    document.getElementById('col2title').textContent = otherUser || 'Partenaire';
-    document.getElementById('col2names').innerHTML = otherIds.map(id=>{const n=NAMES.find(x=>x[0]===id);return n?n[1]:'';}).filter(Boolean).join('<br>') || '—';
-
-  } catch(e) { toast('Erreur chargement : '+e.message); }
+  } catch (e) {
+    toast('Erreur chargement : ' + e.message);
+  }
 }
 
 // ══════════════════════════════════════════════
@@ -1839,49 +1907,75 @@ async function toggleLikeFromDetail() {
   });
 }
 
-// ══ MATCHS COMPLETS ══
-async function loadFullMatch() {
+// ══ NOS LISTES ══
+async function loadLists() {
   const body = document.getElementById('fullmatchBody');
+  const banner = document.getElementById('listsMatchBanner');
   body.innerHTML = '<div class="no-match">Chargement…</div>';
   if (!st.sessionCode) {
-    body.innerHTML = '<div class="no-match" style="padding:40px">Rejoignez une session pour voir les matchs.</div>';
+    body.innerHTML = '<div class="no-match" style="padding:40px">Rejoignez une session pour voir vos listes.</div>';
+    banner.classList.add('hidden');
     return;
   }
   try {
-    const allLikes = await sbGet('likes','session_code=eq.'+st.sessionCode+'&select=user_name,name_id');
-    const byUser = {};
-    allLikes.forEach(l=>{ if(!byUser[l.user_name])byUser[l.user_name]=[]; byUser[l.user_name].push(l.name_id); });
-    const myIds = byUser[st.userName] || st.likes;
-    const otherUser = Object.keys(byUser).find(u=>u!==st.userName);
-    const otherIds = otherUser ? byUser[otherUser] : [];
-    const matchIds = myIds.filter(id=>otherIds.includes(id));
+    const { myIds, otherUser, otherIds, matchIds } = await fetchSessionLikes();
+    setMatchBadge(matchIds.length);
+
+    if (matchIds.length > 0) {
+      const w = matchIds.length > 1 ? 's' : '';
+      banner.innerHTML = '<strong>' + matchIds.length + ' match' + w + ' commun' + w + '</strong> — toucher pour voir';
+      banner.classList.remove('hidden');
+    } else {
+      banner.classList.add('hidden');
+    }
+
     body.innerHTML = '';
 
-    // Matchs
-    const ms = document.createElement('div'); ms.className='match-section';
-    ms.innerHTML = '<div class="match-section-title">Matchs avec '+(otherUser||'…')+' ('+matchIds.length+')</div>';
-    if (!matchIds.length) { ms.innerHTML += '<div class="no-match" style="padding:12px 0">Pas encore — continuez à swiper !</div>'; }
-    else { matchIds.forEach(id=>{ const n=NAMES.find(x=>x[0]===id); if(!n)return; const d=document.createElement('div'); d.className='match-big'; d.innerHTML='<span class="mh">♡</span><div><span>'+n[1]+'</span>'+(n[5].length?'<span class="match-vars-s">aussi : '+n[5].join(', ')+'</span>':'')+'</div>'; ms.appendChild(d); }); }
-    body.appendChild(ms);
-
-    // Mes likes
-    const myS=document.createElement('div'); myS.className='match-section';
-    myS.innerHTML='<div class="match-section-title">Mes coups de coeur ('+myIds.length+')</div><div class="col-likes"></div>';
-    myIds.forEach(id=>{ const n=NAMES.find(x=>x[0]===id); if(!n)return; const p=document.createElement('div'); p.className='lchip'; p.textContent=n[1]; myS.querySelector('.col-likes').appendChild(p); });
+    const myS = document.createElement('div');
+    myS.className = 'match-section';
+    myS.innerHTML = '<div class="match-section-title">Mes coups de cœur (' + myIds.length + ')</div><div class="col-likes"></div>';
+    const myCol = myS.querySelector('.col-likes');
+    if (!myIds.length) {
+      myCol.innerHTML = '<div class="no-match" style="padding:8px 0">Aucun pour l\'instant</div>';
+    } else {
+      myIds.forEach(id => {
+        const n = NAMES.find(x => x[0] === id);
+        if (!n) return;
+        const p = document.createElement('div');
+        p.className = 'lchip';
+        p.textContent = n[1];
+        myCol.appendChild(p);
+      });
+    }
     body.appendChild(myS);
 
-    // Likes partenaire
     if (otherUser) {
-      const otS=document.createElement('div'); otS.className='match-section';
-      otS.innerHTML='<div class="match-section-title">Coups de coeur de '+otherUser+' ('+otherIds.length+')</div><div class="col-likes"></div>';
-      otherIds.forEach(id=>{ const n=NAMES.find(x=>x[0]===id); if(!n)return; const p=document.createElement('div'); p.className='lchip'; p.textContent=n[1]; otS.querySelector('.col-likes').appendChild(p); });
+      const otS = document.createElement('div');
+      otS.className = 'match-section';
+      otS.innerHTML = '<div class="match-section-title">Coups de cœur de ' + otherUser + ' (' + otherIds.length + ')</div><div class="col-likes"></div>';
+      const otCol = otS.querySelector('.col-likes');
+      if (!otherIds.length) {
+        otCol.innerHTML = '<div class="no-match" style="padding:8px 0">Aucun pour l\'instant</div>';
+      } else {
+        otherIds.forEach(id => {
+          const n = NAMES.find(x => x[0] === id);
+          if (!n) return;
+          const p = document.createElement('div');
+          p.className = 'lchip';
+          p.textContent = n[1];
+          otCol.appendChild(p);
+        });
+      }
       body.appendChild(otS);
     } else {
-      const w=document.createElement('div'); w.className='match-section';
-      w.innerHTML='<div class="match-section-title">En attente…</div><div class="no-match" style="padding:12px 0">L\'autre parent n\'a pas encore rejoint.</div>';
+      const w = document.createElement('div');
+      w.className = 'match-section';
+      w.innerHTML = '<div class="match-section-title">Partenaire</div><div class="no-match" style="padding:12px 0">L\'autre parent n\'a pas encore rejoint la session.</div>';
       body.appendChild(w);
     }
-  } catch(e) { body.innerHTML='<div class="no-match">Erreur : '+e.message+'</div>'; }
+  } catch (e) {
+    body.innerHTML = '<div class="no-match">Erreur : ' + e.message + '</div>';
+  }
 }
 
 // Init origins
