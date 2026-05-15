@@ -1376,6 +1376,7 @@ const st = {
   deck: [],
   idx: 0,
   likes: [],      // ids likés localement
+  passed: [],     // ids refusés (swipe gauche) — ne reviennent plus
   history: [],
   dragging: false,
   realtimeSub: null,
@@ -1411,6 +1412,7 @@ async function createSession() {
     await sbPost('sessions', {code});
     st.userName = name;
     st.sessionCode = code;
+    st.passed = [];
     saveLocal();
     toast('Session créée : ' + code);
     goSetup();
@@ -1432,9 +1434,10 @@ async function joinSession() {
     }
     st.userName = name;
     st.sessionCode = code;
-    // Charger les likes déjà faits par cet utilisateur dans cette session
     const myLikes = await sbGet('likes', `session_code=eq.${code}&user_name=eq.${encodeURIComponent(name)}&select=name_id`);
     st.likes = myLikes.map(l=>l.name_id);
+    const saved = loadLocal();
+    st.passed = (saved && saved.sessionCode === code && saved.userName === name) ? (saved.passed || []) : [];
     saveLocal();
     toast('Session rejointe : ' + code);
     goSetup();
@@ -1489,12 +1492,8 @@ function startSwipe() {
   if (!st.origins.size) { toast('Choisissez au moins une origine !'); return; }
 
   let pool = NAMES.filter(n=>st.genders.has(n[2])&&st.origins.has(n[3]));
-  // Retirer ceux déjà likés / vus (on reprend là où on en était)
-  const likedSet = new Set(st.likes);
-  // Mettre les non-vus en premier, mélangés
-  const unseen = shuffle(pool.filter(n=>!likedSet.has(n[0])));
-  const seen = pool.filter(n=>likedSet.has(n[0]));
-  st.deck = [...unseen, ...seen];
+  const seen = new Set([...st.likes, ...st.passed]);
+  st.deck = shuffle(pool.filter(n=>!seen.has(n[0])));
   st.idx = 0;
 
   document.getElementById('upill').textContent = st.userName;
@@ -1621,16 +1620,17 @@ async function decide(liked) {
   st.history.push({id:n[0], liked});
 
   if (liked) {
+    st.passed = st.passed.filter(id=>id!==n[0]);
     if (!st.likes.includes(n[0])) st.likes.push(n[0]);
-    // Sauvegarder dans Supabase (fire & forget)
     sbPost('likes', {session_code:st.sessionCode, user_name:st.userName, name_id:n[0]}).catch(()=>{});
     saveLocal();
   } else {
-    // Retirer si existait (on a changé d'avis via back)
+    if (!st.passed.includes(n[0])) st.passed.push(n[0]);
     if (st.likes.includes(n[0])) {
       st.likes = st.likes.filter(id=>id!==n[0]);
       sbDelete('likes', `session_code=eq.${st.sessionCode}&user_name=eq.${encodeURIComponent(st.userName)}&name_id=eq.${n[0]}`).catch(()=>{});
     }
+    saveLocal();
   }
 
   card.classList.add(liked?'fly-r':'fly-l');
@@ -1646,6 +1646,9 @@ function goBack() {
   if (last.liked) {
     st.likes = st.likes.filter(id=>id!==last.id);
     sbDelete('likes', `session_code=eq.${st.sessionCode}&user_name=eq.${encodeURIComponent(st.userName)}&name_id=eq.${last.id}`).catch(()=>{});
+    saveLocal();
+  } else {
+    st.passed = st.passed.filter(id=>id!==last.id);
     saveLocal();
   }
   st.idx--;
@@ -1764,6 +1767,7 @@ function saveLocal() {
     userName: st.userName,
     sessionCode: st.sessionCode,
     likes: st.likes,
+    passed: st.passed,
     savedAt: Date.now()
   }));
 }
@@ -1785,6 +1789,7 @@ async function resumeSession() {
     st.userName = saved.userName;
     st.sessionCode = saved.sessionCode;
     st.likes = saved.likes || [];
+    st.passed = saved.passed || [];
     // Resync les likes depuis Supabase (au cas où on a swipy sur l'autre téléphone)
     const remoteLikes = await sbGet('likes', `session_code=eq.${st.sessionCode}&user_name=eq.${encodeURIComponent(st.userName)}&select=name_id`);
     const remoteIds = remoteLikes.map(l=>l.name_id);
@@ -1812,7 +1817,7 @@ function checkAndShowResume() {
 
 function resetAll() {
   if(st.realtimeSub){st.realtimeSub.close();st.realtimeSub=null;}
-  st.userName='';st.sessionCode='';st.likes=[];st.history=[];st.deck=[];st.idx=0;
+  st.userName='';st.sessionCode='';st.likes=[];st.passed=[];st.history=[];st.deck=[];st.idx=0;
   document.getElementById('uname').value='';
   document.getElementById('sessCode').value='';
   clearSaved();
