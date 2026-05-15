@@ -1812,7 +1812,6 @@ function openDetail(nameId) {
   document.getElementById('dOrigin').textContent = n[3];
   document.getElementById('dName').textContent = n[1];
   document.getElementById('dVars').textContent = n[5].length ? 'aussi : '+n[5].join(', ') : '';
-  document.getElementById('dMean').textContent = n[4];
   document.getElementById('detailLikeBtn').textContent = st.likes.includes(nameId) ? '♡ Retirer des coups de coeur' : '♡ Ajouter aux coups de coeur';
   document.getElementById('detailOverlay').classList.add('show');
 }
@@ -1879,7 +1878,7 @@ async function loadFullMatch() {
       body.appendChild(otS);
     } else {
       const w=document.createElement('div'); w.className='match-section';
-      w.innerHTML='<div class="match-section-title">En attente…</div><div class="no-match" style="padding:12px 0">L'autre parent n'a pas encore rejoint.</div>';
+      w.innerHTML='<div class="match-section-title">En attente…</div><div class="no-match" style="padding:12px 0">L\'autre parent n\'a pas encore rejoint.</div>';
       body.appendChild(w);
     }
   } catch(e) { body.innerHTML='<div class="no-match">Erreur : '+e.message+'</div>'; }
