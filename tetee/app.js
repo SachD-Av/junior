@@ -85,6 +85,46 @@ function stop() {
   if (sideMs(e) < 5000) e.del = true; // tap par erreur
   buzz(); put(e);
 }
+/* Corriger à la volée : ajoute ou retire du temps sur un côté de la tétée en cours.
+   Ajouter recule le début du dernier passage sur ce sein (ou crée un passage avant le début). */
+function adjust(side, min) {
+  const e = active(); if (!e) return;
+  const t = now(), mine = e.segs.filter(x => x.s === side);
+  if (min > 0) {
+    if (mine.length) mine.at(-1).a -= min * 6e4;
+    else { const a0 = e.segs.length ? Math.min(...e.segs.map(x => x.a)) : e.start; e.segs.unshift({ s: side, a: a0 - min * 6e4, b: a0 }) }
+  } else {
+    let rem = -min * 6e4;
+    for (const x of mine.reverse()) {
+      const take = Math.min(rem, (x.b ?? t) - x.a); x.a += take; rem -= take;
+      if (rem <= 0) break;
+    }
+    e.segs = e.segs.filter(x => !x.b || x.b > x.a); // retire les passages devenus vides
+  }
+  if (e.segs.length) e.start = Math.min(...e.segs.map(x => x.a));
+  buzz(); put(e);
+}
+function adjustDialog() {
+  const row = s => `<div class="adj"><b class="side ${s}">${s}</b><span class="t" data-t="${s}"></span>
+    <span class="quick">${[-5, -1, 1, 5].map(m => `<button type="button" class="btn" data-s="${s}" data-m="${m}">${m > 0 ? '+' : '−'}${Math.abs(m)}</button>`).join('')}</span></div>`;
+  dialog(`<h3>✎ Corriger les temps</h3>
+    <p class="sub">Vous avez oublié de lancer le chrono ou de changer de côté ? Ajoutez ou retirez des minutes.</p>
+    ${row('G')}${row('D')}
+    <div class="sub">Début de la tétée : <b data-t="startHm"></b></div>
+    <menu><button class="btn primary" value="cancel">OK</button></menu>`, () => {},
+    f => f.addEventListener('click', ev => { const b = ev.target.closest('[data-m]'); if (b) { adjust(b.dataset.s, +b.dataset.m); tick() } }));
+  tick();
+}
+function forgotDialog() {
+  dialog(`<h3>＋ Ajouter un oubli</h3>
+    <button class="btn" value="sein">🤱 Tétée</button><button class="btn" value="biberon">🍼 Biberon</button><button class="btn" value="couche">🧷 Couche</button>
+    <menu><button class="btn" value="cancel">Annuler</button></menu>`, v => setTimeout(() => newEntry(v)));
+}
+function newEntry(type) {
+  const t = now();
+  editDialog(type === 'sein' ? { id: uid(), type, start: t - 15 * 6e4, end: t, segs: [] }
+    : { id: uid(), type, start: t, end: t, ml: S.ml, milk: S.milk, pipi: true, caca: false }, true);
+}
 function cancelFeed() { const e = active(); if (e && confirm('Annuler cette tétée ?')) { e.del = true; put(e) } }
 
 /* ---------- thème ---------- */
@@ -125,7 +165,8 @@ function homeHTML() {
         ${o ? `<button class="btn" data-act="pause">⏸ Pause rot</button>` : `<button class="btn" data-act="resume">▶ Reprendre<small>sein ${SIDE[e.segs.at(-1)?.s || 'G'].toLowerCase()}</small></button>`}
         <button class="btn primary" data-act="stop">✓ Terminer</button>
       </div>
-      <button class="link" data-act="cancel">Annuler la tétée</button>
+      <div class="grid2"><button class="link" data-act="adjust">✎ Corriger les temps</button>
+        <button class="link" data-act="cancel">Annuler la tétée</button></div>
     </section>`;
   }
   const L = list(), meal = L.find(isMeal), lastSein = L.find(x => x.type === 'sein' && x.end);
@@ -151,6 +192,7 @@ function homeHTML() {
       <button class="btn" data-act="bib">🍼 Biberon</button>
       <button class="btn" data-act="couche">🧷 Couche</button>
     </div>
+    <button class="link" data-act="forgot">＋ Ajouter un oubli</button>
   </section>`;
 }
 
@@ -274,6 +316,7 @@ function tick() {
     const k = el.dataset.t;
     if (k === 'since') { const m = list().find(isMeal); if (m) el.textContent = dur(t - m.start) }
     else if (!e) return;
+    else if (k === 'startHm') el.textContent = hm(e.start);
     else if (k === 'total') el.textContent = clock(sideMs(e, null, t));
     else if (k === 'G' || k === 'D') el.textContent = clock(sideMs(e, k, t));
     else if (k === 'pause') {
@@ -336,8 +379,11 @@ function editDialog(e, isNew) {
   const min = s => Math.round(sideMs(e, s) / 60000);
   let body = '';
   if (e.type === 'sein') body = `<div class="grid2">
-      <label>Gauche (min)<input type="number" name="g" min="0" inputmode="numeric" value="${min('G')}"></label>
-      <label>Droit (min)<input type="number" name="d" min="0" inputmode="numeric" value="${min('D')}"></label></div>`;
+      ${[['g', 'G', 'Gauche'], ['d', 'D', 'Droit']].map(([n, s, l]) => `<label>${l} (min)<span class="step">
+        <button type="button" class="btn" data-step="-1" data-for="${n}">−</button>
+        <input type="number" name="${n}" min="0" inputmode="numeric" value="${min(s)}">
+        <button type="button" class="btn" data-step="1" data-for="${n}">+</button></span></label>`).join('')}</div>
+      <div class="sub" data-endhint></div>`;
   if (e.type === 'biberon') body = `<label>Quantité (ml)<input type="number" name="ml" min="0" step="5" inputmode="numeric" value="${e.ml ?? S.ml}"></label>
       <div class="seg">${['artificiel', 'maternel'].map(v => `<label><input type="radio" name="milk" value="${v}" ${(e.milk || S.milk) === v ? 'checked' : ''}>Lait ${v}</label>`).join('')}</div>`;
   if (e.type === 'couche') body = `<div class="seg"><label><input type="checkbox" name="pipi" ${e.pipi ? 'checked' : ''}>💧 Pipi</label>
@@ -369,6 +415,14 @@ function editDialog(e, isNew) {
       }
       e.note = f.note.value.trim() || null;
       put(e);
+    },
+    f => {
+      if (e.type !== 'sein') return;
+      const hint = () => { const t = new Date(f.start.value).getTime(), m = (+f.g.value || 0) + (+f.d.value || 0);
+        f.querySelector('[data-endhint]').textContent = t ? `Fin : ${hm(t + m * 6e4)} · total ${m} min` : '' };
+      f.addEventListener('click', ev => { const b = ev.target.closest('[data-step]'); if (!b) return;
+        const i = f[b.dataset.for]; i.value = Math.max(0, (+i.value || 0) + +b.dataset.step); buzz(); hint() });
+      f.addEventListener('input', hint); hint();
     });
 }
 
@@ -387,11 +441,9 @@ document.addEventListener('click', ev => {
   else if (a === 'couche') coucheDialog();
   else if (a === 'night') { S.theme = isNight() ? 'day' : 'night'; saveSettings(); render(true) }
   else if (a === 'edit') { const e = events.get(b.dataset.id); if (e && !e.end && e.type === 'sein') { view = 'home'; render() } else if (e) editDialog(structuredClone(e)) }
-  else if (a === 'add') {
-    const t = now(), type = b.dataset.type;
-    editDialog(type === 'sein' ? { id: uid(), type, start: t - 15 * 6e4, end: t, segs: [] }
-      : { id: uid(), type, start: t, end: t, ml: S.ml, milk: S.milk, pipi: true, caca: false }, true);
-  }
+  else if (a === 'add') newEntry(b.dataset.type);
+  else if (a === 'adjust') adjustDialog();
+  else if (a === 'forgot') forgotDialog();
   else if (a === 'invite') invite();
   else if (a === 'unlink') { if (confirm('Arrêter la synchro ? Les données restent sur ce téléphone.')) { cloud?.unsub?.(); cloud = null; S.fb = S.fam = null; saveSettings(); setSync('local'); render(true) } }
   else if (a === 'join') { if (!joinFrom($('#joinTxt').value)) alert('Lien invalide') }
