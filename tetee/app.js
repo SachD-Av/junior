@@ -131,11 +131,11 @@ function toast(msg, onUndo) {
   u.hidden = !onUndo;
   u.onclick = () => { hideToast(); onUndo?.(); buzz() };
   el.style.setProperty('--delay', S.delay + 's');
-  el.hidden = false; document.body.classList.add('has-toast');
+  el.hidden = false;
   const bar = el.querySelector('#toastBar'); bar.style.animation = 'none'; bar.offsetWidth; bar.style.animation = '';
   clearTimeout(toastTimer); toastTimer = setTimeout(hideToast, S.delay * 1000);
 }
-function hideToast() { clearTimeout(toastTimer); $('#toast').hidden = true; document.body.classList.remove('has-toast') }
+function hideToast() { clearTimeout(toastTimer); $('#toast').hidden = true }
 /* Exécute fn (qui renvoie l'id touché) et propose d'annuler : on remet l'entrée
    telle qu'elle était, ou on supprime celle qui vient d'être créée. */
 function undoable(msg, fn) {
@@ -312,6 +312,7 @@ function render(force) {
   document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.view === view));
   if (view === 'settings' && !force) return; // ne pas effacer une saisie en cours
   const m = $('#main');
+  m.className = 'v-' + view;
   m.innerHTML = view === 'home' ? homeHTML() : view === 'history' ? historyHTML() : view === 'stats' ? statsHTML() : settingsHTML();
   tick();
   wake(!!active());
@@ -327,16 +328,16 @@ function homeHTML() {
       return `<button class="btn side mini ${s} ${cur ? 'on' : ''} ${!cur && o ? 'dim' : ''}${armCls('switch' + s)}" data-act="side" data-s="${s}">
         <span class="sl">${s}</span><span class="t" data-t="${s}"></span><small>${hint}</small></button>`;
     };
-    return `<section class="home">
+    return `<section class="home feed">
       <div class="card since">
         <div class="lbl">${o ? 'Sein ' + SEIN[o.s] : 'En pause'}</div>
         <div class="big" data-t="total"></div>
         <div class="sub ${o ? '' : 'paused'}" data-t="pause"></div>
       </div>
-      <div class="grid2">${sideBtn('G')}${sideBtn('D')}</div>
+      <div class="grid2 minis">${sideBtn('G')}${sideBtn('D')}</div>
       ${o ? `<button class="btn huge" data-act="pause">${ic('pause')}<span>Pause</span><small>rot, câlin, changement…</small></button>`
           : `<button class="btn huge resume ${last}" data-act="resume">${ic('play')}<span>Reprendre</span><small>sein ${SEIN[last]}</small></button>`}
-      <div class="grid2">
+      <div class="grid2 feedbar">
         <button class="btn" data-act="adjust">${ic('pencil')}<small>Corriger</small></button>
         <button class="btn primary${armCls('stop')}" data-act="stop">${ic('check')}<span>Terminer</span></button>
       </div>
@@ -350,7 +351,7 @@ function homeHTML() {
   if (meal) sub = meal.type === 'sein'
     ? [hm(meal.start), dur(sideMs(meal)), meal.segs.length && 'fin sein ' + SEIN[meal.segs.at(-1).s]].filter(Boolean).join(' · ')
     : `${hm(meal.start)} · biberon ${meal.ml} ml`;
-  return `<section class="home">
+  return `<section class="home idle">
     <button class="card since tap" data-view="history" aria-label="Voir l'historique">
       <div class="lbl">Dernier repas il y a</div>
       <div class="big" data-t="since">${meal ? '' : '—'}</div>
@@ -371,7 +372,7 @@ function homeHTML() {
     </div>
     <div class="spacer"></div>
     ${zz ? `<button class="card sleepbar" data-act="sleep">${ic('moon2')}<span>Dort depuis <b data-t="sleep"></b><small>depuis ${hm(zz.start)}</small></span><em>Réveil</em></button>` : ''}
-    <div class="grid2">
+    <div class="grid2 gd">
       ${['G', 'D'].map(s => `<button class="btn side ${s}${armCls('start' + s)}" data-act="side" data-s="${s}">${s}<small>${SIDE[s]}</small>
         ${lastSide === s ? '<span class="badge">dernier</span>' : ''}</button>`).join('')}
     </div>
@@ -463,10 +464,10 @@ function summarize(evs) {
   };
 }
 const kpi = (v, l) => `<div class="kpi"><b>${v}</b><span>${l}</span></div>`;
-function block(title, s, perDay = 1) {
+function block(title, s, perDay = 1, compact = false) {
   const r = v => perDay > 1 ? Math.round(v / perDay * 10) / 10 : v;
   const tot = s.tG + s.tD || 1;
-  return `<h2>${title}</h2><div class="card">
+  return `${title ? `<h2>${title}</h2>` : ''}<div class="card${compact ? ' compact' : ''}">
     <div class="kpis">
       ${kpi(r(s.meals), 'repas' + (perDay > 1 ? ' / jour' : ''))}
       ${kpi(s.gap ? dur(s.gap) : '—', 'entre 2 repas (moy.)')}
@@ -489,18 +490,21 @@ function statsHTML() {
   for (let i = 0; i < 7; i++) { const a = t0 - i * 864e5, b = a + 864e5; days.push({ a, s: summarize(L.filter(e => e.start >= a && e.start < b)) }) }
   const week = summarize(L.filter(e => e.start >= t0 - 6 * 864e5));
   const max = Math.max(1, ...days.map(d => d.s.meals));
-  return block("Aujourd'hui", days[0].s)
-    + block('Dernières 24 h', summarize(L.filter(e => e.start >= t - 864e5)))
-    + block('Moyenne 7 jours', week, 7)
-    + `<h2>Jour par jour</h2><div class="card bars">${days.map(d => `<div class="b">
+  const tabs = [['today', "Aujourd'hui"], ['24h', '24 h'], ['week', '7 jours'], ['growth', 'Croissance']];
+  const tab = tabs.some(x => x[0] === S.statTab) ? S.statTab : 'today';
+  const head = `<div class="tabs">${tabs.map(([k, l]) => `<button class="${k === tab ? 'on' : ''}" data-act="stattab" data-tab="${k}">${l}</button>`).join('')}</div>`;
+  const pane = tab === 'today' ? block(null, days[0].s)
+    : tab === '24h' ? block(null, summarize(L.filter(e => e.start >= t - 864e5)))
+    : tab === 'growth' ? growthHTML(L, true)
+    : block(null, week, 7, true) + `<div class="card bars">${days.map(d => `<div class="b">
         <span>${new Date(d.a).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' })}</span>
         <div class="track"><div class="fill" style="width:${d.s.meals / max * 100}%"></div>
-        <span class="val">${d.s.meals} repas · ${dur(d.s.tSein)}${d.s.ml ? ' · ' + d.s.ml + ' ml' : ''}${d.s.tSleep ? ' · dodo ' + dur(d.s.tSleep) : ''}</span></div></div>`).join('')}</div>`
-    + growthHTML(L);
+        <span class="val">${d.s.meals} repas · ${dur(d.s.tSein)}${d.s.ml ? ' · ' + d.s.ml + ' ml' : ''}${d.s.tSleep ? ' · dodo ' + dur(d.s.tSleep) : ''}</span></div></div>`).join('')}</div>`;
+  return head + `<div class="stats-pane">${pane}</div>`;
 }
 
 /* Croissance : dernières valeurs + courbe de poids */
-function growthHTML(L) {
+function growthHTML(L, noTitle) {
   const M = L.filter(e => e.type === 'mesure').sort((a, b) => a.start - b.start);
   const last = k => [...M].reverse().find(e => e[k]);
   const lp = last('poids'), lt = last('taille'), lh = last('tete');
@@ -519,7 +523,7 @@ function growthHTML(L) {
       <text x="2" y="12" class="ax">${fmtKg(hi)}</text></svg>`;
   }
   const gain = P.length >= 2 ? (() => { const a = P.at(-2), b = P.at(-1), days = Math.max(1, (b.start - a.start) / 864e5); return `${b.poids - a.poids >= 0 ? '+' : ''}${Math.round((b.poids - a.poids) / days)} g/jour depuis la mesure précédente` })() : '';
-  return `<h2>Croissance</h2><div class="card">
+  return `${noTitle ? '' : '<h2>Croissance</h2>'}<div class="card">
     <div class="kpis">${kpi(lp ? fmtKg(lp.poids) : '—', 'poids')}${kpi(lt ? fmtN(lt.taille) + ' cm' : '—', 'taille')}${kpi(lh ? fmtN(lh.tete) + ' cm' : '—', 'tour de tête')}
       ${kpi(M.length ? new Date(M.at(-1).start).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : '—', 'dernière mesure')}</div>
     ${chart}${gain ? `<p class="sub">${gain}</p>` : ''}
@@ -637,7 +641,7 @@ function checkReminder() {
   navigator.vibrate?.([300, 150, 300]);
   if (!S.ntfy && 'Notification' in window && Notification.permission === 'granted')
     navigator.serviceWorker?.ready.then(r => r.showNotification("C'est l'heure de la tétée", { body, icon: 'icon-192.png', badge: 'icon-192.png', tag: 'rappel', renotify: true })).catch(() => {});
-  toast(`C'est l'heure de la tétée · ${body}`);
+  toast(`C'est l'heure de la tétée (dernier repas ${hm(n.meal.start)})`);
 }
 
 function tick() {
@@ -836,6 +840,7 @@ document.addEventListener('click', ev => {
   else if (a === 'invite') invite();
   else if (a === 'drivescript') driveScript(b.dataset.mode);
   else if (a === 'snooze') snooze(30);
+  else if (a === 'stattab') { S.statTab = b.dataset.tab; saveSettings(); render(true) }
   else if (a === 'copytopic') ensureTopic().then(t => navigator.clipboard.writeText(t)).then(() => toast('Nom du canal copié')).catch(() => prompt('Nom du canal :', S.ntfyTopic));
   else if (a === 'unlink') { if (confirm('Arrêter la synchro ? Les données restent sur ce téléphone.')) { cloud?.unsub?.(); cloud = null; S.fb = S.fam = null; saveSettings(); setSync('local'); render(true) } }
   else if (a === 'join') { if (!joinFrom($('#joinTxt').value)) alert('Lien invalide') }
