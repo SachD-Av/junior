@@ -208,11 +208,12 @@ dialog h3{display:flex;align-items:center;gap:10px} dialog h3 .i{color:var(--acc
 .onehand .side.mini{min-height:104px}
 .side.mini .sl{font-size:28px;font-weight:800;line-height:1}
 .side.mini .t{font-size:18px}
-#toast{position:fixed;left:12px;right:12px;bottom:calc(76px + env(safe-area-inset-bottom));z-index:5;display:flex;align-items:center;gap:12px;
+#toast{position:fixed;left:12px;right:12px;top:calc(env(safe-area-inset-top) + 6px);z-index:5;display:flex;align-items:center;gap:12px;
   background:var(--fg);color:var(--bg);border-radius:16px;padding:10px 10px 10px 16px;box-shadow:0 6px 24px rgba(0,0,0,.25);overflow:hidden;font-size:15px}
 #toast[hidden]{display:none}
-.has-toast main{padding-bottom:84px}
-#toastMsg{flex:1}
+#toastMsg{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#toast{padding:4px 4px 4px 14px;min-height:0;max-height:46px;font-size:14px;top:calc(env(safe-area-inset-top) + 3px)!important}
+#toastUndo{padding:8px 14px!important;font-size:15px!important;flex:none}
 #toastUndo{background:var(--accent);color:var(--accent-fg);font-weight:700;border-radius:12px;padding:12px 18px;font-size:16px}
 #toastBar{position:absolute;left:0;bottom:0;height:3px;width:100%;background:var(--accent);animation:shrink var(--delay,10s) linear forwards}
 #toastUndo[hidden]{display:none}
@@ -236,6 +237,54 @@ select{appearance:auto}
 .step{display:flex;gap:6px;align-items:center}
 .step .btn{min-height:44px;width:44px;padding:0;font-size:22px;flex:none}
 .step input{text-align:center;font-size:18px}
+/* ---------- tout tient en hauteur (accueil, stats) ---------- */
+main.v-home,main.v-stats{overflow:hidden}
+.home{gap:clamp(6px,1.3vh,12px);min-height:0}
+.home .since{padding:clamp(8px,1.6vh,16px)}
+.home .big{font-size:clamp(30px,5.4vh,44px)}
+.home .spacer{flex:1 1 0;min-height:0}
+body:not(.onehand) .home .spacer{order:99}
+.home.idle .gd{flex:1 1 0;min-height:76px;max-height:190px}
+.home.idle .gd .side{min-height:0!important;height:100%}
+.home .grid4 .btn{min-height:clamp(56px,8.5vh,78px)!important;padding:6px 4px}
+.home .link{padding:4px;flex:none}
+.home.feed .minis .side.mini{min-height:0!important;height:clamp(72px,12vh,104px)}
+.home.feed .huge{flex:1 1 0;min-height:92px!important;max-height:240px}
+.home.feed .feedbar .btn{min-height:clamp(54px,8vh,80px)!important}
+.home .sleepbar{flex:none;padding:8px 14px}
+.home .sleepbar b{font-size:20px}
+.home > *{flex-shrink:0}
+.home > .spacer,.home.idle > .gd,.home.feed > .huge{flex-shrink:1}
+@media (max-height:760px){
+  .tl-k,.tile small{display:none}
+  .tile{padding:8px 12px} .today{padding:10px 12px}
+  .home .since .sub{font-size:13px} .since .next{margin-top:4px}
+}
+@media (max-height:660px){
+  .mini-tiles,.tl-h{display:none}
+  .tl{margin-top:6px;height:30px}
+  .home .lbl{font-size:11px}
+}
+@media (max-height:580px){
+  header{padding-top:calc(4px + env(safe-area-inset-top));padding-bottom:4px}
+  nav button{padding:6px 0 8px}
+  .home .today-h span:last-child{display:none}
+}
+/* stats en onglets */
+.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin:2px 0 10px;background:var(--soft);padding:4px;border-radius:14px;flex:none}
+.tabs button{padding:9px 2px;border-radius:10px;font-size:13px;color:var(--muted)}
+.tabs button.on{background:var(--card);color:var(--fg);font-weight:700;box-shadow:var(--sh)}
+.stats-pane{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:10px}
+.v-stats .kpis{grid-template-columns:repeat(3,1fr);gap:6px}
+.v-stats .kpi{padding:8px}
+.v-stats .kpi b{font-size:18px}
+.v-stats .kpi span{font-size:11px}
+.v-stats .kpi:has(.kinds){grid-column:1/-1}
+.v-stats .kinds{grid-template-columns:repeat(4,auto)!important;justify-content:space-between}
+.v-stats .card{padding:12px}
+.v-stats .bars .b{margin:3px 0} .v-stats .bars .b .track{height:24px}
+@media (max-height:660px){ .v-stats .bars .b{margin:2px 0} .v-stats .bars .b .track{height:20px} .v-stats .bars .b .val{top:2px} }
+@media (max-height:700px){ .v-stats .compact .split,.v-stats .compact .split + .sub,.v-stats .compact .kpi:nth-child(n+7){display:none} }
 </style>
 </head>
 <body>
