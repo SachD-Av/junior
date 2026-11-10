@@ -64,7 +64,9 @@ Le script contient le code d'accès au suivi : ne le partagez pas.
    toucher **S'abonner dans ntfy** (ou copier le nom du canal et l'ajouter dans ntfy avec « + »).
 3. Une seule fois : recopier le script Google (**Réglages → Sauvegarde automatique Google Drive**),
    le coller à la place de l'ancien sur script.google.com, puis exécuter **installer**.
-   Une notification « Rappels de tétée activés » arrive dans ntfy. À refaire si l'intervalle change.
+   Une notification « Rappels de tétée installés » arrive dans ntfy. Il n'y a plus jamais à retoucher au script :
+   les réglages (activé, intervalle, nuit, « Repousser de 30 min ») sont enregistrés dans Firebase,
+   partagés entre les deux téléphones, et lus par le script toutes les 5 minutes.
 
 Le script vérifie toutes les 5 minutes l'heure du dernier repas et envoie une seule notification par repas
 (pas pendant une tétée en cours). Cocher **J'utilise ntfy** dans l'appli évite les doubles notifications.

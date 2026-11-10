@@ -67,7 +67,7 @@ document.querySelectorAll('[data-i]').forEach(el => el.innerHTML = ic(el.dataset
 /* ---------- état ---------- */
 const S = Object.assign({ theme: 'auto', onehand: true, name: '', fb: null, fam: null, milk: 'artificiel',
   guard: 'undo', delay: 10, morning: 8, minFeed: 5,
-  remind: false, remindEvery: 180, remindNight: true, remindNotified: null, ntfy: false, ntfyTopic: null,
+  remind: false, remindEvery: 180, remindNight: true, remindNotified: null, remindSnooze: null, remindU: 0, ntfy: false, ntfyTopic: null,
   prot: { start: true, switch: true, stop: true, cancel: true, quick: true } }, LS.get('tt_settings', {}));
 if (!S.themeV2) { S.theme = 'auto'; S.themeV2 = 1; LS.set('tt_settings', S) } // l'ancien bouton 🌙 désactivait l'auto pour toujours
 S.prot = Object.assign({ start: true, switch: true, stop: true, cancel: true, quick: true }, S.prot);
@@ -357,6 +357,7 @@ function homeHTML() {
       <div class="sub">${sub}</div>
       ${S.remind && meal ? `<div class="next" data-t="next"></div>` : ''}
     </button>
+    ${S.remind && meal && nextMeal() && nextMeal().at - now() < 30 * 6e4 ? `<button class="link" data-act="snooze">Repousser le rappel de 30 min</button>` : ''}
     <div class="grid2 mini-tiles">
       <div class="card tile"><span class="lbl">Dernier sein</span><b>${lastSein ? (lastSide ? SIDE[lastSide] : '—') : '—'}</b>
         <small>${lastSein ? `${hm(lastSein.start)} · ${dur(sideMs(lastSein))}` : 'aucune tétée'}</small></div>
@@ -543,8 +544,8 @@ function settingsHTML() {
       <label class="toggle"><span>Rappel de la prochaine tétée</span><input type="checkbox" id="remind" ${S.remind ? 'checked' : ''}></label>
       ${S.remind ? `<label>Intervalle (depuis le début du dernier repas)<select id="remindEvery">${[90, 120, 150, 180, 210, 240, 300].map(m =>
         `<option value="${m}" ${S.remindEvery === m ? 'selected' : ''}>${Math.floor(m / 60)} h ${m % 60 ? m % 60 : ''}</option>`).join('')}</select></label>
-      <label class="toggle"><span>Aussi la nuit</span><input type="checkbox" id="remindNight" ${S.remindNight ? 'checked' : ''}></label>
-      <p>L'heure prévue s'affiche sur l'accueil. La notification arrive si l'appli est ouverte ou restée en arrière-plan récemment ; un navigateur ne peut pas réveiller une appli complètement fermée.
+      <label class="toggle"><span>Aussi la nuit <small class="sub">(22 h – 7 h)</small></span><input type="checkbox" id="remindNight" ${S.remindNight ? 'checked' : ''}></label>
+      <p>Réglages partagés avec l'autre téléphone. Sans ntfy, la notification n'arrive que si l'appli est ouverte ou en arrière-plan récent.
         ${'Notification' in window && Notification.permission !== 'granted' && !S.ntfy ? '<br><b>Les notifications ne sont pas autorisées</b> : touchez à nouveau l\'interrupteur pour les autoriser.' : ''}</p>
       ${S.fam ? `<p style="margin-top:6px"><b>Même appli fermée (ntfy, gratuit)</b> — sur chaque téléphone :</p>
       <p>1. Installez l'appli <a class="link" href="https://play.google.com/store/apps/details?id=io.heckel.ntfy" target="_blank" rel="noopener">ntfy</a>.<br>
@@ -552,7 +553,7 @@ function settingsHTML() {
       <div class="grid2"><a class="btn" href="ntfy://ntfy.sh/${esc(S.ntfyTopic || '')}">${ic('share')}<small>S'abonner dans ntfy</small></a>
         <button class="btn" data-act="copytopic">${ic('download')}<small>Copier le nom du canal</small></button></div>
       <p class="code" style="font-size:13px;word-break:break-all">${esc(S.ntfyTopic || '…')}</p>
-      <p>3. Une seule fois (un des deux parents) : recopiez le script Google (Réglages → Sauvegarde automatique Google Drive), collez-le à la place de l'ancien, puis exécutez <b>installer</b>. À refaire si vous changez l'intervalle.</p>
+      <p>3. Une seule fois (un des deux parents) : recopiez le script Google (Réglages → Sauvegarde automatique Google Drive), collez-le à la place de l'ancien, puis exécutez <b>installer</b>. Ensuite, les réglages ci-dessus (activé, intervalle, nuit, « Repousser ») sont partagés et pris en compte par le script en moins de 5 min.</p>
       <label class="toggle"><span>J'utilise ntfy <small class="sub">(évite les doubles notifications)</small></span><input type="checkbox" id="ntfy" ${S.ntfy ? 'checked' : ''}></label>` : ''}` : ''}
     </div>
     <h2>Protection contre les erreurs</h2>
@@ -610,15 +611,28 @@ function settingsHTML() {
    Prochaine tétée = début du dernier repas + intervalle choisi. L'appli affiche le compte à rebours
    et notifie à l'heure (téléphone/appli ouverts : un navigateur ne peut pas programmer une
    notification appli fermée). */
+/* Même règle que le script Google : début du dernier repas + intervalle, repoussé si « Repousser »
+   a été touché après ce repas ; la nuit = 22 h – 7 h. Les réglages sont partagés via Firebase. */
+const nightHours = (t = now()) => { const h = new Date(t).getHours(); return h >= 22 || h < 7 };
 function nextMeal() {
   const m = list().find(isMeal); if (!S.remind || !m) return null;
-  return { meal: m, at: m.start + S.remindEvery * 6e4 };
+  const base = m.start + S.remindEvery * 6e4, snz = S.remindSnooze && S.remindSnooze > m.start ? S.remindSnooze : 0;
+  return { meal: m, at: Math.max(base, snz), key: m.id + ':' + (snz || 0) };
+}
+function saveRemind() {
+  S.remindU = now(); saveSettings();
+  cloud?.writeCfg?.({ on: !!S.remind, every: S.remindEvery, night: !!S.remindNight, snooze: S.remindSnooze || null, u: S.remindU });
+}
+function snooze(min = 30) {
+  const n = nextMeal(); if (!n) return;
+  S.remindSnooze = Math.max(now(), n.at) + min * 6e4; saveRemind(); buzz();
+  toast(`Rappel repoussé à ${hm(S.remindSnooze)}`); render();
 }
 function checkReminder() {
-  const n = nextMeal(); if (!n || now() < n.at || S.remindNotified === n.meal.id) return;
-  if (!S.remindNight && isNight()) return;
+  const n = nextMeal(); if (!n || now() < n.at || S.remindNotified === n.key) return;
+  if (!S.remindNight && nightHours()) return;
   if (active()) return;                                   // tétée en cours : pas de rappel
-  S.remindNotified = n.meal.id; saveSettings();
+  S.remindNotified = n.key; saveSettings();
   const body = `Dernier repas à ${hm(n.meal.start)}, il y a ${dur(now() - n.meal.start)}.`;
   navigator.vibrate?.([300, 150, 300]);
   if (!S.ntfy && 'Notification' in window && Notification.permission === 'granted')
@@ -821,6 +835,7 @@ document.addEventListener('click', ev => {
   else if (a === 'forgot') forgotDialog();
   else if (a === 'invite') invite();
   else if (a === 'drivescript') driveScript(b.dataset.mode);
+  else if (a === 'snooze') snooze(30);
   else if (a === 'copytopic') ensureTopic().then(t => navigator.clipboard.writeText(t)).then(() => toast('Nom du canal copié')).catch(() => prompt('Nom du canal :', S.ntfyTopic));
   else if (a === 'unlink') { if (confirm('Arrêter la synchro ? Les données restent sur ce téléphone.')) { cloud?.unsub?.(); cloud = null; S.fb = S.fam = null; saveSettings(); setSync('local'); render(true) } }
   else if (a === 'join') { if (!joinFrom($('#joinTxt').value)) alert('Lien invalide') }
@@ -845,12 +860,12 @@ document.addEventListener('change', ev => {
   else if (t.name === 'minFeed') { S.minFeed = +t.value; saveSettings() }
   else if (t.dataset.prot) { S.prot[t.dataset.prot] = t.checked; saveSettings() }
   else if (t.id === 'remind') {
-    S.remind = t.checked; saveSettings();
+    S.remind = t.checked; saveRemind();
     if (t.checked && 'Notification' in window && Notification.permission === 'default') Notification.requestPermission().then(() => render(true));
     render(true);
   }
-  else if (t.id === 'remindEvery') { S.remindEvery = +t.value; S.remindNotified = null; saveSettings() }
-  else if (t.id === 'remindNight') { S.remindNight = t.checked; saveSettings() }
+  else if (t.id === 'remindEvery') { S.remindEvery = +t.value; S.remindNotified = null; saveRemind(); render() }
+  else if (t.id === 'remindNight') { S.remindNight = t.checked; saveRemind() }
   else if (t.id === 'ntfy') { S.ntfy = t.checked; saveSettings() }
   else if (t.id === 'morning') { S.morning = +t.value; saveSettings(); applyTheme(); render(true) }
   else if (t.id === 'name') { S.name = t.value.trim(); saveSettings() }
@@ -893,7 +908,7 @@ async function driveScript(mode) {
   try {
     const txt = (await (await fetch('sauvegarde-drive.gs', { cache: 'no-cache' })).text())
       .replace("'__PROJET__'", JSON.stringify(S.fb.projectId)).replace("'__FAMILLE__'", JSON.stringify(S.fam))
-      .replace("'__NTFY__'", JSON.stringify(await ensureTopic())).replace('__RAPPEL__', S.remind ? S.remindEvery : 0).replace('__NUIT__', !!S.remindNight);
+      .replace("'__NTFY__'", JSON.stringify(await ensureTopic()));
     if (mode === 'share' && navigator.share) return await navigator.share({ title: 'Script de sauvegarde Tétée', text: txt });
     await navigator.clipboard.writeText(txt); alert('Script copié ! Collez-le dans un nouveau projet sur script.google.com.');
   } catch (err) { if (err?.name !== 'AbortError') alert('Impossible de copier le script : ' + (err?.message || err)) }
@@ -942,7 +957,19 @@ async function connectCloud() {
       if (err?.code === 'permission-denied') { rulesOld = true; return setSync('rules', err) }
       setSync('err', err) }) };
     let reconciled = false;
-    me.unsub = fs.onSnapshot(q, { includeMetadataChanges: true }, snap => {
+    const cfgRef = fs.doc(db, 'families', S.fam, 'config', 'rappel');
+    me.writeCfg = c => fs.setDoc(cfgRef, c).catch(err => { if (err?.code === 'permission-denied') { rulesOld = true; setSync('rules', err) } });
+    const unsubCfg = fs.onSnapshot(cfgRef, d => {
+      if (cloud !== me) return;
+      const c = d.data();
+      if (!c) { if (S.remindU) me.writeCfg({ on: !!S.remind, every: S.remindEvery, night: !!S.remindNight, snooze: S.remindSnooze || null, u: S.remindU }); return }
+      if ((c.u || 0) > (S.remindU || 0)) {
+        Object.assign(S, { remind: !!c.on, remindEvery: +c.every || 180, remindNight: !!c.night, remindSnooze: c.snooze || null, remindU: c.u });
+        saveSettings(); render(view !== 'settings');
+      } else if ((c.u || 0) < (S.remindU || 0)) me.writeCfg({ on: !!S.remind, every: S.remindEvery, night: !!S.remindNight, snooze: S.remindSnooze || null, u: S.remindU });
+    }, () => {});
+    me.unsub = () => { unsubAll(); unsubCfg() };
+    const unsubAll = fs.onSnapshot(q, { includeMetadataChanges: true }, snap => {
       if (cloud !== me) return;
       let changed = false;
       snap.docChanges().forEach(ch => {

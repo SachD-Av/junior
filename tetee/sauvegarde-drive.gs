@@ -15,11 +15,9 @@
 const PROJET = '__PROJET__';
 const FAMILLE = '__FAMILLE__';
 
-// Rappels (appli ntfy) : canal secret, intervalle en minutes depuis le début du dernier repas,
-// et rappels la nuit (22 h – 7 h) ou non. Mettre RAPPEL_MIN = 0 pour désactiver.
+// Rappels (appli ntfy) : canal secret. Les réglages (activé, intervalle, nuit, « Repousser »)
+// sont lus dans Firebase à chaque passage : on les change depuis l'appli, rien à modifier ici.
 const NTFY = '__NTFY__';
-const RAPPEL_MIN = __RAPPEL__;
-const NUIT = __NUIT__;
 
 const DOSSIER = 'Tétée – sauvegardes';
 const GARDER = { Quotidien: 7, Hebdomadaire: 8, Mensuel: 24 };
@@ -31,9 +29,10 @@ function installer() {
     .filter(t => ['sauvegarder', 'rappel'].includes(t.getHandlerFunction()))
     .forEach(t => ScriptApp.deleteTrigger(t));
   ScriptApp.newTrigger('sauvegarder').timeBased().everyDays(1).atHour(3).create();
-  if (RAPPEL_MIN > 0 && NTFY) {
+  if (NTFY) {
     ScriptApp.newTrigger('rappel').timeBased().everyMinutes(5).create();
-    envoyer('Rappels de tétée activés', `Vous serez prévenu ${RAPPEL_MIN} min après le début de chaque repas.`, 3);
+    const c = reglages();
+    envoyer('Rappels de tétée installés', c.on ? `Activés : ${duree(c.every * 6e4)} après le début de chaque repas.` : "Ils s'activent depuis l'appli (Réglages → Rappels).", 3);
   }
   sauvegarder();
 }
@@ -41,22 +40,34 @@ function installer() {
 /** Envoie une notification de test (à exécuter à la main pour vérifier ntfy). */
 function testerNotification() { envoyer('Test Tétée', 'Les notifications fonctionnent.', 3) }
 
-/** Toutes les 5 min : si le dernier repas date de plus de RAPPEL_MIN minutes, une notification (une seule par repas). */
+/** Toutes les 5 min : si l'heure du rappel est passée, une notification (une seule par repas). */
 function rappel() {
-  if (!(RAPPEL_MIN > 0) || !NTFY) return;
+  if (!NTFY) return;
+  const c = reglages(); if (!c.on) return;
   const recents = derniers(8);
   if (recents.some(e => e.type === 'sein' && !e.end)) return;           // tétée en cours
   const repas = recents.find(e => e.type === 'biberon' || (e.type === 'sein' && e.end));
   if (!repas) return;
-  const maintenant = Date.now(), du = maintenant - repas.start;
-  if (du < RAPPEL_MIN * 6e4 || du > (RAPPEL_MIN + 180) * 6e4) return;    // pas encore l'heure, ou trop ancien
-  const props = PropertiesService.getScriptProperties();
-  if (props.getProperty('rappel') === repas.id) return;                 // déjà prévenu pour ce repas
+  // même règle que l'appli : début du dernier repas + intervalle, repoussé par « Repousser »
+  const snz = c.snooze && c.snooze > repas.start ? c.snooze : 0;
+  const quand = Math.max(repas.start + c.every * 6e4, snz), maintenant = Date.now(), du = maintenant - repas.start;
+  if (maintenant < quand || maintenant > quand + 180 * 6e4) return;       // pas encore l'heure, ou trop ancien
+  const props = PropertiesService.getScriptProperties(), cle = repas.id + ':' + (snz || 0);
+  if (props.getProperty('rappel') === cle) return;                       // déjà prévenu pour ce repas
   const tz = Session.getScriptTimeZone(), h = +Utilities.formatDate(new Date(), tz, 'H');
-  if (!NUIT && (h >= 22 || h < 7)) return;
+  if (!c.night && (h >= 22 || h < 7)) return;
   const heure = Utilities.formatDate(new Date(repas.start), tz, 'HH:mm');
   envoyer("C'est l'heure de la tétée", `Dernier repas à ${heure}, il y a ${duree(du)}.`, 4);
-  props.setProperty('rappel', repas.id);
+  props.setProperty('rappel', cle);
+}
+
+/** Réglages des rappels enregistrés par l'appli (désactivés s'ils n'existent pas encore). */
+function reglages() {
+  const r = UrlFetchApp.fetch(`${BASE}/projects/${PROJET}/databases/(default)/documents/families/${FAMILLE}/config/rappel`, { muteHttpExceptions: true });
+  if (r.getResponseCode() === 404) return { on: false, every: 180, night: true, snooze: null };
+  if (r.getResponseCode() !== 200) throw new Error(`Firestore ${r.getResponseCode()} : ${r.getContentText().slice(0, 300)}`);
+  const c = champs(JSON.parse(r.getContentText()).fields || {});
+  return { on: !!c.on, every: Math.max(30, +c.every || 180), night: c.night !== false, snooze: c.snooze || null };
 }
 
 function duree(ms) { const m = Math.round(ms / 6e4); return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')}` }
