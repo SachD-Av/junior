@@ -128,7 +128,25 @@ function newEntry(type) {
 function cancelFeed() { const e = active(); if (e && confirm('Annuler cette tétée ?')) { e.del = true; put(e) } }
 
 /* ---------- thème ---------- */
-function isNight() { if (S.theme === 'auto') { const h = new Date().getHours(); return h >= 21 || h < 7 } return S.theme === 'night' }
+/* Lever / coucher du soleil (algorithme NOAA simplifié), position par défaut : centre de la France. */
+function sunTimes(t, lat = 46.6, lon = 2.4) {
+  const rad = Math.PI / 180, J2000 = 2451545, d = t / 864e5 + 2440587.5 - J2000, lw = -lon * rad, phi = lat * rad;
+  const n = Math.round(d - 0.0009 - lw / (2 * Math.PI)), ds = 0.0009 + lw / (2 * Math.PI) + n;
+  const M = rad * (357.5291 + 0.98560028 * ds);
+  const L = M + rad * (1.9148 * Math.sin(M) + 0.02 * Math.sin(2 * M) + 0.0003 * Math.sin(3 * M)) + rad * 102.9372 + Math.PI;
+  const dec = Math.asin(Math.sin(rad * 23.4397) * Math.sin(L));
+  const Jt = J2000 + ds + 0.0053 * Math.sin(M) - 0.0069 * Math.sin(2 * L);
+  const w = Math.acos((Math.sin(-0.833 * rad) - Math.sin(phi) * Math.sin(dec)) / (Math.cos(phi) * Math.cos(dec)));
+  const toMs = j => (j - 2440587.5) * 864e5, half = w / (2 * Math.PI);
+  return { rise: toMs(Jt - half), set: toMs(Jt + half) };
+}
+/* Auto : nuit du coucher du soleil jusqu'au lever, et jamais de mode jour avant 8 h. */
+function isNight(t = now()) {
+  if (S.theme !== 'auto') return S.theme === 'night';
+  const noon = new Date(t); noon.setHours(12, 0, 0, 0);
+  const { rise, set } = sunTimes(noon.getTime()), eight = new Date(t).setHours(8, 0, 0, 0);
+  return t < Math.max(rise, eight) || t >= set;
+}
 function applyTheme() {
   const n = isNight();
   document.documentElement.dataset.theme = n ? 'night' : 'day';
@@ -281,7 +299,9 @@ function settingsHTML() {
   return `<div class="set">
     <h2>Affichage</h2>
     <div class="card set">
-      <div class="seg" id="themeSeg">${r('auto', 'Auto (21h–7h)')}${r('day', 'Jour')}${r('night', 'Nuit')}</div>
+      <div class="seg" id="themeSeg">${r('auto', 'Auto (soleil)')}${r('day', 'Jour')}${r('night', 'Nuit')}</div>
+      ${S.theme === 'auto' ? (() => { const n = new Date(); n.setHours(12, 0, 0, 0); const { rise, set } = sunTimes(n.getTime());
+        return `<p>Aujourd'hui : nuit à partir de ${hm(set)}, jour à partir de ${hm(Math.max(rise, new Date().setHours(8, 0, 0, 0)))}.</p>` })() : ''}
       <label class="toggle"><span>Mode une main <small class="sub">(boutons en bas)</small></span><input type="checkbox" id="onehand" ${S.onehand ? 'checked' : ''}></label>
       <label>Votre prénom (affiché dans l'historique)<input id="name" value="${esc(S.name)}" placeholder="ex. Papa"></label>
     </div>
@@ -521,9 +541,14 @@ async function connectCloud() {
     try { db = fs.initializeFirestore(app, { localCache: fs.persistentLocalCache({ tabManager: fs.persistentMultipleTabManager() }) }) }
     catch { db = fs.getFirestore(app) }
     const col = fs.collection(db, 'families', S.fam, 'events');
+    /* Économie de lectures (quota gratuit : 50 000/jour) : après la première synchro complète,
+       on n'écoute que les entrées modifiées depuis la dernière connue (moins 1 jour de marge). */
+    const full = S.syncedFam !== S.fam;
+    const since = full ? 0 : [...events.values()].reduce((m, e) => Math.max(m, e.u || 0), 0) - 864e5;
+    const q = since > 0 ? fs.query(col, fs.where('u', '>=', since)) : col;
     const me = { write: e => fs.setDoc(fs.doc(col, e.id), JSON.parse(JSON.stringify(e))).catch(err => setSync('err', err)) };
     let reconciled = false;
-    me.unsub = fs.onSnapshot(col, { includeMetadataChanges: true }, snap => {
+    me.unsub = fs.onSnapshot(q, { includeMetadataChanges: true }, snap => {
       if (cloud !== me) return;
       let changed = false;
       snap.docChanges().forEach(ch => {
@@ -534,7 +559,9 @@ async function connectCloud() {
       if (!reconciled && !snap.metadata.fromCache) {   // envoie ce qui n'existe qu'ici (ou plus récent ici)
         reconciled = true;
         const remote = new Map(snap.docs.map(d => [d.id, d.data().u || 0]));
-        for (const e of events.values()) if (!remote.has(e.id) || (e.u || 0) > remote.get(e.id)) me.write(e);
+        for (const e of events.values())
+          if ((full || e.u >= since) && (!remote.has(e.id) || e.u > remote.get(e.id))) me.write(e);
+        if (full) { S.syncedFam = S.fam; saveSettings() }
       }
       setSync(snap.metadata.fromCache ? 'off' : 'ok');
       if (changed) { saveLocal(); render() }
@@ -544,10 +571,13 @@ async function connectCloud() {
 }
 
 /* ---------- démarrage ---------- */
-if (location.hash.startsWith('#join=')) {
+function checkJoinHash() {
+  if (!location.hash.startsWith('#join=')) return;
   const h = location.hash; history.replaceState(null, '', location.pathname);
   if (!joinFrom(h)) alert('Lien d\'invitation invalide.');
 }
+window.addEventListener('hashchange', checkJoinHash);
+checkJoinHash();
 connectCloud();
 render(true);
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});

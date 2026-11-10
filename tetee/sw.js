@@ -1,5 +1,5 @@
 // Cache de l'appli pour qu'elle marche sans réseau (la synchro reprend toute seule).
-const CACHE = 'tetee-v3';
+const CACHE = 'tetee-v4';
 const SHELL = ['./', './index.html', './app.js', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {

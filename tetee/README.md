@@ -8,7 +8,7 @@ Appli web installable sur Android (PWA) : pas de Play Store, pas de compilation.
 - **Historique** : appuyer sur une ligne pour la modifier ou la supprimer. Les boutons « + » servent à ajouter un oubli.
 - **Stats** : aujourd'hui, dernières 24 h, moyenne sur 7 jours, répartition G/D, intervalle moyen entre deux repas.
 - **Mode une main** : les gros boutons sont en bas de l'écran, sous le pouce.
-- **Mode nuit** : noir et rouge tamisé. Il s'active tout seul de 21 h à 7 h (bouton 🌙 pour forcer).
+- **Mode nuit** : noir et rouge tamisé. Il s'active tout seul au coucher du soleil et s'arrête au lever, jamais avant 8 h (bouton 🌙 pour forcer). Il rend mieux dans Chrome que dans Firefox.
 - **Hors ligne** : tout marche sans réseau, la synchro reprend toute seule.
 - **Synchro en direct entre deux téléphones**, même pour une tétée en cours.
 
@@ -37,3 +37,20 @@ puis choisissez *Restrictions relatives aux applications → Sites web* et ajout
 La clé ne marchera alors que depuis l'appli.
 
 Le détail de l'audit de sécurité est dans [SECURITE.md](SECURITE.md).
+
+## Est-ce que ça reste gratuit ?
+
+Oui, sans carte bancaire :
+
+- **GitHub Pages** (l'hébergement de l'appli) est gratuit pour un dépôt public.
+- **Firebase, formule Spark** (gratuite) : 50 000 lectures, 20 000 écritures par jour et 1 Go de stockage.
+  Après la première synchro, l'appli ne télécharge que les entrées récentes. Une famille en utilise
+  quelques centaines par jour au maximum, et une année de suivi pèse moins de 5 Mo.
+
+À faire :
+- **Ne passez pas à la formule Blaze** (paiement à l'usage). Firebase la propose parfois : elle est inutile ici.
+  Si le quota gratuit était un jour dépassé, la synchro s'arrêterait jusqu'au lendemain, sans aucun frais,
+  et l'appli continuerait de marcher en local.
+- **Gardez le dépôt GitHub public.** GitHub Pages n'est gratuit que pour les dépôts publics.
+  Les données du bébé ne sont pas dans le dépôt, elles sont dans Firebase.
+- Exportez une sauvegarde de temps en temps (**Réglages → ⬇ Exporter**).
