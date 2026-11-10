@@ -686,6 +686,8 @@ function dialog(html, onClose, setup) {
   setup?.(f);
   f.onsubmit = ev => { const v = ev.submitter?.value; if (v && v !== 'cancel') onClose(v, f) };
   d.showModal();
+  // pas de clavier à l'ouverture : le navigateur met le curseur dans le premier champ, on l'enlève
+  if (document.activeElement?.matches?.('input, textarea, select')) document.activeElement.blur();
 }
 
 function bibDialog() {
