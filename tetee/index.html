@@ -135,8 +135,15 @@ dialog h3{display:flex;align-items:center;gap:10px} dialog h3 .i{color:var(--acc
 .onehand .side.mini{min-height:104px}
 .side.mini .sl{font-size:28px;font-weight:800;line-height:1}
 .side.mini .t{font-size:18px}
-.side.armed{outline:4px dashed var(--fg);outline-offset:-4px;opacity:1;animation:pulse .6s ease-in-out infinite alternate}
-@keyframes pulse{to{opacity:.6}}
+#toast{position:fixed;left:12px;right:12px;bottom:calc(76px + env(safe-area-inset-bottom));z-index:5;display:flex;align-items:center;gap:12px;
+  background:var(--fg);color:var(--bg);border-radius:16px;padding:10px 10px 10px 16px;box-shadow:0 6px 24px rgba(0,0,0,.25);overflow:hidden;font-size:15px}
+#toast[hidden]{display:none}
+.has-toast main{padding-bottom:84px}
+#toastMsg{flex:1}
+#toastUndo{background:var(--accent);color:var(--accent-fg);font-weight:700;border-radius:12px;padding:12px 18px;font-size:16px}
+#toastBar{position:absolute;left:0;bottom:0;height:3px;width:100%;background:var(--accent);animation:shrink 10s linear forwards}
+@keyframes shrink{from{width:100%}to{width:0}}
+:root[data-theme="night"] #toast{background:#2A1310;color:#E9A595}
 .btn.huge{min-height:150px;font-size:28px;font-weight:700;gap:6px;background:var(--fg);color:var(--bg)}
 .btn.huge small{color:inherit;opacity:.7;font-size:14px}
 .btn.huge .i{width:44px;height:44px}
@@ -166,6 +173,7 @@ dialog h3{display:flex;align-items:center;gap:10px} dialog h3 .i{color:var(--acc
   <button data-view="stats"><b data-i="chart"></b>Stats</button>
   <button data-view="settings"><b data-i="sliders"></b>Réglages</button>
 </nav>
+<div id="toast" hidden role="status"><span id="toastMsg"></span><button id="toastUndo" type="button">Annuler</button><i id="toastBar"></i></div>
 <dialog id="dlg"><form method="dialog" id="dlgForm"></form></dialog>
 
 <script type="module" src="app.js"></script>

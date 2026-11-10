@@ -2,7 +2,7 @@
 
 Appli web installable sur Android (PWA) : pas de Play Store, pas de compilation.
 
-- **Tétée** : un tap sur **G** ou **D** démarre le chrono. Gros bouton **Pause** et **Reprendre** en 1 tap. Changer de sein demande 2 taps, pour éviter les erreurs. Puis **Terminer**.
+- **Tétée** : un tap sur **G** ou **D** démarre le chrono. Gros bouton **Pause** et **Reprendre**. Chaque action se fait en 1 tap ; démarrer, changer de sein, terminer ou noter une couche affiche 10 s un bandeau **Annuler** en cas d'erreur.
 - Le dernier sein utilisé est marqué « dernier ». L'écran reste allumé pendant une tétée.
 - **Biberon** (ml, lait maternel ou artificiel) et **Couche** (pipi / caca) en 2 taps.
 - **Historique** : appuyer sur une ligne pour la modifier ou la supprimer. Les boutons « + » servent à ajouter un oubli.
@@ -37,6 +37,24 @@ puis choisissez *Restrictions relatives aux applications → Sites web* et ajout
 La clé ne marchera alors que depuis l'appli.
 
 Le détail de l'audit de sécurité est dans [SECURITE.md](SECURITE.md).
+
+## Sauvegarde automatique sur Google Drive
+
+Chaque nuit vers 3 h, un petit script Google (gratuit, dans votre propre compte) copie tout le suivi
+dans le dossier Drive **Tétée – sauvegardes** : 7 copies quotidiennes, 8 hebdomadaires et 24 mensuelles.
+Ça marche même téléphones éteints. Les fichiers se réimportent avec **Réglages → Importer**.
+
+À installer une fois, de préférence sur ordinateur :
+1. Dans l'appli : **Réglages → Sauvegarde automatique Google Drive → Copier le script**
+   (ou **M'envoyer le script** pour le recevoir par mail ou message).
+2. Ouvrir <https://script.google.com> → **Nouveau projet** → effacer le contenu → coller le script.
+3. Cliquer sur 💾 **Enregistrer**. En haut, choisir la fonction **installer**, puis **Exécuter**.
+4. Google demande l'autorisation : **Examiner les autorisations** → votre compte.
+   S'il affiche « Google n'a pas validé cette application » : **Paramètres avancés → Accéder à … (non sécurisé)**.
+   C'est normal, c'est votre propre script. Il ne peut lire que les données du suivi et écrire dans votre Drive.
+5. Vérifier dans Google Drive que le dossier **Tétée – sauvegardes** est apparu.
+
+Le script contient le code d'accès au suivi : ne le partagez pas.
 
 ## Est-ce que ça reste gratuit ?
 
