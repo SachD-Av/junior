@@ -10,6 +10,18 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // Réglages partagés des rappels (lus par le script Google pour les notifications ntfy)
+    match /families/{fam}/config/{id} {
+      allow get: if validFam(fam) && id == 'rappel';
+      allow create, update: if validFam(fam) && id == 'rappel'
+        && request.resource.data.keys().hasOnly(['on', 'every', 'night', 'snooze', 'u'])
+        && request.resource.data.on is bool && request.resource.data.night is bool
+        && request.resource.data.every is number && request.resource.data.every >= 30 && request.resource.data.every <= 720
+        && (request.resource.data.snooze == null || request.resource.data.snooze is number)
+        && request.resource.data.u is number;
+      allow delete: if false;
+    }
+
     function validFam(fam) {
       return fam.matches('^[a-z0-9]{9,32}$');
     }
