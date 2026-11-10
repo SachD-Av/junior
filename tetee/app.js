@@ -357,7 +357,7 @@ function timeline(L) {
   }
   return `<div class="tl">${marks}<i class="tl-now" style="left:${pct(T)}%"></i></div>
     <div class="tl-h"><span>0 h</span><span>6 h</span><span>12 h</span><span>18 h</span><span>24 h</span></div>
-    <div class="tl-k"><span><i class="tl-s G"></i>G</span><span><i class="tl-s D"></i>D</span><span><i class="tl-b"></i>biberon</span><span><i class="tl-c"></i>couche</span></div>`;
+    <div class="tl-k"><span><i class="tl-s G"></i>Gauche</span><span><i class="tl-s D"></i>Droit</span><span><i class="tl-b"></i>Biberon</span><span><i class="tl-c"></i>Couche</span></div>`;
 }
 
 function describe(e) {
