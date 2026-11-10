@@ -1,5 +1,6 @@
 /**
- * Sauvegarde automatique de l'appli Tétée vers Google Drive.
+ * Sauvegarde automatique de l'appli Tétée vers Google Drive
+ * + rappels de tétée par notification (appli ntfy), même téléphones en veille.
  *
  * À coller dans https://script.google.com (Nouveau projet), puis exécuter « installer » une fois.
  * Chaque nuit vers 3 h, le script copie toutes les données dans le dossier Drive
@@ -14,17 +15,66 @@
 const PROJET = '__PROJET__';
 const FAMILLE = '__FAMILLE__';
 
+// Rappels (appli ntfy) : canal secret, intervalle en minutes depuis le début du dernier repas,
+// et rappels la nuit (22 h – 7 h) ou non. Mettre RAPPEL_MIN = 0 pour désactiver.
+const NTFY = '__NTFY__';
+const RAPPEL_MIN = __RAPPEL__;
+const NUIT = __NUIT__;
+
 const DOSSIER = 'Tétée – sauvegardes';
 const GARDER = { Quotidien: 7, Hebdomadaire: 8, Mensuel: 24 };
 const BASE = 'https://firestore.googleapis.com/v1';
 
-/** À exécuter une seule fois : crée la tâche de chaque nuit et fait une première sauvegarde. */
+/** À exécuter une seule fois : crée la sauvegarde de chaque nuit et la vérification des rappels toutes les 5 min. */
 function installer() {
   ScriptApp.getProjectTriggers()
-    .filter(t => t.getHandlerFunction() === 'sauvegarder')
+    .filter(t => ['sauvegarder', 'rappel'].includes(t.getHandlerFunction()))
     .forEach(t => ScriptApp.deleteTrigger(t));
   ScriptApp.newTrigger('sauvegarder').timeBased().everyDays(1).atHour(3).create();
+  if (RAPPEL_MIN > 0 && NTFY) {
+    ScriptApp.newTrigger('rappel').timeBased().everyMinutes(5).create();
+    envoyer('Rappels de tétée activés', `Vous serez prévenu ${RAPPEL_MIN} min après le début de chaque repas.`, 3);
+  }
   sauvegarder();
+}
+
+/** Envoie une notification de test (à exécuter à la main pour vérifier ntfy). */
+function testerNotification() { envoyer('Test Tétée', 'Les notifications fonctionnent.', 3) }
+
+/** Toutes les 5 min : si le dernier repas date de plus de RAPPEL_MIN minutes, une notification (une seule par repas). */
+function rappel() {
+  if (!(RAPPEL_MIN > 0) || !NTFY) return;
+  const recents = derniers(8);
+  if (recents.some(e => e.type === 'sein' && !e.end)) return;           // tétée en cours
+  const repas = recents.find(e => e.type === 'biberon' || (e.type === 'sein' && e.end));
+  if (!repas) return;
+  const maintenant = Date.now(), du = maintenant - repas.start;
+  if (du < RAPPEL_MIN * 6e4 || du > (RAPPEL_MIN + 180) * 6e4) return;    // pas encore l'heure, ou trop ancien
+  const props = PropertiesService.getScriptProperties();
+  if (props.getProperty('rappel') === repas.id) return;                 // déjà prévenu pour ce repas
+  const tz = Session.getScriptTimeZone(), h = +Utilities.formatDate(new Date(), tz, 'H');
+  if (!NUIT && (h >= 22 || h < 7)) return;
+  const heure = Utilities.formatDate(new Date(repas.start), tz, 'HH:mm');
+  envoyer("C'est l'heure de la tétée", `Dernier repas à ${heure}, il y a ${duree(du)}.`, 4);
+  props.setProperty('rappel', repas.id);
+}
+
+function duree(ms) { const m = Math.round(ms / 6e4); return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')}` }
+
+function envoyer(titre, message, priorite) {
+  UrlFetchApp.fetch('https://ntfy.sh/', {
+    method: 'post', contentType: 'application/json', muteHttpExceptions: true,
+    payload: JSON.stringify({ topic: NTFY, title: titre, message, priority: priorite, tags: ['baby_bottle'] })
+  });
+}
+
+/** Les N dernières entrées (par heure de début), non supprimées. */
+function derniers(n) {
+  const url = `${BASE}/projects/${PROJET}/databases/(default)/documents/families/${FAMILLE}:runQuery`;
+  const r = UrlFetchApp.fetch(url, { method: 'post', contentType: 'application/json', muteHttpExceptions: true,
+    payload: JSON.stringify({ structuredQuery: { from: [{ collectionId: 'events' }], orderBy: [{ field: { fieldPath: 'start' }, direction: 'DESCENDING' }], limit: n } }) });
+  if (r.getResponseCode() !== 200) throw new Error(`Firestore ${r.getResponseCode()} : ${r.getContentText().slice(0, 300)}`);
+  return JSON.parse(r.getContentText()).filter(x => x.document).map(x => champs(x.document.fields || {})).filter(e => !e.del);
 }
 
 function sauvegarder() {

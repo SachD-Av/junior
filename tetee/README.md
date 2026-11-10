@@ -57,6 +57,18 @@ dans le dossier Drive **Tétée – sauvegardes** : 7 copies quotidiennes, 8 heb
 
 Le script contient le code d'accès au suivi : ne le partagez pas.
 
+## Rappels de tétée (même appli fermée)
+
+1. **Réglages → Rappels** : activer et choisir l'intervalle (compté depuis le début du dernier repas).
+2. Sur chaque téléphone, installer l'appli gratuite **ntfy** (Play Store), puis dans **Réglages → Rappels**,
+   toucher **S'abonner dans ntfy** (ou copier le nom du canal et l'ajouter dans ntfy avec « + »).
+3. Une seule fois : recopier le script Google (**Réglages → Sauvegarde automatique Google Drive**),
+   le coller à la place de l'ancien sur script.google.com, puis exécuter **installer**.
+   Une notification « Rappels de tétée activés » arrive dans ntfy. À refaire si l'intervalle change.
+
+Le script vérifie toutes les 5 minutes l'heure du dernier repas et envoie une seule notification par repas
+(pas pendant une tétée en cours). Cocher **J'utilise ntfy** dans l'appli évite les doubles notifications.
+
 ## Est-ce que ça reste gratuit ?
 
 Oui, sans carte bancaire :

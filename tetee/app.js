@@ -67,7 +67,7 @@ document.querySelectorAll('[data-i]').forEach(el => el.innerHTML = ic(el.dataset
 /* ---------- état ---------- */
 const S = Object.assign({ theme: 'auto', onehand: true, name: '', fb: null, fam: null, milk: 'artificiel',
   guard: 'undo', delay: 10, morning: 8, minFeed: 5,
-  remind: false, remindEvery: 180, remindNight: true, remindNotified: null,
+  remind: false, remindEvery: 180, remindNight: true, remindNotified: null, ntfy: false, ntfyTopic: null,
   prot: { start: true, switch: true, stop: true, cancel: true, quick: true } }, LS.get('tt_settings', {}));
 if (!S.themeV2) { S.theme = 'auto'; S.themeV2 = 1; LS.set('tt_settings', S) } // l'ancien bouton 🌙 désactivait l'auto pour toujours
 S.prot = Object.assign({ start: true, switch: true, stop: true, cancel: true, quick: true }, S.prot);
@@ -545,7 +545,15 @@ function settingsHTML() {
         `<option value="${m}" ${S.remindEvery === m ? 'selected' : ''}>${Math.floor(m / 60)} h ${m % 60 ? m % 60 : ''}</option>`).join('')}</select></label>
       <label class="toggle"><span>Aussi la nuit</span><input type="checkbox" id="remindNight" ${S.remindNight ? 'checked' : ''}></label>
       <p>L'heure prévue s'affiche sur l'accueil. La notification arrive si l'appli est ouverte ou restée en arrière-plan récemment ; un navigateur ne peut pas réveiller une appli complètement fermée.
-        ${'Notification' in window && Notification.permission !== 'granted' ? '<br><b>Les notifications ne sont pas autorisées</b> : touchez à nouveau l\'interrupteur pour les autoriser.' : ''}</p>` : ''}
+        ${'Notification' in window && Notification.permission !== 'granted' && !S.ntfy ? '<br><b>Les notifications ne sont pas autorisées</b> : touchez à nouveau l\'interrupteur pour les autoriser.' : ''}</p>
+      ${S.fam ? `<p style="margin-top:6px"><b>Même appli fermée (ntfy, gratuit)</b> — sur chaque téléphone :</p>
+      <p>1. Installez l'appli <a class="link" href="https://play.google.com/store/apps/details?id=io.heckel.ntfy" target="_blank" rel="noopener">ntfy</a>.<br>
+         2. Abonnez-vous au canal de la famille :</p>
+      <div class="grid2"><a class="btn" href="ntfy://ntfy.sh/${esc(S.ntfyTopic || '')}">${ic('share')}<small>S'abonner dans ntfy</small></a>
+        <button class="btn" data-act="copytopic">${ic('download')}<small>Copier le nom du canal</small></button></div>
+      <p class="code" style="font-size:13px;word-break:break-all">${esc(S.ntfyTopic || '…')}</p>
+      <p>3. Une seule fois (un des deux parents) : recopiez le script Google (Réglages → Sauvegarde automatique Google Drive), collez-le à la place de l'ancien, puis exécutez <b>installer</b>. À refaire si vous changez l'intervalle.</p>
+      <label class="toggle"><span>J'utilise ntfy <small class="sub">(évite les doubles notifications)</small></span><input type="checkbox" id="ntfy" ${S.ntfy ? 'checked' : ''}></label>` : ''}` : ''}
     </div>
     <h2>Protection contre les erreurs</h2>
     <div class="card set">
@@ -613,7 +621,7 @@ function checkReminder() {
   S.remindNotified = n.meal.id; saveSettings();
   const body = `Dernier repas à ${hm(n.meal.start)}, il y a ${dur(now() - n.meal.start)}.`;
   navigator.vibrate?.([300, 150, 300]);
-  if ('Notification' in window && Notification.permission === 'granted')
+  if (!S.ntfy && 'Notification' in window && Notification.permission === 'granted')
     navigator.serviceWorker?.ready.then(r => r.showNotification("C'est l'heure de la tétée", { body, icon: 'icon-192.png', badge: 'icon-192.png', tag: 'rappel', renotify: true })).catch(() => {});
   toast(`C'est l'heure de la tétée · ${body}`);
 }
@@ -813,12 +821,14 @@ document.addEventListener('click', ev => {
   else if (a === 'forgot') forgotDialog();
   else if (a === 'invite') invite();
   else if (a === 'drivescript') driveScript(b.dataset.mode);
+  else if (a === 'copytopic') ensureTopic().then(t => navigator.clipboard.writeText(t)).then(() => toast('Nom du canal copié')).catch(() => prompt('Nom du canal :', S.ntfyTopic));
   else if (a === 'unlink') { if (confirm('Arrêter la synchro ? Les données restent sur ce téléphone.')) { cloud?.unsub?.(); cloud = null; S.fb = S.fam = null; saveSettings(); setSync('local'); render(true) } }
   else if (a === 'join') { if (!joinFrom($('#joinTxt').value)) alert('Lien invalide') }
   else if (a === 'create') {
     const c = parseCfg($('#cfgTxt').value);
     if (!c) return alert('Configuration non reconnue : il faut au moins apiKey et projectId.');
     S.fb = c; S.fam = newFamCode();
+    ensureTopic().then(() => render(true));
     saveSettings(); connectCloud(); render(true);
   }
   else if (a === 'export') {
@@ -841,6 +851,7 @@ document.addEventListener('change', ev => {
   }
   else if (t.id === 'remindEvery') { S.remindEvery = +t.value; S.remindNotified = null; saveSettings() }
   else if (t.id === 'remindNight') { S.remindNight = t.checked; saveSettings() }
+  else if (t.id === 'ntfy') { S.ntfy = t.checked; saveSettings() }
   else if (t.id === 'morning') { S.morning = +t.value; saveSettings(); applyTheme(); render(true) }
   else if (t.id === 'name') { S.name = t.value.trim(); saveSettings() }
   else if (t.id === 'importFile' && t.files[0]) t.files[0].text().then(txt => {
@@ -870,10 +881,19 @@ function parseCfg(txt) {
 const b64e = s => btoa(unescape(encodeURIComponent(s))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 const b64d = s => decodeURIComponent(escape(atob(s.replace(/-/g, '+').replace(/_/g, '/'))));
 function inviteLink() { return location.origin + location.pathname + '#join=' + b64e(JSON.stringify({ c: S.fb, f: S.fam })) }
+async function ensureTopic() {
+  if (!S.fam) return null;
+  const want = async () => { const h = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('tetee-ntfy:' + S.fam));
+    return 'tetee-' + [...new Uint8Array(h)].slice(0, 12).map(b => b.toString(16).padStart(2, '0')).join('') };
+  const t = await want();
+  if (S.ntfyTopic !== t) { S.ntfyTopic = t; saveSettings() }
+  return t;
+}
 async function driveScript(mode) {
   try {
     const txt = (await (await fetch('sauvegarde-drive.gs', { cache: 'no-cache' })).text())
-      .replace("'__PROJET__'", JSON.stringify(S.fb.projectId)).replace("'__FAMILLE__'", JSON.stringify(S.fam));
+      .replace("'__PROJET__'", JSON.stringify(S.fb.projectId)).replace("'__FAMILLE__'", JSON.stringify(S.fam))
+      .replace("'__NTFY__'", JSON.stringify(await ensureTopic())).replace('__RAPPEL__', S.remind ? S.remindEvery : 0).replace('__NUIT__', !!S.remindNight);
     if (mode === 'share' && navigator.share) return await navigator.share({ title: 'Script de sauvegarde Tétée', text: txt });
     await navigator.clipboard.writeText(txt); alert('Script copié ! Collez-le dans un nouveau projet sur script.google.com.');
   } catch (err) { if (err?.name !== 'AbortError') alert('Impossible de copier le script : ' + (err?.message || err)) }
@@ -892,7 +912,7 @@ function joinFrom(txt) {
     if (!confirm(`Rejoindre le suivi partagé (projet Firebase « ${c.projectId} ») ?\n\nLes données de ce téléphone y seront envoyées. N'acceptez que si le lien vient de l'autre parent.`)) return true;
     j.c = c;
     cloud?.unsub?.(); cloud = null;
-    S.fb = j.c; S.fam = j.f; saveSettings(); connectCloud(); view = 'home'; render(true); return true;
+    S.fb = j.c; S.fam = j.f; saveSettings(); connectCloud(); ensureTopic(); view = 'home'; render(true); return true;
   } catch { return false }
 }
 
@@ -954,4 +974,5 @@ window.addEventListener('hashchange', checkJoinHash);
 checkJoinHash();
 connectCloud();
 render(true);
+ensureTopic().then(t => { if (t && view === 'settings') render(true) });
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
