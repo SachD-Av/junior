@@ -67,6 +67,7 @@ document.querySelectorAll('[data-i]').forEach(el => el.innerHTML = ic(el.dataset
 /* ---------- état ---------- */
 const S = Object.assign({ theme: 'auto', onehand: true, name: '', fb: null, fam: null, milk: 'artificiel',
   guard: 'undo', delay: 10, morning: 8, minFeed: 5,
+  remind: false, remindEvery: 180, remindNight: true, remindNotified: null,
   prot: { start: true, switch: true, stop: true, cancel: true, quick: true } }, LS.get('tt_settings', {}));
 if (!S.themeV2) { S.theme = 'auto'; S.themeV2 = 1; LS.set('tt_settings', S) } // l'ancien bouton 🌙 désactivait l'auto pour toujours
 S.prot = Object.assign({ start: true, switch: true, stop: true, cancel: true, quick: true }, S.prot);
@@ -350,11 +351,12 @@ function homeHTML() {
     ? [hm(meal.start), dur(sideMs(meal)), meal.segs.length && 'fin sein ' + SEIN[meal.segs.at(-1).s]].filter(Boolean).join(' · ')
     : `${hm(meal.start)} · biberon ${meal.ml} ml`;
   return `<section class="home">
-    <div class="card since">
+    <button class="card since tap" data-view="history" aria-label="Voir l'historique">
       <div class="lbl">Dernier repas il y a</div>
       <div class="big" data-t="since">${meal ? '' : '—'}</div>
       <div class="sub">${sub}</div>
-    </div>
+      ${S.remind && meal ? `<div class="next" data-t="next"></div>` : ''}
+    </button>
     <div class="grid2 mini-tiles">
       <div class="card tile"><span class="lbl">Dernier sein</span><b>${lastSein ? (lastSide ? SIDE[lastSide] : '—') : '—'}</b>
         <small>${lastSein ? `${hm(lastSein.start)} · ${dur(sideMs(lastSein))}` : 'aucune tétée'}</small></div>
@@ -536,6 +538,15 @@ function settingsHTML() {
       <label class="toggle"><span>Mode une main <small class="sub">(boutons en bas)</small></span><input type="checkbox" id="onehand" ${S.onehand ? 'checked' : ''}></label>
       <label>Votre prénom (affiché dans l'historique)<input id="name" value="${esc(S.name)}" placeholder="ex. Papa"></label>
     </div>
+    <h2>Rappels</h2>
+    <div class="card set">
+      <label class="toggle"><span>Rappel de la prochaine tétée</span><input type="checkbox" id="remind" ${S.remind ? 'checked' : ''}></label>
+      ${S.remind ? `<label>Intervalle (depuis le début du dernier repas)<select id="remindEvery">${[90, 120, 150, 180, 210, 240, 300].map(m =>
+        `<option value="${m}" ${S.remindEvery === m ? 'selected' : ''}>${Math.floor(m / 60)} h ${m % 60 ? m % 60 : ''}</option>`).join('')}</select></label>
+      <label class="toggle"><span>Aussi la nuit</span><input type="checkbox" id="remindNight" ${S.remindNight ? 'checked' : ''}></label>
+      <p>L'heure prévue s'affiche sur l'accueil. La notification arrive si l'appli est ouverte ou restée en arrière-plan récemment ; un navigateur ne peut pas réveiller une appli complètement fermée.
+        ${'Notification' in window && Notification.permission !== 'granted' ? '<br><b>Les notifications ne sont pas autorisées</b> : touchez à nouveau l\'interrupteur pour les autoriser.' : ''}</p>` : ''}
+    </div>
     <h2>Protection contre les erreurs</h2>
     <div class="card set">
       <div class="seg" id="guardSeg">${[['undo', 'Annuler après'], ['double', 'Double tap'], ['confirm', 'Confirmer'], ['none', 'Aucune']]
@@ -587,11 +598,34 @@ function settingsHTML() {
 }
 
 /* rafraîchit seulement les chronos (sans recréer les boutons) */
+/* ---------- rappels ----------
+   Prochaine tétée = début du dernier repas + intervalle choisi. L'appli affiche le compte à rebours
+   et notifie à l'heure (téléphone/appli ouverts : un navigateur ne peut pas programmer une
+   notification appli fermée). */
+function nextMeal() {
+  const m = list().find(isMeal); if (!S.remind || !m) return null;
+  return { meal: m, at: m.start + S.remindEvery * 6e4 };
+}
+function checkReminder() {
+  const n = nextMeal(); if (!n || now() < n.at || S.remindNotified === n.meal.id) return;
+  if (!S.remindNight && isNight()) return;
+  if (active()) return;                                   // tétée en cours : pas de rappel
+  S.remindNotified = n.meal.id; saveSettings();
+  const body = `Dernier repas à ${hm(n.meal.start)}, il y a ${dur(now() - n.meal.start)}.`;
+  navigator.vibrate?.([300, 150, 300]);
+  if ('Notification' in window && Notification.permission === 'granted')
+    navigator.serviceWorker?.ready.then(r => r.showNotification("C'est l'heure de la tétée", { body, icon: 'icon-192.png', badge: 'icon-192.png', tag: 'rappel', renotify: true })).catch(() => {});
+  toast(`C'est l'heure de la tétée · ${body}`);
+}
+
 function tick() {
   const t = now(), e = active();
   document.querySelectorAll('[data-t]').forEach(el => {
     const k = el.dataset.t;
     if (k === 'since') { const m = list().find(isMeal); if (m) el.textContent = dur(t - m.start) }
+    else if (k === 'next') { const n = nextMeal(); if (n) { const d = n.at - t;
+      el.textContent = d > 0 ? `Prochaine tétée vers ${hm(n.at)} · dans ${dur(d)}` : `Prochaine tétée prévue à ${hm(n.at)} · en retard de ${dur(-d)}`;
+      el.classList.toggle('late', d <= 0) } }
     else if (k === 'sleep') { const z = sleeping(); if (z) el.textContent = clock(t - z.start) }
     else if (k === 'sinceCouche') { const c = list().find(x => x.type === 'couche'); if (c) el.textContent = 'il y a ' + dur(t - c.start) }
     else if (!e) return;
@@ -604,7 +638,7 @@ function tick() {
     }
   });
 }
-setInterval(() => { tick(); if (isNight() !== (document.documentElement.dataset.theme === 'night')) applyTheme() }, 1000);
+setInterval(() => { tick(); checkReminder(); if (isNight() !== (document.documentElement.dataset.theme === 'night')) applyTheme() }, 1000);
 
 /* garder l'écran allumé pendant une tétée */
 let wl = null;
@@ -800,6 +834,13 @@ document.addEventListener('change', ev => {
   else if (t.name === 'delay') { S.delay = +t.value; saveSettings() }
   else if (t.name === 'minFeed') { S.minFeed = +t.value; saveSettings() }
   else if (t.dataset.prot) { S.prot[t.dataset.prot] = t.checked; saveSettings() }
+  else if (t.id === 'remind') {
+    S.remind = t.checked; saveSettings();
+    if (t.checked && 'Notification' in window && Notification.permission === 'default') Notification.requestPermission().then(() => render(true));
+    render(true);
+  }
+  else if (t.id === 'remindEvery') { S.remindEvery = +t.value; S.remindNotified = null; saveSettings() }
+  else if (t.id === 'remindNight') { S.remindNight = t.checked; saveSettings() }
   else if (t.id === 'morning') { S.morning = +t.value; saveSettings(); applyTheme(); render(true) }
   else if (t.id === 'name') { S.name = t.value.trim(); saveSettings() }
   else if (t.id === 'importFile' && t.files[0]) t.files[0].text().then(txt => {

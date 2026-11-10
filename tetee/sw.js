@@ -1,5 +1,5 @@
 // Cache de l'appli pour qu'elle marche sans réseau (la synchro reprend toute seule).
-const CACHE = 'tetee-v16';
+const CACHE = 'tetee-v17';
 const SHELL = ['./', './index.html', './app.js', './sauvegarde-drive.gs', './manifest.webmanifest', './icon-192.png', './icon-512.png', './maskable-192.png', './maskable-512.png'];
 
 self.addEventListener('install', e => {
@@ -18,4 +18,10 @@ self.addEventListener('fetch', e => {
     const net = fetch(e.request).then(r => { if (r.ok) c.put(e.request, r.clone()); return r }).catch(() => cached);
     return cached || net;
   }));
+});
+
+// toucher la notification de rappel ouvre (ou ramène) l'appli
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(cs => cs.length ? cs[0].focus() : self.clients.openWindow('./')));
 });
