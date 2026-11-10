@@ -500,21 +500,28 @@ function dialog(html, onClose, setup) {
 function bibDialog() {
   let ml = S.ml;
   dialog(`<h3>${ic('bottle')} Biberon</h3>
-    <div class="mlbox"><button type="button" class="btn" data-d="-10">−</button><output id="mlv">${ml}</output><button type="button" class="btn" data-d="10">+</button></div>
+    <div class="mlbox"><button type="button" class="btn" data-d="-10">−10</button><button type="button" class="btn" data-d="-1">−1</button>
+      <label class="mlv"><input id="mlv" type="number" min="0" max="2000" step="1" inputmode="numeric" value="${ml}"><span>ml</span></label>
+      <button type="button" class="btn" data-d="1">+1</button><button type="button" class="btn" data-d="10">+10</button></div>
     <div class="quick">${[30, 60, 90, 120, 150, 180, 210, 240].map(v => `<button type="button" class="btn" data-v="${v}">${v}</button>`).join('')}</div>
     <div class="seg">${['artificiel', 'maternel'].map(v => `<label><input type="radio" name="milk" value="${v}" ${S.milk === v ? 'checked' : ''}>Lait ${v}</label>`).join('')}</div>
     <label>Heure<input type="datetime-local" name="start" value="${dtl(now())}"></label>
     <menu><button class="btn" value="cancel">Annuler</button><button class="btn primary" value="ok">Enregistrer</button></menu>`,
     (v, f) => {
+      ml = Math.min(2000, Math.max(0, Math.round(+f.querySelector('#mlv').value || 0)));
       S.ml = ml; S.milk = f.milk.value; saveSettings();
       const t = new Date(f.start.value).getTime() || now();
       guard('quick', { done: `Biberon noté · ${ml} ml` }, () => { const e = { id: uid(), type: 'biberon', start: t, end: t, ml, milk: S.milk }; put(e); return e.id });
     },
-    f => f.addEventListener('click', ev => {
-      const b = ev.target.closest('[data-d],[data-v]'); if (!b) return;
-      ml = b.dataset.v ? +b.dataset.v : Math.max(0, ml + +b.dataset.d);
-      f.querySelector('#mlv').textContent = ml; buzz();
-    }));
+    f => {
+      const inp = f.querySelector('#mlv');
+      inp.addEventListener('input', () => { ml = Math.max(0, Math.round(+inp.value || 0)) });
+      f.addEventListener('click', ev => {
+        const b = ev.target.closest('[data-d],[data-v]'); if (!b) return;
+        ml = b.dataset.v ? +b.dataset.v : Math.min(2000, Math.max(0, ml + +b.dataset.d));
+        inp.value = ml; buzz();
+      });
+    });
 }
 
 function coucheDialog() {
@@ -535,7 +542,7 @@ function editDialog(e, isNew) {
         <input type="number" name="${n}" min="0" inputmode="numeric" value="${min(s)}">
         <button type="button" class="btn" data-step="1" data-for="${n}">+</button></span></label>`).join('')}</div>
       <div class="sub" data-endhint></div>`;
-  if (e.type === 'biberon') body = `<label>Quantité (ml)<input type="number" name="ml" min="0" step="5" inputmode="numeric" value="${e.ml ?? S.ml}"></label>
+  if (e.type === 'biberon') body = `<label>Quantité (ml)<input type="number" name="ml" min="0" step="1" inputmode="numeric" value="${e.ml ?? S.ml}"></label>
       <div class="seg">${['artificiel', 'maternel'].map(v => `<label><input type="radio" name="milk" value="${v}" ${(e.milk || S.milk) === v ? 'checked' : ''}>Lait ${v}</label>`).join('')}</div>`;
   if (e.type === 'couche') body = `<div class="seg"><label><input type="checkbox" name="pipi" ${e.pipi ? 'checked' : ''}>Pipi</label>
       <label><input type="checkbox" name="caca" ${e.caca ? 'checked' : ''}>Caca</label></div>`;

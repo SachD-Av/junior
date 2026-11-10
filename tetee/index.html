@@ -114,9 +114,12 @@ dialog h3{font-size:20px}
 dialog label{display:flex;flex-direction:column;gap:4px;font-size:14px;color:var(--muted)}
 dialog menu{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
 dialog menu .btn{min-height:48px;font-size:15px;padding:10px 16px;flex:1}
-.mlbox{display:flex;align-items:center;justify-content:center;gap:16px}
-.mlbox output{font-size:44px;font-weight:700;min-width:110px;text-align:center;font-variant-numeric:tabular-nums}
-.mlbox .btn{width:64px;font-size:28px}
+.mlbox{display:grid;grid-template-columns:1fr 1fr 2fr 1fr 1fr;align-items:center;gap:6px}
+.mlbox .btn{min-height:56px;padding:4px;font-size:16px}
+.mlv{display:flex!important;flex-direction:row!important;align-items:baseline;justify-content:center;gap:2px}
+.mlv input{font-size:34px;font-weight:700;text-align:center;padding:6px 0;background:none;border:0;border-bottom:2px solid var(--line);border-radius:0;font-variant-numeric:tabular-nums;-moz-appearance:textfield}
+.mlv input::-webkit-inner-spin-button,.mlv input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.mlv span{font-size:14px;color:var(--muted)}
 .quick{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
 .quick .btn{min-height:44px;font-size:15px;padding:6px}
 .danger{color:var(--accent)!important}
