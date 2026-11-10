@@ -54,6 +54,7 @@ document.querySelectorAll('[data-i]').forEach(el => el.innerHTML = ic(el.dataset
 const S = Object.assign({ theme: 'auto', onehand: true, name: '', fb: null, fam: null, milk: 'artificiel',
   guard: 'undo', delay: 10, morning: 8, minFeed: 5,
   prot: { start: true, switch: true, stop: true, cancel: true, quick: true } }, LS.get('tt_settings', {}));
+if (!S.themeV2) { S.theme = 'auto'; S.themeV2 = 1; LS.set('tt_settings', S) } // l'ancien bouton 🌙 désactivait l'auto pour toujours
 S.prot = Object.assign({ start: true, switch: true, stop: true, cancel: true, quick: true }, S.prot);
 const saveSettings = () => LS.set('tt_settings', S);
 /* Toute donnée venant de l'extérieur (synchro, import, stockage) est revalidée :
@@ -239,11 +240,27 @@ function sunTimes(t, lat = 46.6, lon = 2.4) {
   return { rise: toMs(Jt - half), set: toMs(Jt + half) };
 }
 /* Auto : nuit du coucher du soleil jusqu'au lever, et jamais de mode jour avant 8 h. */
+/* Heures de passage du jour (lever, jamais avant S.morning) et de la nuit (coucher) pour le jour de t */
+function dayBounds(t) {
+  const noon = new Date(t); noon.setHours(12, 0, 0, 0);
+  const { rise, set } = sunTimes(noon.getTime());
+  return { day: Math.max(rise, new Date(t).setHours(S.morning, 0, 0, 0)), night: set };
+}
+function autoNight(t = now()) { const b = dayBounds(t); return t < b.day || t >= b.night }
+function nextSwitch(t = now()) { const b = dayBounds(t); return t < b.day ? b.day : t < b.night ? b.night : dayBounds(t + 864e5).day }
+/* Le bouton lune/soleil force le mode jusqu'au prochain lever/coucher (2 h au plus), puis l'auto reprend. */
 function isNight(t = now()) {
   if (S.theme !== 'auto') return S.theme === 'night';
-  const noon = new Date(t); noon.setHours(12, 0, 0, 0);
-  const { rise, set } = sunTimes(noon.getTime()), eight = new Date(t).setHours(S.morning, 0, 0, 0);
-  return t < Math.max(rise, eight) || t >= set;
+  if (S.force && t < S.force.until) return S.force.night;
+  return autoNight(t);
+}
+function toggleNight() {
+  if (S.theme !== 'auto') S.theme = S.theme === 'night' ? 'day' : 'night';
+  else {
+    const want = !isNight();
+    S.force = want === autoNight() ? null : { night: want, until: Math.min(nextSwitch(), now() + 2 * 36e5) };
+  }
+  saveSettings(); render(true);
 }
 function applyTheme() {
   const n = isNight();
@@ -291,7 +308,7 @@ function homeHTML() {
     </section>`;
   }
   const L = list(), meal = L.find(isMeal), lastSein = L.find(x => x.type === 'sein' && x.end);
-  const lastSide = lastSein?.segs.at(-1)?.s;
+  const lastSide = lastSein?.segs.at(-1)?.s, lastCouche = L.find(x => x.type === 'couche');
   const t0 = dayStart(now()), today = summarize(L.filter(x => x.start >= t0));
   let sub = '—';
   if (meal) sub = meal.type === 'sein'
@@ -303,8 +320,18 @@ function homeHTML() {
       <div class="big" data-t="since">${meal ? '' : '—'}</div>
       <div class="sub">${sub}</div>
     </div>
-    <div class="card sub" style="text-align:center;margin:0">Aujourd'hui : <b>${today.seins}</b> tétée${today.seins > 1 ? 's' : ''} ·
-      <b>${today.bibs}</b> bib. (${today.ml} ml) · <b>${today.couches}</b> couche${today.couches > 1 ? 's' : ''}</div>
+    <div class="grid2 mini-tiles">
+      <div class="card tile"><span class="lbl">Dernier sein</span><b>${lastSein ? (lastSide ? SIDE[lastSide] : '—') : '—'}</b>
+        <small>${lastSein ? `${hm(lastSein.start)} · ${dur(sideMs(lastSein))}` : 'aucune tétée'}</small></div>
+      <div class="card tile"><span class="lbl">Dernière couche</span><b data-t="sinceCouche">${lastCouche ? '' : '—'}</b>
+        <small>${lastCouche ? `${hm(lastCouche.start)} · ${[lastCouche.pipi && 'pipi', lastCouche.caca && 'caca'].filter(Boolean).join(' + ') || 'couche'}` : 'aucune'}</small></div>
+    </div>
+    <div class="card today">
+      <div class="today-h"><span class="lbl">Aujourd'hui</span>
+        <span><b>${today.seins}</b> tétée${today.seins > 1 ? 's' : ''} · <b>${today.bibs}</b> bib. ${today.ml ? `(${today.ml} ml)` : ''} · <b>${today.couches}</b> couche${today.couches > 1 ? 's' : ''}</span></div>
+      ${timeline(L)}
+    </div>
+    <div class="spacer"></div>
     <div class="grid2">
       ${['G', 'D'].map(s => `<button class="btn side ${s}${armCls('start' + s)}" data-act="side" data-s="${s}">${s}<small>${SIDE[s]}</small>
         ${lastSide === s ? '<span class="badge">dernier</span>' : ''}</button>`).join('')}
@@ -315,6 +342,22 @@ function homeHTML() {
     </div>
     <button class="link" data-act="forgot">Ajouter un oubli</button>
   </section>`;
+}
+
+/* Frise de la journée (minuit → minuit) : tétées par sein, biberons, couches, et l'heure actuelle */
+function timeline(L) {
+  const t0 = dayStart(now()), pct = t => Math.max(0, Math.min(100, (t - t0) / 864e5 * 100)).toFixed(2), T = now();
+  let marks = '';
+  for (const e of L) {
+    if (e.start < t0 - 3 * 36e5) break;           // liste triée du plus récent au plus ancien
+    if (e.type === 'sein') for (const g of e.segs) {
+      const a = Math.max(g.a, t0), b = g.b ?? T; if (b <= t0) continue;
+      marks += `<i class="tl-s ${g.s}" style="left:${pct(a)}%;width:max(3px,${(pct(b) - pct(a)).toFixed(2)}%)"></i>`;
+    } else if (e.start >= t0) marks += `<i class="tl-${e.type === 'biberon' ? 'b' : 'c'}" style="left:${pct(e.start)}%"></i>`;
+  }
+  return `<div class="tl">${marks}<i class="tl-now" style="left:${pct(T)}%"></i></div>
+    <div class="tl-h"><span>0 h</span><span>6 h</span><span>12 h</span><span>18 h</span><span>24 h</span></div>
+    <div class="tl-k"><span><i class="tl-s G"></i>G</span><span><i class="tl-s D"></i>D</span><span><i class="tl-b"></i>biberon</span><span><i class="tl-c"></i>couche</span></div>`;
 }
 
 function describe(e) {
@@ -403,8 +446,8 @@ function settingsHTML() {
     <h2>Affichage</h2>
     <div class="card set">
       <div class="seg" id="themeSeg">${r('auto', 'Auto (soleil)')}${r('day', 'Jour')}${r('night', 'Nuit')}</div>
-      ${S.theme === 'auto' ? (() => { const n = new Date(); n.setHours(12, 0, 0, 0); const { rise, set } = sunTimes(n.getTime());
-        return `<p>Aujourd'hui : nuit à partir de ${hm(set)}, jour à partir de ${hm(Math.max(rise, new Date().setHours(S.morning, 0, 0, 0)))}.</p>
+      ${S.theme === 'auto' ? (() => { const b = dayBounds(now());
+        return `<p>Aujourd'hui : jour à partir de ${hm(b.day)}, nuit à partir de ${hm(b.night)}.${S.force && now() < S.force.until ? ` Mode ${S.force.night ? 'nuit' : 'jour'} forcé jusqu'à ${hm(S.force.until)}.` : ''}</p>
         <label>Mode jour jamais avant<select id="morning">${[6, 7, 8, 9, 10].map(h => `<option value="${h}" ${S.morning === h ? 'selected' : ''}>${h} h</option>`).join('')}</select></label>` })() : ''}
       <label class="toggle"><span>Mode une main <small class="sub">(boutons en bas)</small></span><input type="checkbox" id="onehand" ${S.onehand ? 'checked' : ''}></label>
       <label>Votre prénom (affiché dans l'historique)<input id="name" value="${esc(S.name)}" placeholder="ex. Papa"></label>
@@ -465,6 +508,7 @@ function tick() {
   document.querySelectorAll('[data-t]').forEach(el => {
     const k = el.dataset.t;
     if (k === 'since') { const m = list().find(isMeal); if (m) el.textContent = dur(t - m.start) }
+    else if (k === 'sinceCouche') { const c = list().find(x => x.type === 'couche'); if (c) el.textContent = 'il y a ' + dur(t - c.start) }
     else if (!e) return;
     else if (k === 'startHm') el.textContent = hm(e.start);
     else if (k === 'total') el.textContent = clock(sideMs(e, null, t));
@@ -591,7 +635,7 @@ document.addEventListener('click', ev => {
   else if (a === 'cancel') cancelFeed();
   else if (a === 'bib') bibDialog();
   else if (a === 'couche') coucheDialog();
-  else if (a === 'night') { S.theme = isNight() ? 'day' : 'night'; saveSettings(); render(true) }
+  else if (a === 'night') toggleNight();
   else if (a === 'edit') { const e = events.get(b.dataset.id); if (e && !e.end && e.type === 'sein') { view = 'home'; render() } else if (e) editDialog(structuredClone(e)) }
   else if (a === 'add') newEntry(b.dataset.type);
   else if (a === 'adjust') adjustDialog();
@@ -613,7 +657,7 @@ document.addEventListener('click', ev => {
 });
 document.addEventListener('change', ev => {
   const t = ev.target;
-  if (t.name === 'theme' && t.closest('#themeSeg')) { S.theme = t.value; saveSettings(); applyTheme() }
+  if (t.name === 'theme' && t.closest('#themeSeg')) { S.theme = t.value; S.force = null; saveSettings(); render(true) }
   else if (t.id === 'onehand') { S.onehand = t.checked; saveSettings(); applyTheme() }
   else if (t.name === 'guard') { S.guard = t.value; armed = null; saveSettings(); render(true) }
   else if (t.name === 'delay') { S.delay = +t.value; saveSettings() }
