@@ -100,6 +100,9 @@ h2{font-size:16px;margin:18px 4px 8px}
 /* Réglages */
 .set{display:flex;flex-direction:column;gap:10px}
 .set p{font-size:13px;color:var(--muted)}
+#guardSeg label,.fld .seg label{min-width:0;padding:10px 4px;font-size:13px}
+input[type=checkbox]{accent-color:var(--accent)}
+.fld{display:flex;flex-direction:column;gap:6px;font-size:14px;color:var(--muted)}
 .code{font-family:ui-monospace,monospace;font-size:18px;letter-spacing:.1em}
 .toggle{display:flex;justify-content:space-between;align-items:center}
 .toggle input{width:auto;transform:scale(1.4)}
@@ -141,7 +144,12 @@ dialog h3{display:flex;align-items:center;gap:10px} dialog h3 .i{color:var(--acc
 .has-toast main{padding-bottom:84px}
 #toastMsg{flex:1}
 #toastUndo{background:var(--accent);color:var(--accent-fg);font-weight:700;border-radius:12px;padding:12px 18px;font-size:16px}
-#toastBar{position:absolute;left:0;bottom:0;height:3px;width:100%;background:var(--accent);animation:shrink 10s linear forwards}
+#toastBar{position:absolute;left:0;bottom:0;height:3px;width:100%;background:var(--accent);animation:shrink var(--delay,10s) linear forwards}
+#toastUndo[hidden]{display:none}
+.dlgbar{display:block;height:3px;background:var(--accent);border-radius:2px;animation:shrink var(--delay,10s) linear forwards}
+.armed{outline:4px dashed var(--fg)!important;outline-offset:-4px;opacity:1!important}
+.link.armed{outline-offset:2px;border-radius:8px}
+select{appearance:auto}
 @keyframes shrink{from{width:100%}to{width:0}}
 :root[data-theme="night"] #toast{background:#2A1310;color:#E9A595}
 .btn.huge{min-height:150px;font-size:28px;font-weight:700;gap:6px;background:var(--fg);color:var(--bg)}

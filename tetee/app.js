@@ -51,7 +51,10 @@ const ic = (n, c = '') => `<svg class="i ${c}" viewBox="0 0 24 24" fill="none" s
 document.querySelectorAll('[data-i]').forEach(el => el.innerHTML = ic(el.dataset.i));
 
 /* ---------- état ---------- */
-const S = Object.assign({ theme: 'auto', onehand: true, name: '', fb: null, fam: null, ml: 90, milk: 'artificiel' }, LS.get('tt_settings', {}));
+const S = Object.assign({ theme: 'auto', onehand: true, name: '', fb: null, fam: null, ml: 90, milk: 'artificiel',
+  guard: 'undo', delay: 10, morning: 8, minFeed: 5,
+  prot: { start: true, switch: true, stop: true, cancel: true, quick: true } }, LS.get('tt_settings', {}));
+S.prot = Object.assign({ start: true, switch: true, stop: true, cancel: true, quick: true }, S.prot);
 const saveSettings = () => LS.set('tt_settings', S);
 /* Toute donnée venant de l'extérieur (synchro, import, stockage) est revalidée :
    types stricts, longueurs bornées, id alphanumérique. Rien d'autre n'atteint le HTML. */
@@ -99,12 +102,14 @@ function put(e) {
    supprimer, noter une couche ou un biberon) affichent 10 s un bandeau « Annuler ». */
 let toastTimer = 0;
 function toast(msg, onUndo) {
-  const el = $('#toast');
+  const el = $('#toast'), u = el.querySelector('#toastUndo');
   el.querySelector('#toastMsg').textContent = msg;
-  el.querySelector('#toastUndo').onclick = () => { hideToast(); onUndo(); buzz() };
+  u.hidden = !onUndo;
+  u.onclick = () => { hideToast(); onUndo?.(); buzz() };
+  el.style.setProperty('--delay', S.delay + 's');
   el.hidden = false; document.body.classList.add('has-toast');
   const bar = el.querySelector('#toastBar'); bar.style.animation = 'none'; bar.offsetWidth; bar.style.animation = '';
-  clearTimeout(toastTimer); toastTimer = setTimeout(hideToast, 10000);
+  clearTimeout(toastTimer); toastTimer = setTimeout(hideToast, S.delay * 1000);
 }
 function hideToast() { clearTimeout(toastTimer); $('#toast').hidden = true; document.body.classList.remove('has-toast') }
 /* Exécute fn (qui renvoie l'id touché) et propose d'annuler : on remet l'entrée
@@ -116,6 +121,36 @@ function undoable(msg, fn) {
     if (snap && snap.id === id) put(snap);
     else { const e = events.get(id); if (e) put({ ...e, del: true }) }
   });
+}
+
+/* Protection contre les erreurs, réglable dans Réglages :
+   'undo'    : l'action est faite tout de suite, bandeau « Annuler » (par défaut, le plus naturel)
+   'double'  : il faut toucher 2 fois le même bouton
+   'confirm' : une fenêtre demande confirmation (fermée toute seule = non)
+   'none'    : aucune protection
+   kind = start | switch | stop | cancel | quick (couche, biberon : déjà dans une fenêtre → bandeau seulement) */
+let armed = null, armTimer = 0;
+const armCls = k => armed === k ? ' armed' : '';
+function guard(kind, { ask, done }, fn, key = kind) {
+  if (S.guard === 'none' || !S.prot[kind]) return void fn();
+  const mode = kind === 'quick' ? 'undo' : S.guard;
+  if (mode === 'undo') return undoable(done, fn);
+  if (mode === 'double') {
+    if (armed === key) { armed = null; clearTimeout(armTimer); hideToast(); fn(); return }
+    armed = key; buzz(); render(); toast(`${ask} Touchez encore pour confirmer.`);
+    clearTimeout(armTimer); armTimer = setTimeout(() => { armed = null; render() }, S.delay * 1000);
+    return;
+  }
+  confirmDialog(ask, fn);
+}
+function confirmDialog(ask, fn) {
+  let timer;
+  dialog(`<h3>${esc(ask)}</h3>
+    <menu><button class="btn" value="cancel">Non</button><button class="btn primary" value="ok">Oui</button></menu>
+    <i class="dlgbar" style="--delay:${S.delay}s"></i>`,
+    () => { clearTimeout(timer); fn() },
+    f => { timer = setTimeout(() => $('#dlg').open && $('#dlg').close(), S.delay * 1000);
+      $('#dlg').addEventListener('close', () => clearTimeout(timer), { once: true }) });
 }
 
 function tapSide(side) {
@@ -130,21 +165,21 @@ function tapSide(side) {
 }
 function sideTap(side) {
   const e = active();
-  if (!e) return undoable(`Tétée démarrée · sein ${SIDE[side].toLowerCase()}`, () => tapSide(side));
+  if (!e) return guard('start', { ask: `Démarrer sur le sein ${SIDE[side].toLowerCase()} ?`, done: `Tétée démarrée · sein ${SIDE[side].toLowerCase()}` }, () => tapSide(side), 'start' + side);
   const o = openSeg(e), last = e.segs.at(-1)?.s;
   if (o?.s === side) return;
   if (!o && last === side) return resume();
-  undoable(`Passage au sein ${SIDE[side].toLowerCase()}`, () => tapSide(side));
+  guard('switch', { ask: `Passer au sein ${SIDE[side].toLowerCase()} ?`, done: `Passage au sein ${SIDE[side].toLowerCase()}` }, () => tapSide(side), 'switch' + side);
 }
 function pause() { const e = active(), o = e && openSeg(e); if (o) { o.b = now(); buzz(); put(e) } }
 function resume() { const e = active(); if (!e) return; e.segs.push({ s: e.segs.at(-1)?.s || 'G', a: now(), b: null }); buzz(); put(e) }
 function stop() {
-  undoable(e => e?.del ? 'Tétée trop courte, ignorée' : `Tétée terminée · ${dur(sideMs(e))}`, () => {
+  guard('stop', { ask: 'Terminer la tétée ?', done: e => e?.del ? 'Tétée trop courte, ignorée' : `Tétée terminée · ${dur(sideMs(e))}` }, () => {
     const e = active(); if (!e) return;
     const t = now(), o = openSeg(e);
     if (o) o.b = t;
     e.end = e.segs.at(-1)?.b ?? t;      // une pause en cours n'est pas comptée
-    if (sideMs(e) < 5000) e.del = true; // tap par erreur
+    if (sideMs(e) < S.minFeed * 1000) e.del = true; // tap par erreur
     buzz(); put(e); return e.id;
   });
 }
@@ -188,7 +223,7 @@ function newEntry(type) {
   editDialog(type === 'sein' ? { id: uid(), type, start: t - 15 * 6e4, end: t, segs: [] }
     : { id: uid(), type, start: t, end: t, ml: S.ml, milk: S.milk, pipi: true, caca: false }, true);
 }
-function cancelFeed() { undoable('Tétée supprimée', () => { const e = active(); if (e) { e.del = true; put(e); return e.id } }) }
+function cancelFeed() { guard('cancel', { ask: 'Supprimer cette tétée ?', done: 'Tétée supprimée' }, () => { const e = active(); if (e) { e.del = true; put(e); return e.id } }) }
 
 /* ---------- thème ---------- */
 /* Lever / coucher du soleil (algorithme NOAA simplifié), position par défaut : centre de la France. */
@@ -207,7 +242,7 @@ function sunTimes(t, lat = 46.6, lon = 2.4) {
 function isNight(t = now()) {
   if (S.theme !== 'auto') return S.theme === 'night';
   const noon = new Date(t); noon.setHours(12, 0, 0, 0);
-  const { rise, set } = sunTimes(noon.getTime()), eight = new Date(t).setHours(8, 0, 0, 0);
+  const { rise, set } = sunTimes(noon.getTime()), eight = new Date(t).setHours(S.morning, 0, 0, 0);
   return t < Math.max(rise, eight) || t >= set;
 }
 function applyTheme() {
@@ -236,7 +271,7 @@ function homeHTML() {
     const sideBtn = s => {
       const cur = o?.s === s;
       const hint = cur ? 'en cours' : !o && last === s ? 'reprendre ici' : 'passer ici';
-      return `<button class="btn side mini ${s} ${cur ? 'on' : ''} ${!cur && o ? 'dim' : ''}" data-act="side" data-s="${s}">
+      return `<button class="btn side mini ${s} ${cur ? 'on' : ''} ${!cur && o ? 'dim' : ''}${armCls('switch' + s)}" data-act="side" data-s="${s}">
         <span class="sl">${s}</span><span class="t" data-t="${s}"></span><small>${hint}</small></button>`;
     };
     return `<section class="home">
@@ -250,9 +285,9 @@ function homeHTML() {
           : `<button class="btn huge resume ${last}" data-act="resume">${ic('play')}<span>Reprendre</span><small>sein ${SIDE[last].toLowerCase()}</small></button>`}
       <div class="grid2">
         <button class="btn" data-act="adjust">${ic('pencil')}<small>Corriger</small></button>
-        <button class="btn primary" data-act="stop">${ic('check')}<span>Terminer</span></button>
+        <button class="btn primary${armCls('stop')}" data-act="stop">${ic('check')}<span>Terminer</span></button>
       </div>
-      <button class="link" data-act="cancel">Annuler la tétée</button>
+      <button class="link${armCls('cancel')}" data-act="cancel">Annuler la tétée</button>
     </section>`;
   }
   const L = list(), meal = L.find(isMeal), lastSein = L.find(x => x.type === 'sein' && x.end);
@@ -271,7 +306,7 @@ function homeHTML() {
     <div class="card sub" style="text-align:center;margin:0">Aujourd'hui : <b>${today.seins}</b> tétée${today.seins > 1 ? 's' : ''} ·
       <b>${today.bibs}</b> bib. (${today.ml} ml) · <b>${today.couches}</b> couche${today.couches > 1 ? 's' : ''}</div>
     <div class="grid2">
-      ${['G', 'D'].map(s => `<button class="btn side ${s}" data-act="side" data-s="${s}">${s}<small>${SIDE[s]}</small>
+      ${['G', 'D'].map(s => `<button class="btn side ${s}${armCls('start' + s)}" data-act="side" data-s="${s}">${s}<small>${SIDE[s]}</small>
         ${lastSide === s ? '<span class="badge">dernier</span>' : ''}</button>`).join('')}
     </div>
     <div class="grid2">
@@ -369,9 +404,26 @@ function settingsHTML() {
     <div class="card set">
       <div class="seg" id="themeSeg">${r('auto', 'Auto (soleil)')}${r('day', 'Jour')}${r('night', 'Nuit')}</div>
       ${S.theme === 'auto' ? (() => { const n = new Date(); n.setHours(12, 0, 0, 0); const { rise, set } = sunTimes(n.getTime());
-        return `<p>Aujourd'hui : nuit à partir de ${hm(set)}, jour à partir de ${hm(Math.max(rise, new Date().setHours(8, 0, 0, 0)))}.</p>` })() : ''}
+        return `<p>Aujourd'hui : nuit à partir de ${hm(set)}, jour à partir de ${hm(Math.max(rise, new Date().setHours(S.morning, 0, 0, 0)))}.</p>
+        <label>Mode jour jamais avant<select id="morning">${[6, 7, 8, 9, 10].map(h => `<option value="${h}" ${S.morning === h ? 'selected' : ''}>${h} h</option>`).join('')}</select></label>` })() : ''}
       <label class="toggle"><span>Mode une main <small class="sub">(boutons en bas)</small></span><input type="checkbox" id="onehand" ${S.onehand ? 'checked' : ''}></label>
       <label>Votre prénom (affiché dans l'historique)<input id="name" value="${esc(S.name)}" placeholder="ex. Papa"></label>
+    </div>
+    <h2>Protection contre les erreurs</h2>
+    <div class="card set">
+      <div class="seg" id="guardSeg">${[['undo', 'Annuler après'], ['double', 'Double tap'], ['confirm', 'Confirmer'], ['none', 'Aucune']]
+        .map(([v, l]) => `<label><input type="radio" name="guard" value="${v}" ${S.guard === v ? 'checked' : ''}>${l}</label>`).join('')}</div>
+      <p>${{ undo: "Recommandé : l'action est faite en 1 tap, puis un bandeau « Annuler » reste affiché.",
+            double: "Il faut toucher 2 fois le même bouton. Le premier tap ne fait que l'armer.",
+            confirm: 'Une fenêtre demande « Oui / Non ». Sans réponse, elle se ferme et rien ne change.',
+            none: 'Aucune protection : chaque tap agit directement.' }[S.guard]}</p>
+      ${S.guard !== 'none' ? `<div class="fld"><span>Durée (bandeau, double tap, fenêtre)</span><div class="seg" id="delaySeg">${[3, 5, 10, 15]
+        .map(v => `<label><input type="radio" name="delay" value="${v}" ${S.delay === v ? 'checked' : ''}>${v} s</label>`).join('')}</div></div>
+      <p><b>Actions protégées</b></p>
+      ${[['start', 'Démarrer une tétée'], ['switch', 'Changer de sein'], ['stop', 'Terminer'], ['cancel', 'Supprimer la tétée en cours'], ['quick', 'Couche et biberon (bandeau « Annuler »)']]
+        .map(([k, l]) => `<label class="toggle"><span>${l}</span><input type="checkbox" data-prot="${k}" ${S.prot[k] ? 'checked' : ''}></label>`).join('')}` : ''}
+      <div class="fld"><span>Ignorer les tétées de moins de</span><div class="seg" id="minSeg">${[0, 5, 30, 60]
+        .map(v => `<label><input type="radio" name="minFeed" value="${v}" ${S.minFeed === v ? 'checked' : ''}>${v ? v + ' s' : 'jamais'}</label>`).join('')}</div></div>
     </div>
     <h2>Synchronisation entre téléphones</h2>
     <div class="card set">
@@ -456,7 +508,7 @@ function bibDialog() {
     (v, f) => {
       S.ml = ml; S.milk = f.milk.value; saveSettings();
       const t = new Date(f.start.value).getTime() || now();
-      undoable(`Biberon noté · ${ml} ml`, () => { const e = { id: uid(), type: 'biberon', start: t, end: t, ml, milk: S.milk }; put(e); return e.id });
+      guard('quick', { done: `Biberon noté · ${ml} ml` }, () => { const e = { id: uid(), type: 'biberon', start: t, end: t, ml, milk: S.milk }; put(e); return e.id });
     },
     f => f.addEventListener('click', ev => {
       const b = ev.target.closest('[data-d],[data-v]'); if (!b) return;
@@ -471,7 +523,7 @@ function coucheDialog() {
     <button class="btn primary" value="pc">Les deux</button>
     <menu><button class="btn" value="cancel">Annuler</button></menu>`,
     v => { const t = now(), e = { id: uid(), type: 'couche', start: t, end: t, pipi: v.includes('p'), caca: v.includes('c') };
-      undoable(`Couche notée · ${[e.pipi && 'pipi', e.caca && 'caca'].filter(Boolean).join(' + ')}`, () => { put(e); return e.id }) });
+      guard('quick', { done: `Couche notée · ${[e.pipi && 'pipi', e.caca && 'caca'].filter(Boolean).join(' + ')}` }, () => { put(e); return e.id }) });
 }
 
 function editDialog(e, isNew) {
@@ -562,6 +614,11 @@ document.addEventListener('change', ev => {
   const t = ev.target;
   if (t.name === 'theme' && t.closest('#themeSeg')) { S.theme = t.value; saveSettings(); applyTheme() }
   else if (t.id === 'onehand') { S.onehand = t.checked; saveSettings(); applyTheme() }
+  else if (t.name === 'guard') { S.guard = t.value; armed = null; saveSettings(); render(true) }
+  else if (t.name === 'delay') { S.delay = +t.value; saveSettings() }
+  else if (t.name === 'minFeed') { S.minFeed = +t.value; saveSettings() }
+  else if (t.dataset.prot) { S.prot[t.dataset.prot] = t.checked; saveSettings() }
+  else if (t.id === 'morning') { S.morning = +t.value; saveSettings(); applyTheme(); render(true) }
   else if (t.id === 'name') { S.name = t.value.trim(); saveSettings() }
   else if (t.id === 'importFile' && t.files[0]) t.files[0].text().then(txt => {
     try {
