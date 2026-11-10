@@ -500,10 +500,8 @@ function dialog(html, onClose, setup) {
 function bibDialog() {
   let ml = S.ml;
   dialog(`<h3>${ic('bottle')} Biberon</h3>
-    <div class="mlbox"><button type="button" class="btn" data-d="-10">−10</button><button type="button" class="btn" data-d="-1">−1</button>
-      <label class="mlv"><input id="mlv" type="number" min="0" max="2000" step="1" inputmode="numeric" value="${ml}"><span>ml</span></label>
-      <button type="button" class="btn" data-d="1">+1</button><button type="button" class="btn" data-d="10">+10</button></div>
-    <div class="quick">${[30, 60, 90, 120, 150, 180, 210, 240].map(v => `<button type="button" class="btn" data-v="${v}">${v}</button>`).join('')}</div>
+    <label class="mlv"><input id="mlv" type="number" min="0" max="400" step="1" inputmode="numeric" value="${ml}"><span>ml</span></label>
+    <input id="mlr" type="range" min="0" max="300" step="1" value="${Math.min(300, ml)}">
     <div class="seg">${['artificiel', 'maternel'].map(v => `<label><input type="radio" name="milk" value="${v}" ${S.milk === v ? 'checked' : ''}>Lait ${v}</label>`).join('')}</div>
     <label>Heure<input type="datetime-local" name="start" value="${dtl(now())}"></label>
     <menu><button class="btn" value="cancel">Annuler</button><button class="btn primary" value="ok">Enregistrer</button></menu>`,
@@ -514,13 +512,9 @@ function bibDialog() {
       guard('quick', { done: `Biberon noté · ${ml} ml` }, () => { const e = { id: uid(), type: 'biberon', start: t, end: t, ml, milk: S.milk }; put(e); return e.id });
     },
     f => {
-      const inp = f.querySelector('#mlv');
-      inp.addEventListener('input', () => { ml = Math.max(0, Math.round(+inp.value || 0)) });
-      f.addEventListener('click', ev => {
-        const b = ev.target.closest('[data-d],[data-v]'); if (!b) return;
-        ml = b.dataset.v ? +b.dataset.v : Math.min(2000, Math.max(0, ml + +b.dataset.d));
-        inp.value = ml; buzz();
-      });
+      const inp = f.querySelector('#mlv'), rng = f.querySelector('#mlr');
+      inp.addEventListener('input', () => { ml = Math.max(0, Math.round(+inp.value || 0)); rng.value = Math.min(300, ml) });
+      rng.addEventListener('input', () => { ml = +rng.value; inp.value = ml });
     });
 }
 
