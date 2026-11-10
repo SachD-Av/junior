@@ -709,6 +709,8 @@ function bibDialog() {
       inp.addEventListener('input', () => { ml = Math.max(0, Math.round(+inp.value || 0)); rng.value = Math.min(300, ml) });
       rng.addEventListener('input', () => { ml = +rng.value; inp.value = ml || '' });
     });
+  // biberon : on tape directement la quantité, le clavier s'ouvre (encore dans le geste du doigt)
+  $('#mlv')?.focus();
 }
 
 function tirageDialog() {
