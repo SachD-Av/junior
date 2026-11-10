@@ -27,14 +27,16 @@ service cloud.firestore {
     function validEvent(id, d) {
       return id.matches('^[A-Za-z0-9_-]{1,40}$')
         && d.id == id
-        && d.keys().hasOnly(['id', 'type', 'start', 'end', 'segs', 'ml', 'milk', 'pipi', 'caca', 'kind', 'note', 'by', 'u', 'del'])
-        && d.type in ['sein', 'biberon', 'couche']
+        && d.keys().hasOnly(['id', 'type', 'start', 'end', 'segs', 'ml', 'milk', 'pipi', 'caca', 'kind', 'mlG', 'mlD', 'note', 'by', 'u', 'del'])
+        && d.type in ['sein', 'biberon', 'couche', 'tirage']
         && d.start is number && d.u is number
         && optNum(d, 'end') && optBool(d, 'del') && optBool(d, 'pipi') && optBool(d, 'caca')
         && optStr(d, 'note', 500) && optStr(d, 'by', 40)
         && (!('milk' in d) || d.milk in ['maternel', 'artificiel'])
         && (!('kind' in d) || d.kind in ['humide', 'sale', 'mixte', 'explosion'])
         && (!('ml' in d) || (d.ml is number && d.ml >= 0 && d.ml <= 2000))
+        && (!('mlG' in d) || (d.mlG is number && d.mlG >= 0 && d.mlG <= 2000))
+        && (!('mlD' in d) || (d.mlD is number && d.mlD >= 0 && d.mlD <= 2000))
         && (!('segs' in d) || (d.segs is list && d.segs.size() <= 200));
     }
   }
