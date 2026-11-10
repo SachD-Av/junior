@@ -117,6 +117,33 @@ dialog menu .btn{min-height:48px;font-size:15px;padding:10px 16px;flex:1}
 .quick{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
 .quick .btn{min-height:44px;font-size:15px;padding:6px}
 .danger{color:var(--accent)!important}
+/* icônes */
+.i{width:1.25em;height:1.25em;flex:none;vertical-align:-.25em}
+header h1{display:flex;align-items:center;gap:8px}
+.logo{display:grid;place-items:center;width:34px;height:34px;border-radius:11px;background:var(--accent);color:var(--accent-fg)}
+.logo .i{width:20px;height:20px}
+.iconbtn .i{width:22px;height:22px}
+nav button b{height:24px;display:grid;place-items:center} nav button b .i{width:24px;height:24px}
+.chip{display:inline-flex;align-items:center;gap:5px} .chip .i{width:15px;height:15px}
+.btn .i{width:26px;height:26px}
+.btn.row-btn{flex-direction:row;gap:10px}
+dialog h3{display:flex;align-items:center;gap:10px} dialog h3 .i{color:var(--accent)}
+.row .ic{display:grid;place-items:center;width:40px;height:40px;border-radius:12px;background:var(--soft);color:var(--accent)}
+.row .ic .i{width:22px;height:22px}
+/* tétée en cours : gros bouton pause, petits boutons de sein */
+.side.mini{min-height:96px;font-size:16px;gap:0}
+.onehand .side.mini{min-height:104px}
+.side.mini .sl{font-size:28px;font-weight:800;line-height:1}
+.side.mini .t{font-size:18px}
+.side.armed{outline:4px dashed var(--fg);outline-offset:-4px;opacity:1;animation:pulse .6s ease-in-out infinite alternate}
+@keyframes pulse{to{opacity:.6}}
+.btn.huge{min-height:150px;font-size:28px;font-weight:700;gap:6px;background:var(--fg);color:var(--bg)}
+.btn.huge small{color:inherit;opacity:.7;font-size:14px}
+.btn.huge .i{width:44px;height:44px}
+.onehand .btn.huge{min-height:190px}
+.btn.huge.resume.G{background:var(--g);color:#fff} .btn.huge.resume.D{background:var(--d);color:#fff}
+:root[data-theme="night"] .btn.huge{background:#2A1310;color:#E9A595}
+:root[data-theme="night"] .btn.huge.resume{color:#F0B3A3}
 .adj{display:grid;grid-template-columns:44px 64px 1fr;gap:8px;align-items:center}
 .adj b.side{min-height:0;height:44px;border-radius:12px;display:grid;place-items:center;font-size:20px}
 .adj .t{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums}
@@ -128,16 +155,16 @@ dialog menu .btn{min-height:48px;font-size:15px;padding:10px 16px;flex:1}
 </head>
 <body>
 <header>
-  <h1>🤱 Tétée</h1>
+  <h1><span class="logo" data-i="feed"></span>Tétée</h1>
   <span id="sync" class="chip">local</span>
-  <button class="iconbtn" data-act="night" title="Mode nuit" aria-label="Mode nuit">🌙</button>
+  <button class="iconbtn" data-act="night" title="Mode nuit" aria-label="Mode nuit"></button>
 </header>
 <main id="main"></main>
 <nav>
-  <button data-view="home"><b>⏱</b>Accueil</button>
-  <button data-view="history"><b>☰</b>Historique</button>
-  <button data-view="stats"><b>📊</b>Stats</button>
-  <button data-view="settings"><b>⚙</b>Réglages</button>
+  <button data-view="home"><b data-i="timer"></b>Accueil</button>
+  <button data-view="history"><b data-i="list"></b>Historique</button>
+  <button data-view="stats"><b data-i="chart"></b>Stats</button>
+  <button data-view="settings"><b data-i="sliders"></b>Réglages</button>
 </nav>
 <dialog id="dlg"><form method="dialog" id="dlgForm"></form></dialog>
 
