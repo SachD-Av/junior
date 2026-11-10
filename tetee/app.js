@@ -95,6 +95,29 @@ function put(e) {
 }
 
 /* ---------- actions tétée ---------- */
+/* Une action = 1 tap. Les actions qui comptent (démarrer, changer de sein, terminer,
+   supprimer, noter une couche ou un biberon) affichent 10 s un bandeau « Annuler ». */
+let toastTimer = 0;
+function toast(msg, onUndo) {
+  const el = $('#toast');
+  el.querySelector('#toastMsg').textContent = msg;
+  el.querySelector('#toastUndo').onclick = () => { hideToast(); onUndo(); buzz() };
+  el.hidden = false; document.body.classList.add('has-toast');
+  const bar = el.querySelector('#toastBar'); bar.style.animation = 'none'; bar.offsetWidth; bar.style.animation = '';
+  clearTimeout(toastTimer); toastTimer = setTimeout(hideToast, 10000);
+}
+function hideToast() { clearTimeout(toastTimer); $('#toast').hidden = true; document.body.classList.remove('has-toast') }
+/* Exécute fn (qui renvoie l'id touché) et propose d'annuler : on remet l'entrée
+   telle qu'elle était, ou on supprime celle qui vient d'être créée. */
+function undoable(msg, fn) {
+  const a = active(), snap = a ? structuredClone(a) : null;
+  const id = fn(); if (!id) return;
+  toast(typeof msg === 'function' ? msg(events.get(id)) : msg, () => {
+    if (snap && snap.id === id) put(snap);
+    else { const e = events.get(id); if (e) put({ ...e, del: true }) }
+  });
+}
+
 function tapSide(side) {
   const t = now();
   let e = active();
@@ -103,30 +126,27 @@ function tapSide(side) {
   if (o && o.s === side) return;
   if (o) o.b = t;
   e.segs.push({ s: side, a: t, b: null });
-  buzz(); put(e);
+  buzz(); put(e); return e.id;
 }
-/* Pendant une tétée, changer de sein demande 2 taps (évite les erreurs) ;
-   reprendre sur le même sein après une pause n'en demande qu'un. */
-let armed = null, armTimer = 0;
 function sideTap(side) {
   const e = active();
-  if (!e) return tapSide(side);
+  if (!e) return undoable(`Tétée démarrée · sein ${SIDE[side].toLowerCase()}`, () => tapSide(side));
   const o = openSeg(e), last = e.segs.at(-1)?.s;
   if (o?.s === side) return;
   if (!o && last === side) return resume();
-  if (armed === side) { armed = null; clearTimeout(armTimer); return tapSide(side) }
-  armed = side; buzz(); render();
-  clearTimeout(armTimer); armTimer = setTimeout(() => { armed = null; render() }, 3000);
+  undoable(`Passage au sein ${SIDE[side].toLowerCase()}`, () => tapSide(side));
 }
 function pause() { const e = active(), o = e && openSeg(e); if (o) { o.b = now(); buzz(); put(e) } }
 function resume() { const e = active(); if (!e) return; e.segs.push({ s: e.segs.at(-1)?.s || 'G', a: now(), b: null }); buzz(); put(e) }
 function stop() {
-  const e = active(); if (!e) return;
-  const t = now(), o = openSeg(e);
-  if (o) o.b = t;
-  e.end = e.segs.at(-1)?.b ?? t;      // une pause en cours n'est pas comptée
-  if (sideMs(e) < 5000) e.del = true; // tap par erreur
-  buzz(); put(e);
+  undoable(e => e?.del ? 'Tétée trop courte, ignorée' : `Tétée terminée · ${dur(sideMs(e))}`, () => {
+    const e = active(); if (!e) return;
+    const t = now(), o = openSeg(e);
+    if (o) o.b = t;
+    e.end = e.segs.at(-1)?.b ?? t;      // une pause en cours n'est pas comptée
+    if (sideMs(e) < 5000) e.del = true; // tap par erreur
+    buzz(); put(e); return e.id;
+  });
 }
 /* Corriger à la volée : ajoute ou retire du temps sur un côté de la tétée en cours.
    Ajouter recule le début du dernier passage sur ce sein (ou crée un passage avant le début). */
@@ -168,7 +188,7 @@ function newEntry(type) {
   editDialog(type === 'sein' ? { id: uid(), type, start: t - 15 * 6e4, end: t, segs: [] }
     : { id: uid(), type, start: t, end: t, ml: S.ml, milk: S.milk, pipi: true, caca: false }, true);
 }
-function cancelFeed() { const e = active(); if (e && confirm('Annuler cette tétée ?')) { e.del = true; put(e) } }
+function cancelFeed() { undoable('Tétée supprimée', () => { const e = active(); if (e) { e.del = true; put(e); return e.id } }) }
 
 /* ---------- thème ---------- */
 /* Lever / coucher du soleil (algorithme NOAA simplifié), position par défaut : centre de la France. */
@@ -214,9 +234,9 @@ function homeHTML() {
   if (e) {
     const o = openSeg(e), last = e.segs.at(-1)?.s || 'G';
     const sideBtn = s => {
-      const cur = o?.s === s, arm = armed === s;
-      const hint = cur ? 'en cours' : arm ? 'touchez encore' : o ? 'changer' : last === s ? 'reprendre ici' : 'changer';
-      return `<button class="btn side mini ${s} ${cur ? 'on' : ''} ${arm ? 'armed' : ''} ${!cur && o ? 'dim' : ''}" data-act="side" data-s="${s}">
+      const cur = o?.s === s;
+      const hint = cur ? 'en cours' : !o && last === s ? 'reprendre ici' : 'passer ici';
+      return `<button class="btn side mini ${s} ${cur ? 'on' : ''} ${!cur && o ? 'dim' : ''}" data-act="side" data-s="${s}">
         <span class="sl">${s}</span><span class="t" data-t="${s}"></span><small>${hint}</small></button>`;
     };
     return `<section class="home">
@@ -369,6 +389,16 @@ function settingsHTML() {
       <button class="btn primary" data-act="create">Activer la synchro</button>
       <a class="link" href="https://github.com/SachD-Av/junior/blob/main/tetee/README.md" target="_blank">Guide de configuration</a>`}
     </div>
+    ${S.fam ? `<h2>Sauvegarde automatique Google Drive</h2>
+    <div class="card set">
+      <p>Une copie chaque jour, chaque semaine et chaque mois dans votre Google Drive, faite par Google la nuit, même téléphones éteints. Gratuit, à installer une fois (de préférence sur ordinateur) :</p>
+      <p>1. Copiez le script (il contient déjà votre code famille).<br>
+         2. Ouvrez <b>script.google.com</b> → <b>Nouveau projet</b> → effacez tout → collez.<br>
+         3. Enregistrez, choisissez la fonction <b>installer</b> → <b>Exécuter</b> → autorisez l'accès.</p>
+      <div class="grid2"><button class="btn" data-act="drivescript" data-mode="copy">${ic('download')}<small>Copier le script</small></button>
+        <button class="btn" data-act="drivescript" data-mode="share">${ic('share')}<small>M'envoyer le script</small></button></div>
+      <p>Le script contient le code d'accès au suivi : ne le partagez pas.</p>
+    </div>` : ''}
     <h2>Données</h2>
     <div class="card grid2">
       <button class="btn" data-act="export">${ic('download')}<small>Exporter</small></button>
@@ -426,7 +456,7 @@ function bibDialog() {
     (v, f) => {
       S.ml = ml; S.milk = f.milk.value; saveSettings();
       const t = new Date(f.start.value).getTime() || now();
-      put({ id: uid(), type: 'biberon', start: t, end: t, ml, milk: S.milk });
+      undoable(`Biberon noté · ${ml} ml`, () => { const e = { id: uid(), type: 'biberon', start: t, end: t, ml, milk: S.milk }; put(e); return e.id });
     },
     f => f.addEventListener('click', ev => {
       const b = ev.target.closest('[data-d],[data-v]'); if (!b) return;
@@ -440,7 +470,8 @@ function coucheDialog() {
     <div class="grid2"><button class="btn" value="p">${ic('drop')}Pipi</button><button class="btn" value="c">${ic('poop')}Caca</button></div>
     <button class="btn primary" value="pc">Les deux</button>
     <menu><button class="btn" value="cancel">Annuler</button></menu>`,
-    v => { const t = now(); put({ id: uid(), type: 'couche', start: t, end: t, pipi: v.includes('p'), caca: v.includes('c') }) });
+    v => { const t = now(), e = { id: uid(), type: 'couche', start: t, end: t, pipi: v.includes('p'), caca: v.includes('c') };
+      undoable(`Couche notée · ${[e.pipi && 'pipi', e.caca && 'caca'].filter(Boolean).join(' + ')}`, () => { put(e); return e.id }) });
 }
 
 function editDialog(e, isNew) {
@@ -513,6 +544,7 @@ document.addEventListener('click', ev => {
   else if (a === 'adjust') adjustDialog();
   else if (a === 'forgot') forgotDialog();
   else if (a === 'invite') invite();
+  else if (a === 'drivescript') driveScript(b.dataset.mode);
   else if (a === 'unlink') { if (confirm('Arrêter la synchro ? Les données restent sur ce téléphone.')) { cloud?.unsub?.(); cloud = null; S.fb = S.fam = null; saveSettings(); setSync('local'); render(true) } }
   else if (a === 'join') { if (!joinFrom($('#joinTxt').value)) alert('Lien invalide') }
   else if (a === 'create') {
@@ -556,6 +588,14 @@ function parseCfg(txt) {
 const b64e = s => btoa(unescape(encodeURIComponent(s))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 const b64d = s => decodeURIComponent(escape(atob(s.replace(/-/g, '+').replace(/_/g, '/'))));
 function inviteLink() { return location.origin + location.pathname + '#join=' + b64e(JSON.stringify({ c: S.fb, f: S.fam })) }
+async function driveScript(mode) {
+  try {
+    const txt = (await (await fetch('sauvegarde-drive.gs', { cache: 'no-cache' })).text())
+      .replace("'__PROJET__'", JSON.stringify(S.fb.projectId)).replace("'__FAMILLE__'", JSON.stringify(S.fam));
+    if (mode === 'share' && navigator.share) return await navigator.share({ title: 'Script de sauvegarde Tétée', text: txt });
+    await navigator.clipboard.writeText(txt); alert('Script copié ! Collez-le dans un nouveau projet sur script.google.com.');
+  } catch (err) { if (err?.name !== 'AbortError') alert('Impossible de copier le script : ' + (err?.message || err)) }
+}
 async function invite() {
   const url = inviteLink();
   try { if (navigator.share) return await navigator.share({ title: 'Suivi tétée', text: 'Rejoins le suivi des tétées :', url }) } catch { return }

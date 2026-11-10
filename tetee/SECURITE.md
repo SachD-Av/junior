@@ -25,5 +25,6 @@ Date : 10 novembre 2026. Fichiers audités : `index.html`, `app.js`, `sw.js`, `m
 - **La clé API Firebase n'est pas un secret** (c'est le fonctionnement normal de Firebase). Restreignez-la au site `https://sachd-av.github.io/*` dans la console Google Cloud (voir le README) pour limiter les abus de quota.
 - **Pas de comptes utilisateurs.** C'est un choix de simplicité. La sécurité repose sur le code de 80 bits, impossible à deviner. On peut ajouter plus tard Firebase Auth et Firebase App Check.
 - **SDK Firebase chargé depuis `www.gstatic.com` sans contrôle d'intégrité (SRI)**, car les imports dynamiques ne le permettent pas. Le risque est très faible (CDN officiel de Google, version figée `10.12.2`).
+- **Script de sauvegarde Google Drive** : il contient le code famille et tourne dans votre compte Google. Il lit Firestore en lecture seule par l'API REST publique (les règles exigent le code), et n'écrit que dans le dossier Drive « Tétée – sauvegardes ». Ne le partagez pas.
 - **Données en clair sur le téléphone** (`localStorage`) : protégées par le verrouillage du téléphone.
 - **GitHub Pages ne permet pas les en-têtes HTTP** : la CSP est en `<meta>`, donc `frame-ancestors` (anti-clickjacking) n'est pas applicable. Risque faible : l'appli n'a pas d'action sensible en un clic.
