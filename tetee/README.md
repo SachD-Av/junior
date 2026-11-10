@@ -5,6 +5,7 @@ Appli web installable sur Android (PWA) : pas de Play Store, pas de compilation.
 - **Tétée** : un tap sur **G** ou **D** démarre le chrono. Gros bouton **Pause** et **Reprendre**. Chaque action se fait en 1 tap ; démarrer, changer de sein, terminer ou noter une couche affiche 10 s un bandeau **Annuler** en cas d'erreur.
 - Le dernier sein utilisé est marqué « dernier ». L'écran reste allumé pendant une tétée.
 - **Biberon** (ml, lait maternel ou artificiel) et **Couche** (humide, sale, mixte ou explosion) en 2 taps.
+- **Tirage** (ml à gauche et à droite), **Sommeil** (bouton Dodo / Réveil avec chrono) et **Croissance** (poids, taille, tour de tête, avec courbe de poids dans Stats).
 - **Historique** : appuyer sur une ligne pour la modifier ou la supprimer. Les boutons « + » servent à ajouter un oubli.
 - **Stats** : aujourd'hui, dernières 24 h, moyenne sur 7 jours, répartition G/D, intervalle moyen entre deux repas.
 - **Mode une main** : les gros boutons sont en bas de l'écran, sous le pouce.

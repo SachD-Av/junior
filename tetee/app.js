@@ -49,6 +49,8 @@ const ICONS = {
   drop: '<path d="M12 2.7S6 9.3 6 14a6 6 0 0 0 12 0c0-4.7-6-11.3-6-11.3z"/>',
   mixed: '<path d="M7 3S3 7.5 3 10.5a4 4 0 0 0 8 0C11 7.5 7 3 7 3z"/><path d="M12.5 21h7.5a2.2 2.2 0 0 0 .3-4.4 2.2 2.2 0 0 0-1.8-3.5A2.6 2.6 0 0 0 16 10.5c.3 1.1-.4 1.8-1.3 2.1a2.2 2.2 0 0 0-1.6 4A2.2 2.2 0 0 0 12.5 21z"/>',
   pump: '<path d="M7 3h10l-3 5h-4z"/><path d="M10 8v2M14 8v2"/><rect x="7" y="10" width="10" height="11" rx="2.5"/><path d="M7 15h3.5M7 18h3.5"/>',
+  moon2: '<path d="M20 14.5A8 8 0 1 1 9.5 4a6.2 6.2 0 0 0 10.5 10.5z"/><path d="M15 3h4l-4 4h4"/>',
+  scale: '<rect x="3" y="4" width="18" height="17" rx="3"/><path d="M8.5 11a3.5 3.5 0 0 1 7 0"/><path d="M12 11l1.5-2"/>',
   burst: '<path d="M12 2l1.8 4.6L18 4l-1 4.9L22 10l-4.2 2.6L20 17l-4.8-.8L14 21l-2-4-2 4-1.2-4.8L4 17l2.2-4.4L2 10l5-1.1L6 4l4.2 2.6z"/>',
   poop: '<path d="M6.5 20h11a3 3 0 0 0 .4-6 3 3 0 0 0-2.4-4.9A3.5 3.5 0 0 0 12 4c.4 1.6-.6 2.5-1.8 2.9A3 3 0 0 0 8 13.6 3 3 0 0 0 6.5 20z"/>',
   share: '<path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7M16 6l-4-4-4 4M12 2v13"/>',
@@ -74,7 +76,7 @@ const saveSettings = () => LS.set('tt_settings', S);
 const num = v => { const n = +v; return Number.isFinite(n) ? n : 0 };
 const str = (v, n) => v == null || v === '' ? null : String(v).slice(0, n);
 function clean(e, forcedId) {
-  if (!e || typeof e !== 'object' || !['sein', 'biberon', 'couche', 'tirage'].includes(e.type)) return null;
+  if (!e || typeof e !== 'object' || !['sein', 'biberon', 'couche', 'tirage', 'sommeil', 'mesure'].includes(e.type)) return null;
   const id = String(forcedId ?? e.id ?? '');
   if (!/^[\w-]{1,40}$/.test(id)) return null;
   const o = { id, type: e.type, start: num(e.start), end: e.end == null ? null : num(e.end),
@@ -84,7 +86,12 @@ function clean(e, forcedId) {
     o.segs = (Array.isArray(e.segs) ? e.segs : []).slice(0, 200)
       .filter(x => x && (x.s === 'G' || x.s === 'D'))
       .map(x => ({ s: x.s, a: num(x.a), b: x.b == null ? null : num(x.b) }));
-  } else o.end = o.start;
+  } else if (o.type !== 'sommeil') o.end = o.start;
+  if (o.type === 'sommeil' && o.end != null && o.end < o.start) o.end = o.start;
+  if (o.type === 'mesure') {
+    const q = (v, max) => { const n = Math.round(num(v) * 10) / 10; return n > 0 && n <= max ? n : null };
+    o.poids = q(e.poids, 30000); o.taille = q(e.taille, 150); o.tete = q(e.tete, 80);
+  }
   if (o.type === 'tirage') { const q = v => Math.min(2000, Math.max(0, Math.round(num(v)))); o.mlG = q(e.mlG); o.mlD = q(e.mlD); o.ml = o.mlG + o.mlD }
   if (o.type === 'biberon') { o.ml = Math.min(2000, Math.max(0, Math.round(num(e.ml)))); o.milk = e.milk === 'maternel' ? 'maternel' : 'artificiel' }
   if (o.type === 'couche') { const k = coucheKind(e); o.kind = k; o.pipi = COUCHE[k].pipi; o.caca = COUCHE[k].caca }
@@ -97,6 +104,8 @@ let view = 'home', cloud = null;
 
 const list = () => [...events.values()].filter(e => !e.del).sort((a, b) => b.start - a.start);
 const active = () => list().find(e => e.type === 'sein' && !e.end);
+const sleeping = () => list().find(e => e.type === 'sommeil' && e.end == null);
+const sleepMs = (e, a = -Infinity, b = Infinity, t = now()) => Math.max(0, Math.min(e.end ?? t, b) - Math.max(e.start, a));
 const openSeg = e => e.segs.find(s => !s.b);
 const sideMs = (e, side, t = now()) => e.segs.filter(s => !side || s.s === side).reduce((m, s) => m + ((s.b ?? t) - s.a), 0);
 const isMeal = e => e.type === 'biberon' || (e.type === 'sein' && e.end);
@@ -229,13 +238,26 @@ function adjustDialog() {
 }
 function forgotDialog() {
   dialog(`<h3>${ic('plus')} Ajouter un oubli</h3>
-    <button class="btn row-btn" value="sein">${ic('feed')}Tétée</button><button class="btn row-btn" value="biberon">${ic('bottle')}Biberon</button><button class="btn row-btn" value="couche">${ic('diaper')}Couche</button><button class="btn row-btn" value="tirage">${ic('pump')}Tirage</button>
+    <button class="btn row-btn" value="sein">${ic('feed')}Tétée</button><button class="btn row-btn" value="biberon">${ic('bottle')}Biberon</button><button class="btn row-btn" value="couche">${ic('diaper')}Couche</button><button class="btn row-btn" value="tirage">${ic('pump')}Tirage</button><button class="btn row-btn" value="sommeil">${ic('moon2')}Sommeil</button><button class="btn row-btn" value="mesure">${ic('scale')}Mesure (poids, taille)</button>
     <menu><button class="btn" value="cancel">Annuler</button></menu>`, v => setTimeout(() => newEntry(v)));
 }
+function lastMesure() { const m = list().find(e => e.type === 'mesure'); return m ? { poids: m.poids, taille: m.taille, tete: m.tete } : {} }
 function newEntry(type) {
   const t = now();
   editDialog(type === 'sein' ? { id: uid(), type, start: t - 15 * 6e4, end: t, segs: [] }
+    : type === 'sommeil' ? { id: uid(), type, start: t - 60 * 6e4, end: t }
+    : type === 'mesure' ? { id: uid(), type, start: t, end: t, ...lastMesure() }
     : { id: uid(), type, start: t, end: t, ml: 0, mlG: 0, mlD: 0, milk: S.milk, kind: 'humide' }, true);
+}
+function sleepToggle() {
+  const z = sleeping(), t = now(), undo = S.guard !== 'none' && S.prot.quick;
+  if (z) {
+    z.end = t; buzz(); put(z);
+    if (undo) toast(`Réveil · a dormi ${dur(t - z.start)}`, () => { const e = events.get(z.id); if (e) { e.end = null; put(e) } });
+  } else {
+    const e = { id: uid(), type: 'sommeil', start: t, end: null }; buzz(); put(e);
+    if (undo) toast('Sommeil démarré', () => { const x = events.get(e.id); if (x) { x.del = true; put(x) } });
+  }
 }
 function cancelFeed() { guard('cancel', { ask: 'Supprimer cette tétée ?', done: 'Tétée supprimée' }, () => { const e = active(); if (e) { e.del = true; put(e); return e.id } }) }
 
@@ -321,7 +343,7 @@ function homeHTML() {
     </section>`;
   }
   const L = list(), meal = L.find(isMeal), lastSein = L.find(x => x.type === 'sein' && x.end);
-  const lastSide = lastSein?.segs.at(-1)?.s, lastCouche = L.find(x => x.type === 'couche');
+  const lastSide = lastSein?.segs.at(-1)?.s, lastCouche = L.find(x => x.type === 'couche'), zz = sleeping();
   const t0 = dayStart(now()), today = summarize(L.filter(x => x.start >= t0));
   let sub = '—';
   if (meal) sub = meal.type === 'sein'
@@ -341,18 +363,20 @@ function homeHTML() {
     </div>
     <div class="card today">
       <div class="today-h"><span class="lbl">Aujourd'hui</span>
-        <span><b>${today.seins}</b> tétée${today.seins > 1 ? 's' : ''} · <b>${today.bibs}</b> bib. ${today.ml ? `(${today.ml} ml)` : ''} · <b>${today.couches}</b> couche${today.couches > 1 ? 's' : ''}${today.tirs ? ` · <b>${today.tirG + today.tirD}</b> ml tirés` : ''}</span></div>
+        <span><b>${today.seins}</b> tétée${today.seins > 1 ? 's' : ''} · <b>${today.bibs}</b> bib. ${today.ml ? `(${today.ml} ml)` : ''} · <b>${today.couches}</b> couche${today.couches > 1 ? 's' : ''}${today.tirs ? ` · <b>${today.tirG + today.tirD}</b> ml tirés` : ''}${today.tSleep ? ` · <b>${dur(today.tSleep)}</b> de sommeil` : ''}</span></div>
       ${timeline(L)}
     </div>
     <div class="spacer"></div>
+    ${zz ? `<button class="card sleepbar" data-act="sleep">${ic('moon2')}<span>Dort depuis <b data-t="sleep"></b><small>depuis ${hm(zz.start)}</small></span><em>Réveil</em></button>` : ''}
     <div class="grid2">
       ${['G', 'D'].map(s => `<button class="btn side ${s}${armCls('start' + s)}" data-act="side" data-s="${s}">${s}<small>${SIDE[s]}</small>
         ${lastSide === s ? '<span class="badge">dernier</span>' : ''}</button>`).join('')}
     </div>
-    <div class="grid3">
+    <div class="grid4">
       <button class="btn" data-act="bib">${ic('bottle')}<span>Biberon</span></button>
       <button class="btn" data-act="couche">${ic('diaper')}<span>Couche</span></button>
       <button class="btn" data-act="tirage">${ic('pump')}<span>Tirage</span></button>
+      <button class="btn${zz ? ' sleeping' : ''}" data-act="sleep">${ic('moon2')}<span>${zz ? 'Réveil' : 'Dodo'}</span></button>
     </div>
     <button class="link" data-act="forgot">Ajouter un oubli</button>
   </section>`;
@@ -363,7 +387,9 @@ function timeline(L) {
   const t0 = dayStart(now()), pct = t => Math.max(0, Math.min(100, (t - t0) / 864e5 * 100)).toFixed(2), T = now();
   let marks = '';
   for (const e of L) {
-    if (e.start < t0 - 3 * 36e5) break;           // liste triée du plus récent au plus ancien
+    if (e.start < t0 - 18 * 36e5) break;          // liste triée du plus récent au plus ancien (un dodo peut commencer la veille)
+    if (e.type === 'sommeil') { const a = Math.max(e.start, t0), b = e.end ?? T; if (b > t0) marks = `<i class="tl-z" style="left:${pct(a)}%;width:${(pct(b) - pct(a)).toFixed(2)}%"></i>` + marks; continue }
+    if (e.start < t0 - 3 * 36e5) continue;
     if (e.type === 'sein') for (const g of e.segs) {
       const a = Math.max(g.a, t0), b = g.b ?? T; if (b <= t0) continue;
       marks += `<i class="tl-s ${g.s}" style="left:${pct(a)}%;width:max(3px,${(pct(b) - pct(a)).toFixed(2)}%)"></i>`;
@@ -371,14 +397,18 @@ function timeline(L) {
   }
   return `<div class="tl">${marks}<i class="tl-now" style="left:${pct(T)}%"></i></div>
     <div class="tl-h"><span>0 h</span><span>6 h</span><span>12 h</span><span>18 h</span><span>24 h</span></div>
-    <div class="tl-k"><span><i class="tl-s G"></i>Gauche</span><span><i class="tl-s D"></i>Droit</span><span><i class="tl-b"></i>Biberon</span><span><i class="tl-t"></i>Tirage</span><span><i class="tl-c"></i>Couche</span></div>`;
+    <div class="tl-k"><span><i class="tl-s G"></i>Gauche</span><span><i class="tl-s D"></i>Droit</span><span><i class="tl-b"></i>Biberon</span><span><i class="tl-t"></i>Tirage</span><span><i class="tl-z"></i>Sommeil</span><span><i class="tl-c"></i>Couche</span></div>`;
 }
 
+const fmtN = n => String(n).replace('.', ',');
+const fmtKg = g => `${(g / 1000).toFixed(3).replace('.', ',')} kg`;
 function describe(e) {
   if (e.type === 'sein') {
     const parts = ['G', 'D'].filter(s => e.segs.some(x => x.s === s)).map(s => `${s} ${dur(sideMs(e, s))}`);
     return { ic: ic('feed'), t: e.end ? parts.join(' · ') || '0 min' : 'En cours…', d: e.end ? `Total ${dur(sideMs(e))}` : '' };
   }
+  if (e.type === 'sommeil') return { ic: ic('moon2'), t: e.end == null ? 'Dort…' : `Sommeil ${dur(e.end - e.start)}`, d: e.end == null ? `depuis ${hm(e.start)}` : `${hm(e.start)} → ${hm(e.end)}` };
+  if (e.type === 'mesure') return { ic: ic('scale'), t: 'Mesure', d: [e.poids && fmtKg(e.poids), e.taille && `${fmtN(e.taille)} cm`, e.tete && `tête ${fmtN(e.tete)} cm`].filter(Boolean).join(' · ') };
   if (e.type === 'tirage') return { ic: ic('pump'), t: `Tirage ${e.ml} ml`, d: [e.mlG && `G ${e.mlG} ml`, e.mlD && `D ${e.mlD} ml`].filter(Boolean).join(' · ') };
   if (e.type === 'biberon') return { ic: ic('bottle'), t: `${e.ml} ml`, d: e.milk === 'maternel' ? 'Lait maternel' : 'Lait artificiel' };
   const k = COUCHE[coucheKind(e)];
@@ -391,7 +421,9 @@ function historyHTML() {
     <button class="btn" data-act="add" data-type="sein">+ Tétée</button>
     <button class="btn" data-act="add" data-type="biberon">+ Biberon</button>
     <button class="btn" data-act="add" data-type="couche">+ Couche</button>
-    <button class="btn" data-act="add" data-type="tirage">+ Tirage</button></div>`;
+    <button class="btn" data-act="add" data-type="tirage">+ Tirage</button>
+    <button class="btn" data-act="add" data-type="sommeil">+ Sommeil</button>
+    <button class="btn" data-act="add" data-type="mesure">+ Mesure</button></div>`;
   if (!L.length) return html + `<p class="sub" style="text-align:center;margin-top:40px">Rien pour l'instant.</p>`;
   const meals = L.filter(isMeal);
   let day = null;
@@ -415,9 +447,11 @@ function summarize(evs) {
   const gaps = meals.slice(1).map((e, i) => e.start - meals[i].start);
   const tG = seins.reduce((m, e) => m + sideMs(e, 'G'), 0), tD = seins.reduce((m, e) => m + sideMs(e, 'D'), 0);
   const couches = evs.filter(e => e.type === 'couche');
+  const zz = evs.filter(e => e.type === 'sommeil');
   return {
     seins: seins.length, bibs: bibs.length, meals: meals.length, tG, tD, tSein: tG + tD,
     ml: bibs.reduce((m, e) => m + (+e.ml || 0), 0),
+    naps: zz.length, tSleep: zz.reduce((m, e) => m + sleepMs(e), 0),
     tirs: tirs.length, tirG: tirs.reduce((m, e) => m + (e.mlG || 0), 0), tirD: tirs.reduce((m, e) => m + (e.mlD || 0), 0),
     gap: gaps.length ? gaps.reduce((a, b) => a + b, 0) / gaps.length : 0,
     avgSein: seins.length ? (tG + tD) / seins.length : 0,
@@ -439,6 +473,7 @@ function block(title, s, perDay = 1) {
       ${kpi(Math.round(s.ml / perDay) + ' ml', `biberons (${r(s.bibs)})` + (perDay > 1 ? ' / jour' : ''))}
       ${s.tirs ? kpi(Math.round((s.tirG + s.tirD) / perDay) + ' ml', `tirés (${r(s.tirs)})` + (perDay > 1 ? ' / jour' : '') + ` · G ${Math.round(s.tirG / perDay)} / D ${Math.round(s.tirD / perDay)}`) : ''}
       ${kpi(r(s.couches), 'couches' + (perDay > 1 ? ' / jour' : ''))}
+      ${s.naps ? kpi(dur(s.tSleep / perDay), `sommeil (${r(s.naps)} dodo${s.naps > 1 ? 's' : ''})` + (perDay > 1 ? ' / jour' : '')) : ''}
       <div class="kpi"><span>Détail des couches</span><div class="kinds">${Object.entries(COUCHE).map(([k, c]) => `<span>${c.l} <b>${r(s.byKind[k])}</b></span>`).join('')}</div></div>
     </div>
     ${s.tSein ? `<div class="split"><i style="width:${s.tG / tot * 100}%;background:var(--g)"></i><i style="flex:1;background:var(--d)"></i></div>
@@ -454,10 +489,39 @@ function statsHTML() {
   return block("Aujourd'hui", days[0].s)
     + block('Dernières 24 h', summarize(L.filter(e => e.start >= t - 864e5)))
     + block('Moyenne 7 jours', week, 7)
-    + `<h2>Repas par jour</h2><div class="card bars">${days.map(d => `<div class="b">
+    + `<h2>Jour par jour</h2><div class="card bars">${days.map(d => `<div class="b">
         <span>${new Date(d.a).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' })}</span>
         <div class="track"><div class="fill" style="width:${d.s.meals / max * 100}%"></div>
-        <span class="val">${d.s.meals} repas · ${dur(d.s.tSein)}${d.s.ml ? ' · ' + d.s.ml + ' ml' : ''}</span></div></div>`).join('')}</div>`;
+        <span class="val">${d.s.meals} repas · ${dur(d.s.tSein)}${d.s.ml ? ' · ' + d.s.ml + ' ml' : ''}${d.s.tSleep ? ' · dodo ' + dur(d.s.tSleep) : ''}</span></div></div>`).join('')}</div>`
+    + growthHTML(L);
+}
+
+/* Croissance : dernières valeurs + courbe de poids */
+function growthHTML(L) {
+  const M = L.filter(e => e.type === 'mesure').sort((a, b) => a.start - b.start);
+  const last = k => [...M].reverse().find(e => e[k]);
+  const lp = last('poids'), lt = last('taille'), lh = last('tete');
+  let chart = '';
+  const P = M.filter(e => e.poids);
+  if (P.length >= 2) {
+    const W = 320, H = 140, pad = 26, t0 = P[0].start, t1 = P.at(-1).start || t0 + 1;
+    const lo = Math.min(...P.map(e => e.poids)), hi = Math.max(...P.map(e => e.poids)), span = Math.max(200, hi - lo);
+    const x = t => pad + (W - pad - 8) * (t - t0) / Math.max(1, t1 - t0), y = g => H - 18 - (H - 30) * (g - lo + span * .1) / (span * 1.2);
+    const pts = P.map(e => `${x(e.start).toFixed(1)},${y(e.poids).toFixed(1)}`).join(' ');
+    chart = `<svg class="growth" viewBox="0 0 ${W} ${H}" role="img" aria-label="Courbe de poids">
+      <polyline points="${pts}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+      ${P.map(e => `<circle cx="${x(e.start).toFixed(1)}" cy="${y(e.poids).toFixed(1)}" r="3.5" fill="var(--card)" stroke="var(--accent)" stroke-width="2"/>`).join('')}
+      <text x="${pad}" y="${H - 3}" class="ax">${new Date(t0).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</text>
+      <text x="${W - 8}" y="${H - 3}" class="ax" text-anchor="end">${new Date(t1).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</text>
+      <text x="2" y="12" class="ax">${fmtKg(hi)}</text></svg>`;
+  }
+  const gain = P.length >= 2 ? (() => { const a = P.at(-2), b = P.at(-1), days = Math.max(1, (b.start - a.start) / 864e5); return `${b.poids - a.poids >= 0 ? '+' : ''}${Math.round((b.poids - a.poids) / days)} g/jour depuis la mesure précédente` })() : '';
+  return `<h2>Croissance</h2><div class="card">
+    <div class="kpis">${kpi(lp ? fmtKg(lp.poids) : '—', 'poids')}${kpi(lt ? fmtN(lt.taille) + ' cm' : '—', 'taille')}${kpi(lh ? fmtN(lh.tete) + ' cm' : '—', 'tour de tête')}
+      ${kpi(M.length ? new Date(M.at(-1).start).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : '—', 'dernière mesure')}</div>
+    ${chart}${gain ? `<p class="sub">${gain}</p>` : ''}
+    <button class="btn row-btn" data-act="mesure" style="margin-top:10px;width:100%">${ic('plus')}Ajouter une mesure</button>
+  </div>`;
 }
 
 function settingsHTML() {
@@ -528,6 +592,7 @@ function tick() {
   document.querySelectorAll('[data-t]').forEach(el => {
     const k = el.dataset.t;
     if (k === 'since') { const m = list().find(isMeal); if (m) el.textContent = dur(t - m.start) }
+    else if (k === 'sleep') { const z = sleeping(); if (z) el.textContent = clock(t - z.start) }
     else if (k === 'sinceCouche') { const c = list().find(x => x.type === 'couche'); if (c) el.textContent = 'il y a ' + dur(t - c.start) }
     else if (!e) return;
     else if (k === 'startHm') el.textContent = hm(e.start);
@@ -554,7 +619,9 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 
 /* ---------- boîtes de dialogue ---------- */
 function dialog(html, onClose, setup) {
-  const d = $('#dlg'), f = $('#dlgForm');
+  // formulaire neuf à chaque ouverture : les écouteurs des fenêtres précédentes disparaissent
+  const d = $('#dlg'), old = $('#dlgForm'), f = old.cloneNode(false);
+  old.replaceWith(f);
   f.innerHTML = html;
   setup?.(f);
   f.onsubmit = ev => { const v = ev.submitter?.value; if (v && v !== 'cancel') onClose(v, f) };
@@ -625,6 +692,11 @@ function editDialog(e, isNew) {
         <input type="number" name="${n}" min="0" inputmode="numeric" value="${min(s)}">
         <button type="button" class="btn" data-step="1" data-for="${n}">+</button></span></label>`).join('')}</div>
       <div class="sub" data-endhint></div>`;
+  if (e.type === 'sommeil') body = `<label>Fin (vide = dort encore)<input type="datetime-local" name="end" value="${e.end != null ? dtl(e.end) : ''}"></label>
+      <div class="sub" data-sleephint></div>`;
+  if (e.type === 'mesure') body = `<label>Poids (g)<input type="number" name="poids" min="0" max="30000" step="1" inputmode="numeric" placeholder="ex. 4250" value="${e.poids ?? ''}"></label>
+      <div class="grid2"><label>Taille (cm)<input type="number" name="taille" min="0" max="150" step="0.1" inputmode="decimal" placeholder="ex. 54,5" value="${e.taille ?? ''}"></label>
+      <label>Tour de tête (cm)<input type="number" name="tete" min="0" max="80" step="0.1" inputmode="decimal" placeholder="ex. 37" value="${e.tete ?? ''}"></label></div>`;
   if (e.type === 'tirage') body = `<div class="grid2">
       <label>Gauche (ml)<input type="number" name="mlG" min="0" step="1" inputmode="numeric" placeholder="0" value="${e.mlG || ''}"></label>
       <label>Droit (ml)<input type="number" name="mlD" min="0" step="1" inputmode="numeric" placeholder="0" value="${e.mlD || ''}"></label></div>`;
@@ -632,7 +704,7 @@ function editDialog(e, isNew) {
       <div class="seg">${['artificiel', 'maternel'].map(v => `<label><input type="radio" name="milk" value="${v}" ${(e.milk || S.milk) === v ? 'checked' : ''}>Lait ${v}</label>`).join('')}</div>`;
   if (e.type === 'couche') body = `<div class="seg">${Object.entries(COUCHE).map(([k, c]) =>
       `<label><input type="radio" name="kind" value="${k}" ${coucheKind(e) === k ? 'checked' : ''}>${c.l}</label>`).join('')}</div>`;
-  const title = { sein: ic('feed') + ' Tétée', biberon: ic('bottle') + ' Biberon', couche: ic('diaper') + ' Couche', tirage: ic('pump') + ' Tirage' }[e.type];
+  const title = { sein: ic('feed') + ' Tétée', biberon: ic('bottle') + ' Biberon', couche: ic('diaper') + ' Couche', tirage: ic('pump') + ' Tirage', sommeil: ic('moon2') + ' Sommeil', mesure: ic('scale') + ' Mesure' }[e.type];
   dialog(`<h3>${title}</h3>
     <label>Début<input type="datetime-local" name="start" value="${dtl(e.start)}" required></label>
     ${body}
@@ -652,6 +724,14 @@ function editDialog(e, isNew) {
           for (const [s, m] of order) if (m) { e.segs.push({ s, a: t, b: t + m * 6e4 }); t += m * 6e4 }
         }
         e.start = start; e.end = e.segs.at(-1)?.b ?? start;
+      } else if (e.type === 'sommeil') {
+        const end = f.end.value ? new Date(f.end.value).getTime() : null;
+        if (end != null && end <= start) return alert('La fin doit être après le début.');
+        e.start = start; e.end = end;
+      } else if (e.type === 'mesure') {
+        e.start = e.end = start;
+        e.poids = +f.poids.value || null; e.taille = +f.taille.value || null; e.tete = +f.tete.value || null;
+        if (!e.poids && !e.taille && !e.tete) return alert('Indiquez au moins une valeur.');
       } else {
         e.start = e.end = start;
         if (e.type === 'biberon') { e.ml = Math.max(0, +f.ml.value || 0); e.milk = f.milk.value }
@@ -662,6 +742,11 @@ function editDialog(e, isNew) {
       put(e);
     },
     f => {
+      if (e.type === 'sommeil') {
+        const h = () => { const a = new Date(f.start.value).getTime(), b = f.end.value ? new Date(f.end.value).getTime() : null;
+          f.querySelector('[data-sleephint]').textContent = a && b && b > a ? `Durée : ${dur(b - a)}` : b ? 'La fin doit être après le début' : 'En cours' };
+        f.addEventListener('input', h); h(); return;
+      }
       if (e.type !== 'sein') return;
       const hint = () => { const t = new Date(f.start.value).getTime(), m = (+f.g.value || 0) + (+f.d.value || 0);
         f.querySelector('[data-endhint]').textContent = t ? `Fin : ${hm(t + m * 6e4)} · total ${m} min` : '' };
@@ -684,6 +769,8 @@ document.addEventListener('click', ev => {
   else if (a === 'cancel') cancelFeed();
   else if (a === 'bib') bibDialog();
   else if (a === 'tirage') tirageDialog();
+  else if (a === 'sleep') sleepToggle();
+  else if (a === 'mesure') newEntry('mesure');
   else if (a === 'couche') coucheDialog();
   else if (a === 'night') toggleNight();
   else if (a === 'edit') { const e = events.get(b.dataset.id); if (e && !e.end && e.type === 'sein') { view = 'home'; render() } else if (e) editDialog(structuredClone(e)) }
