@@ -22,10 +22,10 @@ const SIDE = { G: 'Gauche', D: 'Droit' };    // libellés des boutons (sein gauc
 const SEIN = { G: 'gauche', D: 'droit' };     // « sein gauche / sein droit »
 /* Types de couche (pipi/caca restent calculés pour la compatibilité et les stats) */
 const COUCHE = {
-  humide: { l: 'Humide', ic: 'drop', pipi: true, caca: false },
-  sale: { l: 'Sale', ic: 'poop', pipi: false, caca: true },
-  mixte: { l: 'Mixte', ic: 'mixed', pipi: true, caca: true },
-  explosion: { l: 'Explosion', ic: 'burst', pipi: true, caca: true }
+  humide: { l: 'Humide', sub: 'pipi', ic: 'drop', pipi: true, caca: false },
+  sale: { l: 'Sale', sub: 'caca', ic: 'poop', pipi: false, caca: true },
+  mixte: { l: 'Mixte', sub: 'pipi + caca', ic: 'mixed', pipi: true, caca: true },
+  explosion: { l: 'Explosion', sub: 'ça déborde !', ic: 'burst', pipi: true, caca: true }
 };
 const coucheKind = e => COUCHE[e.kind] ? e.kind : e.pipi && e.caca ? 'mixte' : e.caca ? 'sale' : 'humide';
 
@@ -48,6 +48,7 @@ const ICONS = {
   diaper: '<path d="M3 6h18v4a9 9 0 0 1-18 0z"/><path d="M8 6v3M16 6v3"/>',
   drop: '<path d="M12 2.7S6 9.3 6 14a6 6 0 0 0 12 0c0-4.7-6-11.3-6-11.3z"/>',
   mixed: '<path d="M7 3S3 7.5 3 10.5a4 4 0 0 0 8 0C11 7.5 7 3 7 3z"/><path d="M12.5 21h7.5a2.2 2.2 0 0 0 .3-4.4 2.2 2.2 0 0 0-1.8-3.5A2.6 2.6 0 0 0 16 10.5c.3 1.1-.4 1.8-1.3 2.1a2.2 2.2 0 0 0-1.6 4A2.2 2.2 0 0 0 12.5 21z"/>',
+  pump: '<path d="M7 3h10l-3 5h-4z"/><path d="M10 8v2M14 8v2"/><rect x="7" y="10" width="10" height="11" rx="2.5"/><path d="M7 15h3.5M7 18h3.5"/>',
   burst: '<path d="M12 2l1.8 4.6L18 4l-1 4.9L22 10l-4.2 2.6L20 17l-4.8-.8L14 21l-2-4-2 4-1.2-4.8L4 17l2.2-4.4L2 10l5-1.1L6 4l4.2 2.6z"/>',
   poop: '<path d="M6.5 20h11a3 3 0 0 0 .4-6 3 3 0 0 0-2.4-4.9A3.5 3.5 0 0 0 12 4c.4 1.6-.6 2.5-1.8 2.9A3 3 0 0 0 8 13.6 3 3 0 0 0 6.5 20z"/>',
   share: '<path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7M16 6l-4-4-4 4M12 2v13"/>',
@@ -73,7 +74,7 @@ const saveSettings = () => LS.set('tt_settings', S);
 const num = v => { const n = +v; return Number.isFinite(n) ? n : 0 };
 const str = (v, n) => v == null || v === '' ? null : String(v).slice(0, n);
 function clean(e, forcedId) {
-  if (!e || typeof e !== 'object' || !['sein', 'biberon', 'couche'].includes(e.type)) return null;
+  if (!e || typeof e !== 'object' || !['sein', 'biberon', 'couche', 'tirage'].includes(e.type)) return null;
   const id = String(forcedId ?? e.id ?? '');
   if (!/^[\w-]{1,40}$/.test(id)) return null;
   const o = { id, type: e.type, start: num(e.start), end: e.end == null ? null : num(e.end),
@@ -84,6 +85,7 @@ function clean(e, forcedId) {
       .filter(x => x && (x.s === 'G' || x.s === 'D'))
       .map(x => ({ s: x.s, a: num(x.a), b: x.b == null ? null : num(x.b) }));
   } else o.end = o.start;
+  if (o.type === 'tirage') { const q = v => Math.min(2000, Math.max(0, Math.round(num(v)))); o.mlG = q(e.mlG); o.mlD = q(e.mlD); o.ml = o.mlG + o.mlD }
   if (o.type === 'biberon') { o.ml = Math.min(2000, Math.max(0, Math.round(num(e.ml)))); o.milk = e.milk === 'maternel' ? 'maternel' : 'artificiel' }
   if (o.type === 'couche') { const k = coucheKind(e); o.kind = k; o.pipi = COUCHE[k].pipi; o.caca = COUCHE[k].caca }
   return o;
@@ -227,13 +229,13 @@ function adjustDialog() {
 }
 function forgotDialog() {
   dialog(`<h3>${ic('plus')} Ajouter un oubli</h3>
-    <button class="btn row-btn" value="sein">${ic('feed')}Tétée</button><button class="btn row-btn" value="biberon">${ic('bottle')}Biberon</button><button class="btn row-btn" value="couche">${ic('diaper')}Couche</button>
+    <button class="btn row-btn" value="sein">${ic('feed')}Tétée</button><button class="btn row-btn" value="biberon">${ic('bottle')}Biberon</button><button class="btn row-btn" value="couche">${ic('diaper')}Couche</button><button class="btn row-btn" value="tirage">${ic('pump')}Tirage</button>
     <menu><button class="btn" value="cancel">Annuler</button></menu>`, v => setTimeout(() => newEntry(v)));
 }
 function newEntry(type) {
   const t = now();
   editDialog(type === 'sein' ? { id: uid(), type, start: t - 15 * 6e4, end: t, segs: [] }
-    : { id: uid(), type, start: t, end: t, ml: 0, milk: S.milk, kind: 'humide' }, true);
+    : { id: uid(), type, start: t, end: t, ml: 0, mlG: 0, mlD: 0, milk: S.milk, kind: 'humide' }, true);
 }
 function cancelFeed() { guard('cancel', { ask: 'Supprimer cette tétée ?', done: 'Tétée supprimée' }, () => { const e = active(); if (e) { e.del = true; put(e); return e.id } }) }
 
@@ -339,7 +341,7 @@ function homeHTML() {
     </div>
     <div class="card today">
       <div class="today-h"><span class="lbl">Aujourd'hui</span>
-        <span><b>${today.seins}</b> tétée${today.seins > 1 ? 's' : ''} · <b>${today.bibs}</b> bib. ${today.ml ? `(${today.ml} ml)` : ''} · <b>${today.couches}</b> couche${today.couches > 1 ? 's' : ''}</span></div>
+        <span><b>${today.seins}</b> tétée${today.seins > 1 ? 's' : ''} · <b>${today.bibs}</b> bib. ${today.ml ? `(${today.ml} ml)` : ''} · <b>${today.couches}</b> couche${today.couches > 1 ? 's' : ''}${today.tirs ? ` · <b>${today.tirG + today.tirD}</b> ml tirés` : ''}</span></div>
       ${timeline(L)}
     </div>
     <div class="spacer"></div>
@@ -347,9 +349,10 @@ function homeHTML() {
       ${['G', 'D'].map(s => `<button class="btn side ${s}${armCls('start' + s)}" data-act="side" data-s="${s}">${s}<small>${SIDE[s]}</small>
         ${lastSide === s ? '<span class="badge">dernier</span>' : ''}</button>`).join('')}
     </div>
-    <div class="grid2">
-      <button class="btn row-btn" data-act="bib">${ic('bottle')}Biberon</button>
-      <button class="btn row-btn" data-act="couche">${ic('diaper')}Couche</button>
+    <div class="grid3">
+      <button class="btn" data-act="bib">${ic('bottle')}<span>Biberon</span></button>
+      <button class="btn" data-act="couche">${ic('diaper')}<span>Couche</span></button>
+      <button class="btn" data-act="tirage">${ic('pump')}<span>Tirage</span></button>
     </div>
     <button class="link" data-act="forgot">Ajouter un oubli</button>
   </section>`;
@@ -364,11 +367,11 @@ function timeline(L) {
     if (e.type === 'sein') for (const g of e.segs) {
       const a = Math.max(g.a, t0), b = g.b ?? T; if (b <= t0) continue;
       marks += `<i class="tl-s ${g.s}" style="left:${pct(a)}%;width:max(3px,${(pct(b) - pct(a)).toFixed(2)}%)"></i>`;
-    } else if (e.start >= t0) marks += `<i class="tl-${e.type === 'biberon' ? 'b' : 'c'}${e.type === 'couche' ? ' ' + coucheKind(e) : ''}" style="left:${pct(e.start)}%"></i>`;
+    } else if (e.start >= t0) marks += `<i class="tl-${{ biberon: 'b', tirage: 't' }[e.type] || 'c'}${e.type === 'couche' ? ' ' + coucheKind(e) : ''}" style="left:${pct(e.start)}%"></i>`;
   }
   return `<div class="tl">${marks}<i class="tl-now" style="left:${pct(T)}%"></i></div>
     <div class="tl-h"><span>0 h</span><span>6 h</span><span>12 h</span><span>18 h</span><span>24 h</span></div>
-    <div class="tl-k"><span><i class="tl-s G"></i>Gauche</span><span><i class="tl-s D"></i>Droit</span><span><i class="tl-b"></i>Biberon</span><span><i class="tl-c"></i>Couche</span></div>`;
+    <div class="tl-k"><span><i class="tl-s G"></i>Gauche</span><span><i class="tl-s D"></i>Droit</span><span><i class="tl-b"></i>Biberon</span><span><i class="tl-t"></i>Tirage</span><span><i class="tl-c"></i>Couche</span></div>`;
 }
 
 function describe(e) {
@@ -376,9 +379,10 @@ function describe(e) {
     const parts = ['G', 'D'].filter(s => e.segs.some(x => x.s === s)).map(s => `${s} ${dur(sideMs(e, s))}`);
     return { ic: ic('feed'), t: e.end ? parts.join(' · ') || '0 min' : 'En cours…', d: e.end ? `Total ${dur(sideMs(e))}` : '' };
   }
+  if (e.type === 'tirage') return { ic: ic('pump'), t: `Tirage ${e.ml} ml`, d: [e.mlG && `G ${e.mlG} ml`, e.mlD && `D ${e.mlD} ml`].filter(Boolean).join(' · ') };
   if (e.type === 'biberon') return { ic: ic('bottle'), t: `${e.ml} ml`, d: e.milk === 'maternel' ? 'Lait maternel' : 'Lait artificiel' };
   const k = COUCHE[coucheKind(e)];
-  return { ic: ic(k.ic), t: `Couche ${k.l.toLowerCase()}`, d: '' };
+  return { ic: ic(k.ic), t: `Couche ${k.l.toLowerCase()}`, d: k.sub };
 }
 
 function historyHTML() {
@@ -386,7 +390,8 @@ function historyHTML() {
   let html = `<div class="adds">
     <button class="btn" data-act="add" data-type="sein">+ Tétée</button>
     <button class="btn" data-act="add" data-type="biberon">+ Biberon</button>
-    <button class="btn" data-act="add" data-type="couche">+ Couche</button></div>`;
+    <button class="btn" data-act="add" data-type="couche">+ Couche</button>
+    <button class="btn" data-act="add" data-type="tirage">+ Tirage</button></div>`;
   if (!L.length) return html + `<p class="sub" style="text-align:center;margin-top:40px">Rien pour l'instant.</p>`;
   const meals = L.filter(isMeal);
   let day = null;
@@ -405,7 +410,7 @@ function historyHTML() {
 }
 
 function summarize(evs) {
-  const seins = evs.filter(e => e.type === 'sein' && e.end), bibs = evs.filter(e => e.type === 'biberon');
+  const seins = evs.filter(e => e.type === 'sein' && e.end), bibs = evs.filter(e => e.type === 'biberon'), tirs = evs.filter(e => e.type === 'tirage');
   const meals = evs.filter(isMeal).sort((a, b) => a.start - b.start);
   const gaps = meals.slice(1).map((e, i) => e.start - meals[i].start);
   const tG = seins.reduce((m, e) => m + sideMs(e, 'G'), 0), tD = seins.reduce((m, e) => m + sideMs(e, 'D'), 0);
@@ -413,6 +418,7 @@ function summarize(evs) {
   return {
     seins: seins.length, bibs: bibs.length, meals: meals.length, tG, tD, tSein: tG + tD,
     ml: bibs.reduce((m, e) => m + (+e.ml || 0), 0),
+    tirs: tirs.length, tirG: tirs.reduce((m, e) => m + (e.mlG || 0), 0), tirD: tirs.reduce((m, e) => m + (e.mlD || 0), 0),
     gap: gaps.length ? gaps.reduce((a, b) => a + b, 0) / gaps.length : 0,
     avgSein: seins.length ? (tG + tD) / seins.length : 0,
     couches: couches.length, pipi: couches.filter(e => e.pipi).length, caca: couches.filter(e => e.caca).length,
@@ -431,6 +437,7 @@ function block(title, s, perDay = 1) {
       ${kpi(s.avgSein ? dur(s.avgSein) : '—', 'durée moy. tétée')}
       ${kpi(dur(s.tSein / perDay), 'au sein' + (perDay > 1 ? ' / jour' : ''))}
       ${kpi(Math.round(s.ml / perDay) + ' ml', `biberons (${r(s.bibs)})` + (perDay > 1 ? ' / jour' : ''))}
+      ${s.tirs ? kpi(Math.round((s.tirG + s.tirD) / perDay) + ' ml', `tirés (${r(s.tirs)})` + (perDay > 1 ? ' / jour' : '') + ` · G ${Math.round(s.tirG / perDay)} / D ${Math.round(s.tirD / perDay)}`) : ''}
       ${kpi(r(s.couches), 'couches' + (perDay > 1 ? ' / jour' : ''))}
       <div class="kpi"><span>Détail des couches</span><div class="kinds">${Object.entries(COUCHE).map(([k, c]) => `<span>${c.l} <b>${r(s.byKind[k])}</b></span>`).join('')}</div></div>
     </div>
@@ -575,9 +582,35 @@ function bibDialog() {
     });
 }
 
+function tirageDialog() {
+  const side = s => `<div class="pump"><b class="tag ${s}">${s}</b>
+      <label class="mlv"><input id="p${s}" type="number" min="0" max="2000" step="1" inputmode="numeric" placeholder="0"><span>ml</span></label></div>
+    <input id="r${s}" class="rng" type="range" min="0" max="250" step="1" value="0">`;
+  dialog(`<h3>${ic('pump')} Tirage</h3>
+    ${side('G')}${side('D')}
+    <div class="sub" style="text-align:center">Total : <b id="pT">0</b> ml</div>
+    <label>Heure<input type="datetime-local" name="start" value="${dtl(now())}"></label>
+    <menu><button class="btn" value="cancel" formnovalidate>Annuler</button><button class="btn primary" value="ok">Enregistrer</button></menu>`,
+    (v, f) => {
+      const q = s => Math.min(2000, Math.max(0, Math.round(+f.querySelector('#p' + s).value || 0)));
+      const t = new Date(f.start.value).getTime() || now(), e = { id: uid(), type: 'tirage', start: t, end: t, mlG: q('G'), mlD: q('D') };
+      guard('quick', { done: `Tirage noté · ${e.mlG + e.mlD} ml` }, () => { put(e); return e.id });
+    },
+    f => {
+      const upd = () => { const t = ['G', 'D'].reduce((m, s) => m + (Math.round(+f.querySelector('#p' + s).value) || 0), 0);
+        f.querySelector('#pT').textContent = t; f.querySelector('#pG').setCustomValidity(t > 0 ? '' : 'Indiquez au moins une quantité') };
+      for (const s of ['G', 'D']) {
+        const inp = f.querySelector('#p' + s), rng = f.querySelector('#r' + s);
+        inp.addEventListener('input', () => { rng.value = Math.min(250, +inp.value || 0); upd() });
+        rng.addEventListener('input', () => { inp.value = +rng.value || ''; upd() });
+      }
+      upd();
+    });
+}
+
 function coucheDialog() {
   dialog(`<h3>${ic('diaper')} Couche</h3>
-    <div class="grid2 couches">${Object.entries(COUCHE).map(([k, c]) => `<button class="btn row-btn ck ${k}" value="${k}">${ic(c.ic)}${c.l}</button>`).join('')}</div>
+    <div class="grid2 couches">${Object.entries(COUCHE).map(([k, c]) => `<button class="btn ck ${k}" value="${k}">${ic(c.ic)}<span>${c.l}</span><small>${c.sub}</small></button>`).join('')}</div>
     <menu><button class="btn" value="cancel">Annuler</button></menu>`,
     v => { if (!COUCHE[v]) return; const t = now(), e = { id: uid(), type: 'couche', start: t, end: t, kind: v };
       guard('quick', { done: `Couche notée · ${COUCHE[v].l.toLowerCase()}` }, () => { put(e); return e.id }) });
@@ -592,11 +625,14 @@ function editDialog(e, isNew) {
         <input type="number" name="${n}" min="0" inputmode="numeric" value="${min(s)}">
         <button type="button" class="btn" data-step="1" data-for="${n}">+</button></span></label>`).join('')}</div>
       <div class="sub" data-endhint></div>`;
+  if (e.type === 'tirage') body = `<div class="grid2">
+      <label>Gauche (ml)<input type="number" name="mlG" min="0" step="1" inputmode="numeric" placeholder="0" value="${e.mlG || ''}"></label>
+      <label>Droit (ml)<input type="number" name="mlD" min="0" step="1" inputmode="numeric" placeholder="0" value="${e.mlD || ''}"></label></div>`;
   if (e.type === 'biberon') body = `<label>Quantité (ml)<input type="number" name="ml" min="1" step="1" inputmode="numeric" placeholder="0" required value="${e.ml || ''}"></label>
       <div class="seg">${['artificiel', 'maternel'].map(v => `<label><input type="radio" name="milk" value="${v}" ${(e.milk || S.milk) === v ? 'checked' : ''}>Lait ${v}</label>`).join('')}</div>`;
   if (e.type === 'couche') body = `<div class="seg">${Object.entries(COUCHE).map(([k, c]) =>
       `<label><input type="radio" name="kind" value="${k}" ${coucheKind(e) === k ? 'checked' : ''}>${c.l}</label>`).join('')}</div>`;
-  const title = { sein: ic('feed') + ' Tétée', biberon: ic('bottle') + ' Biberon', couche: ic('diaper') + ' Couche' }[e.type];
+  const title = { sein: ic('feed') + ' Tétée', biberon: ic('bottle') + ' Biberon', couche: ic('diaper') + ' Couche', tirage: ic('pump') + ' Tirage' }[e.type];
   dialog(`<h3>${title}</h3>
     <label>Début<input type="datetime-local" name="start" value="${dtl(e.start)}" required></label>
     ${body}
@@ -619,6 +655,7 @@ function editDialog(e, isNew) {
       } else {
         e.start = e.end = start;
         if (e.type === 'biberon') { e.ml = Math.max(0, +f.ml.value || 0); e.milk = f.milk.value }
+        if (e.type === 'tirage') { e.mlG = Math.max(0, +f.mlG.value || 0); e.mlD = Math.max(0, +f.mlD.value || 0) }
         if (e.type === 'couche') e.kind = f.kind.value;
       }
       e.note = f.note.value.trim() || null;
@@ -646,6 +683,7 @@ document.addEventListener('click', ev => {
   else if (a === 'stop') stop();
   else if (a === 'cancel') cancelFeed();
   else if (a === 'bib') bibDialog();
+  else if (a === 'tirage') tirageDialog();
   else if (a === 'couche') coucheDialog();
   else if (a === 'night') toggleNight();
   else if (a === 'edit') { const e = events.get(b.dataset.id); if (e && !e.end && e.type === 'sein') { view = 'home'; render() } else if (e) editDialog(structuredClone(e)) }
@@ -753,6 +791,7 @@ async function connectCloud() {
     const me = { write: e => fs.setDoc(fs.doc(col, e.id), JSON.parse(JSON.stringify(e))).catch(err => {
       // règles Firestore pas encore mises à jour (champ « kind » des couches) : on envoie sans ce champ
       if (err?.code === 'permission-denied' && 'kind' in e) { const { kind, ...rest } = e; return fs.setDoc(fs.doc(col, e.id), JSON.parse(JSON.stringify(rest))).then(() => { rulesOld = true; setSync('rules') }) }
+      if (err?.code === 'permission-denied') { rulesOld = true; return setSync('rules', err) }
       setSync('err', err) }) };
     let reconciled = false;
     me.unsub = fs.onSnapshot(q, { includeMetadataChanges: true }, snap => {
