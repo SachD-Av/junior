@@ -51,7 +51,7 @@ const ic = (n, c = '') => `<svg class="i ${c}" viewBox="0 0 24 24" fill="none" s
 document.querySelectorAll('[data-i]').forEach(el => el.innerHTML = ic(el.dataset.i));
 
 /* ---------- état ---------- */
-const S = Object.assign({ theme: 'auto', onehand: true, name: '', fb: null, fam: null, ml: 90, milk: 'artificiel',
+const S = Object.assign({ theme: 'auto', onehand: true, name: '', fb: null, fam: null, milk: 'artificiel',
   guard: 'undo', delay: 10, morning: 8, minFeed: 5,
   prot: { start: true, switch: true, stop: true, cancel: true, quick: true } }, LS.get('tt_settings', {}));
 S.prot = Object.assign({ start: true, switch: true, stop: true, cancel: true, quick: true }, S.prot);
@@ -221,7 +221,7 @@ function forgotDialog() {
 function newEntry(type) {
   const t = now();
   editDialog(type === 'sein' ? { id: uid(), type, start: t - 15 * 6e4, end: t, segs: [] }
-    : { id: uid(), type, start: t, end: t, ml: S.ml, milk: S.milk, pipi: true, caca: false }, true);
+    : { id: uid(), type, start: t, end: t, ml: 0, milk: S.milk, pipi: true, caca: false }, true);
 }
 function cancelFeed() { guard('cancel', { ask: 'Supprimer cette tétée ?', done: 'Tétée supprimée' }, () => { const e = active(); if (e) { e.del = true; put(e); return e.id } }) }
 
@@ -498,23 +498,23 @@ function dialog(html, onClose, setup) {
 }
 
 function bibDialog() {
-  let ml = S.ml;
+  let ml = 0;
   dialog(`<h3>${ic('bottle')} Biberon</h3>
-    <label class="mlv"><input id="mlv" type="number" min="0" max="400" step="1" inputmode="numeric" value="${ml}"><span>ml</span></label>
-    <input id="mlr" type="range" min="0" max="300" step="1" value="${Math.min(300, ml)}">
+    <label class="mlv"><input id="mlv" type="number" min="1" max="2000" step="1" inputmode="numeric" placeholder="0" required><span>ml</span></label>
+    <input id="mlr" type="range" min="0" max="300" step="1" value="0">
     <div class="seg">${['artificiel', 'maternel'].map(v => `<label><input type="radio" name="milk" value="${v}" ${S.milk === v ? 'checked' : ''}>Lait ${v}</label>`).join('')}</div>
     <label>Heure<input type="datetime-local" name="start" value="${dtl(now())}"></label>
-    <menu><button class="btn" value="cancel">Annuler</button><button class="btn primary" value="ok">Enregistrer</button></menu>`,
+    <menu><button class="btn" value="cancel" formnovalidate>Annuler</button><button class="btn primary" value="ok">Enregistrer</button></menu>`,
     (v, f) => {
       ml = Math.min(2000, Math.max(0, Math.round(+f.querySelector('#mlv').value || 0)));
-      S.ml = ml; S.milk = f.milk.value; saveSettings();
+      S.milk = f.milk.value; saveSettings();
       const t = new Date(f.start.value).getTime() || now();
       guard('quick', { done: `Biberon noté · ${ml} ml` }, () => { const e = { id: uid(), type: 'biberon', start: t, end: t, ml, milk: S.milk }; put(e); return e.id });
     },
     f => {
       const inp = f.querySelector('#mlv'), rng = f.querySelector('#mlr');
       inp.addEventListener('input', () => { ml = Math.max(0, Math.round(+inp.value || 0)); rng.value = Math.min(300, ml) });
-      rng.addEventListener('input', () => { ml = +rng.value; inp.value = ml });
+      rng.addEventListener('input', () => { ml = +rng.value; inp.value = ml || '' });
     });
 }
 
@@ -536,7 +536,7 @@ function editDialog(e, isNew) {
         <input type="number" name="${n}" min="0" inputmode="numeric" value="${min(s)}">
         <button type="button" class="btn" data-step="1" data-for="${n}">+</button></span></label>`).join('')}</div>
       <div class="sub" data-endhint></div>`;
-  if (e.type === 'biberon') body = `<label>Quantité (ml)<input type="number" name="ml" min="0" step="1" inputmode="numeric" value="${e.ml ?? S.ml}"></label>
+  if (e.type === 'biberon') body = `<label>Quantité (ml)<input type="number" name="ml" min="1" step="1" inputmode="numeric" placeholder="0" required value="${e.ml || ''}"></label>
       <div class="seg">${['artificiel', 'maternel'].map(v => `<label><input type="radio" name="milk" value="${v}" ${(e.milk || S.milk) === v ? 'checked' : ''}>Lait ${v}</label>`).join('')}</div>`;
   if (e.type === 'couche') body = `<div class="seg"><label><input type="checkbox" name="pipi" ${e.pipi ? 'checked' : ''}>Pipi</label>
       <label><input type="checkbox" name="caca" ${e.caca ? 'checked' : ''}>Caca</label></div>`;
@@ -545,8 +545,8 @@ function editDialog(e, isNew) {
     <label>Début<input type="datetime-local" name="start" value="${dtl(e.start)}" required></label>
     ${body}
     <label>Note<input name="note" value="${esc(e.note)}" placeholder="optionnel"></label>
-    <menu>${isNew ? '' : '<button class="btn danger" value="del">Supprimer</button>'}
-      <button class="btn" value="cancel">Annuler</button><button class="btn primary" value="ok">Enregistrer</button></menu>`,
+    <menu>${isNew ? '' : '<button class="btn danger" value="del" formnovalidate>Supprimer</button>'}
+      <button class="btn" value="cancel" formnovalidate>Annuler</button><button class="btn primary" value="ok">Enregistrer</button></menu>`,
     (v, f) => {
       if (v === 'del') { if (confirm('Supprimer ?')) { e.del = true; put(e) } return }
       const start = new Date(f.start.value).getTime() || e.start;
