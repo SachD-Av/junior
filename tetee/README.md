@@ -24,21 +24,16 @@ L'appli marche tout de suite, en local. Pour partager avec l'autre parent, il fa
 
 1. Aller sur <https://console.firebase.google.com> → **Créer un projet** (Google Analytics n'est pas utile).
 2. **Créer → Firestore Database** → *Créer une base de données* → choisir une région (ex. `eur3`) → mode **production**.
-3. Onglet **Règles** de Firestore, coller puis **Publier** :
-
-   ```
-   rules_version = '2';
-   service cloud.firestore {
-     match /databases/{database}/documents {
-       match /families/{fam}/events/{id} {
-         allow read, write: if fam.size() >= 9;
-       }
-     }
-   }
-   ```
-
+3. Onglet **Règles** de Firestore : remplacer tout le contenu par celui du fichier [`firestore.rules`](firestore.rules), puis **Publier**.
+   Ces règles valident chaque écriture et interdisent tout le reste.
 4. ⚙ **Paramètres du projet** → *Vos applications* → icône **Web `</>`** → donner un nom → copier le bloc `const firebaseConfig = { … }`.
 5. Dans l'appli : **Réglages → coller la configuration → Activer la synchro**.
 6. **📤 Envoyer le lien à l'autre parent** (WhatsApp, SMS…). Il ouvre le lien dans Chrome sur son téléphone, installe l'appli, et c'est synchronisé.
 
-Les données sont rangées sous un code famille aléatoire, que seul le lien d'invitation contient. Ne partagez ce lien qu'avec l'autre parent.
+Les données sont rangées sous un code famille aléatoire de 16 caractères, que seul le lien d'invitation contient. Ne partagez ce lien qu'avec l'autre parent.
+
+**Conseillé (2 min) :** dans <https://console.cloud.google.com/apis/credentials> (même projet), ouvrez la clé *Browser key*,
+puis choisissez *Restrictions relatives aux applications → Sites web* et ajoutez `https://sachd-av.github.io/*`.
+La clé ne marchera alors que depuis l'appli.
+
+Le détail de l'audit de sécurité est dans [SECURITE.md](SECURITE.md).

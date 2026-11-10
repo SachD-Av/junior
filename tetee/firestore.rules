@@ -1,0 +1,40 @@
+rules_version = '2';
+// Règles Firestore de l'appli Tétée : à coller dans Firebase → Firestore → Règles.
+// Accès seulement à /families/<code>/events/<id>, avec le code secret du lien d'invitation.
+// Chaque écriture est validée (champs, types, tailles) ; la suppression définitive est interdite.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /families/{fam}/events/{id} {
+      allow get, list: if validFam(fam);
+      allow create, update: if validFam(fam) && validEvent(id, request.resource.data);
+      allow delete: if false;
+    }
+
+    function validFam(fam) {
+      return fam.matches('^[a-z0-9]{9,32}$');
+    }
+
+    function optStr(d, k, n) {
+      return !(k in d) || d[k] == null || (d[k] is string && d[k].size() <= n);
+    }
+    function optNum(d, k) {
+      return !(k in d) || d[k] == null || d[k] is number;
+    }
+    function optBool(d, k) {
+      return !(k in d) || d[k] is bool;
+    }
+
+    function validEvent(id, d) {
+      return id.matches('^[A-Za-z0-9_-]{1,40}$')
+        && d.id == id
+        && d.keys().hasOnly(['id', 'type', 'start', 'end', 'segs', 'ml', 'milk', 'pipi', 'caca', 'note', 'by', 'u', 'del'])
+        && d.type in ['sein', 'biberon', 'couche']
+        && d.start is number && d.u is number
+        && optNum(d, 'end') && optBool(d, 'del') && optBool(d, 'pipi') && optBool(d, 'caca')
+        && optStr(d, 'note', 500) && optStr(d, 'by', 40)
+        && (!('milk' in d) || d.milk in ['maternel', 'artificiel'])
+        && (!('ml' in d) || (d.ml is number && d.ml >= 0 && d.ml <= 2000))
+        && (!('segs' in d) || (d.segs is list && d.segs.size() <= 200));
+    }
+  }
+}
