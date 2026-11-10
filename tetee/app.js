@@ -20,6 +20,36 @@ const dtl = t => { const d = new Date(t); return `${d.getFullYear()}-${pad(d.get
 const buzz = () => navigator.vibrate?.(25);
 const SIDE = { G: 'Gauche', D: 'Droit' };
 
+/* Icônes vectorielles (trait 2 px, couleur du texte) */
+const ICONS = {
+  timer: '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/>',
+  list: '<path d="M9 6h12M9 12h12M9 18h12"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/>',
+  chart: '<path d="M3 3v18h18"/><path d="M8 17v-5M13 17V8M18 17v-9"/>',
+  sliders: '<path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/>',
+  moon: '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+  pause: '<rect x="6" y="4" width="4" height="16" rx="1.5" fill="currentColor" stroke="none"/><rect x="14" y="4" width="4" height="16" rx="1.5" fill="currentColor" stroke="none"/>',
+  play: '<path d="M7 4.5v15a1 1 0 0 0 1.5.9l12-7.5a1 1 0 0 0 0-1.8l-12-7.5A1 1 0 0 0 7 4.5z" fill="currentColor" stroke="none"/>',
+  check: '<path d="M20 6 9 17l-5-5"/>',
+  pencil: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  x: '<path d="M18 6 6 18M6 6l12 12"/>',
+  feed: '<path d="M12 21s-8-4.6-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 10c0 6.4-8 11-8 11z"/>',
+  bottle: '<path d="M10 2h4v3h-4z"/><path d="M9 5h6l1.5 3.5V20a2 2 0 0 1-2 2h-5a2 2 0 0 1-2-2V8.5z"/><path d="M7.5 12H11M7.5 16H11"/>',
+  diaper: '<path d="M3 6h18v4a9 9 0 0 1-18 0z"/><path d="M8 6v3M16 6v3"/>',
+  drop: '<path d="M12 2.7S6 9.3 6 14a6 6 0 0 0 12 0c0-4.7-6-11.3-6-11.3z"/>',
+  poop: '<path d="M6.5 20h11a3 3 0 0 0 .4-6 3 3 0 0 0-2.4-4.9A3.5 3.5 0 0 0 12 4c.4 1.6-.6 2.5-1.8 2.9A3 3 0 0 0 8 13.6 3 3 0 0 0 6.5 20z"/>',
+  share: '<path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7M16 6l-4-4-4 4M12 2v13"/>',
+  download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>',
+  upload: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>',
+  cloud: '<path d="M17.5 19H9a7 7 0 1 1 6.7-9h1.8a4.5 4.5 0 0 1 0 9z"/>',
+  cloudOff: '<path d="M17.5 19H9a7 7 0 0 1-5-11.9M8.6 5.2A7 7 0 0 1 15.7 10h1.8a4.5 4.5 0 0 1 3 7.8M2 2l20 20"/>',
+  alert: '<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/>',
+  swap: '<path d="M7 16l-4-4 4-4M3 12h18M17 8l4 4-4 4"/>'
+};
+const ic = (n, c = '') => `<svg class="i ${c}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n]}</svg>`;
+document.querySelectorAll('[data-i]').forEach(el => el.innerHTML = ic(el.dataset.i));
+
 /* ---------- état ---------- */
 const S = Object.assign({ theme: 'auto', onehand: true, name: '', fb: null, fam: null, ml: 90, milk: 'artificiel' }, LS.get('tt_settings', {}));
 const saveSettings = () => LS.set('tt_settings', S);
@@ -75,6 +105,19 @@ function tapSide(side) {
   e.segs.push({ s: side, a: t, b: null });
   buzz(); put(e);
 }
+/* Pendant une tétée, changer de sein demande 2 taps (évite les erreurs) ;
+   reprendre sur le même sein après une pause n'en demande qu'un. */
+let armed = null, armTimer = 0;
+function sideTap(side) {
+  const e = active();
+  if (!e) return tapSide(side);
+  const o = openSeg(e), last = e.segs.at(-1)?.s;
+  if (o?.s === side) return;
+  if (!o && last === side) return resume();
+  if (armed === side) { armed = null; clearTimeout(armTimer); return tapSide(side) }
+  armed = side; buzz(); render();
+  clearTimeout(armTimer); armTimer = setTimeout(() => { armed = null; render() }, 3000);
+}
 function pause() { const e = active(), o = e && openSeg(e); if (o) { o.b = now(); buzz(); put(e) } }
 function resume() { const e = active(); if (!e) return; e.segs.push({ s: e.segs.at(-1)?.s || 'G', a: now(), b: null }); buzz(); put(e) }
 function stop() {
@@ -107,7 +150,7 @@ function adjust(side, min) {
 function adjustDialog() {
   const row = s => `<div class="adj"><b class="side ${s}">${s}</b><span class="t" data-t="${s}"></span>
     <span class="quick">${[-5, -1, 1, 5].map(m => `<button type="button" class="btn" data-s="${s}" data-m="${m}">${m > 0 ? '+' : '−'}${Math.abs(m)}</button>`).join('')}</span></div>`;
-  dialog(`<h3>✎ Corriger les temps</h3>
+  dialog(`<h3>${ic('pencil')} Corriger les temps</h3>
     <p class="sub">Vous avez oublié de lancer le chrono ou de changer de côté ? Ajoutez ou retirez des minutes.</p>
     ${row('G')}${row('D')}
     <div class="sub">Début de la tétée : <b data-t="startHm"></b></div>
@@ -116,8 +159,8 @@ function adjustDialog() {
   tick();
 }
 function forgotDialog() {
-  dialog(`<h3>＋ Ajouter un oubli</h3>
-    <button class="btn" value="sein">🤱 Tétée</button><button class="btn" value="biberon">🍼 Biberon</button><button class="btn" value="couche">🧷 Couche</button>
+  dialog(`<h3>${ic('plus')} Ajouter un oubli</h3>
+    <button class="btn row-btn" value="sein">${ic('feed')}Tétée</button><button class="btn row-btn" value="biberon">${ic('bottle')}Biberon</button><button class="btn row-btn" value="couche">${ic('diaper')}Couche</button>
     <menu><button class="btn" value="cancel">Annuler</button></menu>`, v => setTimeout(() => newEntry(v)));
 }
 function newEntry(type) {
@@ -152,6 +195,7 @@ function applyTheme() {
   document.documentElement.dataset.theme = n ? 'night' : 'day';
   document.querySelector('meta[name=theme-color]').content = n ? '#000000' : '#FAF7F2';
   document.body.classList.toggle('onehand', !!S.onehand);
+  const nb = document.querySelector('[data-act=night]'); if (nb) nb.innerHTML = ic(n ? 'sun' : 'moon');
 }
 
 /* ---------- rendu ---------- */
@@ -168,23 +212,27 @@ function render(force) {
 function homeHTML() {
   const e = active();
   if (e) {
-    const o = openSeg(e);
+    const o = openSeg(e), last = e.segs.at(-1)?.s || 'G';
+    const sideBtn = s => {
+      const cur = o?.s === s, arm = armed === s;
+      const hint = cur ? 'en cours' : arm ? 'touchez encore' : o ? 'changer' : last === s ? 'reprendre ici' : 'changer';
+      return `<button class="btn side mini ${s} ${cur ? 'on' : ''} ${arm ? 'armed' : ''} ${!cur && o ? 'dim' : ''}" data-act="side" data-s="${s}">
+        <span class="sl">${s}</span><span class="t" data-t="${s}"></span><small>${hint}</small></button>`;
+    };
     return `<section class="home">
       <div class="card since">
-        <div class="lbl" id="tState">${o ? 'Sein ' + SIDE[o.s].toLowerCase() : 'Pause rot'}</div>
+        <div class="lbl">${o ? 'Sein ' + SIDE[o.s].toLowerCase() : 'En pause'}</div>
         <div class="big" data-t="total"></div>
         <div class="sub ${o ? '' : 'paused'}" data-t="pause"></div>
       </div>
+      <div class="grid2">${sideBtn('G')}${sideBtn('D')}</div>
+      ${o ? `<button class="btn huge" data-act="pause">${ic('pause')}<span>Pause</span><small>rot, câlin, changement…</small></button>`
+          : `<button class="btn huge resume ${last}" data-act="resume">${ic('play')}<span>Reprendre</span><small>sein ${SIDE[last].toLowerCase()}</small></button>`}
       <div class="grid2">
-        ${['G', 'D'].map(s => `<button class="btn side ${s} ${o?.s === s ? 'on' : o ? 'dim' : ''}" data-act="side" data-s="${s}">
-          ${s}<span class="t" data-t="${s}"></span><small>${o?.s === s ? 'en cours' : o ? 'changer' : 'reprendre ici'}</small></button>`).join('')}
+        <button class="btn" data-act="adjust">${ic('pencil')}<small>Corriger</small></button>
+        <button class="btn primary" data-act="stop">${ic('check')}<span>Terminer</span></button>
       </div>
-      <div class="grid2">
-        ${o ? `<button class="btn" data-act="pause">⏸ Pause rot</button>` : `<button class="btn" data-act="resume">▶ Reprendre<small>sein ${SIDE[e.segs.at(-1)?.s || 'G'].toLowerCase()}</small></button>`}
-        <button class="btn primary" data-act="stop">✓ Terminer</button>
-      </div>
-      <div class="grid2"><button class="link" data-act="adjust">✎ Corriger les temps</button>
-        <button class="link" data-act="cancel">Annuler la tétée</button></div>
+      <button class="link" data-act="cancel">Annuler la tétée</button>
     </section>`;
   }
   const L = list(), meal = L.find(isMeal), lastSein = L.find(x => x.type === 'sein' && x.end);
@@ -207,20 +255,20 @@ function homeHTML() {
         ${lastSide === s ? '<span class="badge">dernier</span>' : ''}</button>`).join('')}
     </div>
     <div class="grid2">
-      <button class="btn" data-act="bib">🍼 Biberon</button>
-      <button class="btn" data-act="couche">🧷 Couche</button>
+      <button class="btn row-btn" data-act="bib">${ic('bottle')}Biberon</button>
+      <button class="btn row-btn" data-act="couche">${ic('diaper')}Couche</button>
     </div>
-    <button class="link" data-act="forgot">＋ Ajouter un oubli</button>
+    <button class="link" data-act="forgot">Ajouter un oubli</button>
   </section>`;
 }
 
 function describe(e) {
   if (e.type === 'sein') {
     const parts = ['G', 'D'].filter(s => e.segs.some(x => x.s === s)).map(s => `${s} ${dur(sideMs(e, s))}`);
-    return { ic: '🤱', t: e.end ? parts.join(' · ') || '0 min' : 'En cours…', d: e.end ? `Total ${dur(sideMs(e))}` : '' };
+    return { ic: ic('feed'), t: e.end ? parts.join(' · ') || '0 min' : 'En cours…', d: e.end ? `Total ${dur(sideMs(e))}` : '' };
   }
-  if (e.type === 'biberon') return { ic: '🍼', t: `${e.ml} ml`, d: e.milk === 'maternel' ? 'Lait maternel' : 'Lait artificiel' };
-  return { ic: e.caca ? '💩' : '💧', t: [e.pipi && 'Pipi', e.caca && 'Caca'].filter(Boolean).join(' + ') || 'Couche', d: '' };
+  if (e.type === 'biberon') return { ic: ic('bottle'), t: `${e.ml} ml`, d: e.milk === 'maternel' ? 'Lait maternel' : 'Lait artificiel' };
+  return { ic: ic(e.caca ? 'poop' : 'drop'), t: [e.pipi && 'Pipi', e.caca && 'Caca'].filter(Boolean).join(' + ') || 'Couche', d: '' };
 }
 
 function historyHTML() {
@@ -309,7 +357,7 @@ function settingsHTML() {
     <div class="card set">
     ${S.fam ? `
       <p>Synchro active. Code famille :</p><div class="code">${esc(S.fam)}</div>
-      <button class="btn primary" data-act="invite">📤 Envoyer le lien à l'autre parent</button>
+      <button class="btn primary" data-act="invite">${ic('share')} Envoyer le lien à l'autre parent</button>
       <p>L'autre parent ouvre le lien sur son téléphone : tout est partagé en direct (même une tétée en cours).</p>
       <button class="link danger" data-act="unlink">Arrêter la synchro sur ce téléphone</button>`
     : `
@@ -323,8 +371,8 @@ function settingsHTML() {
     </div>
     <h2>Données</h2>
     <div class="card grid2">
-      <button class="btn" data-act="export">⬇ Exporter</button>
-      <label class="btn">⬆ Importer<input type="file" id="importFile" accept="application/json" hidden></label>
+      <button class="btn" data-act="export">${ic('download')}<small>Exporter</small></button>
+      <label class="btn">${ic('upload')}<small>Importer</small><input type="file" id="importFile" accept="application/json" hidden></label>
     </div>
   </div>`;
 }
@@ -369,7 +417,7 @@ function dialog(html, onClose, setup) {
 
 function bibDialog() {
   let ml = S.ml;
-  dialog(`<h3>🍼 Biberon</h3>
+  dialog(`<h3>${ic('bottle')} Biberon</h3>
     <div class="mlbox"><button type="button" class="btn" data-d="-10">−</button><output id="mlv">${ml}</output><button type="button" class="btn" data-d="10">+</button></div>
     <div class="quick">${[30, 60, 90, 120, 150, 180, 210, 240].map(v => `<button type="button" class="btn" data-v="${v}">${v}</button>`).join('')}</div>
     <div class="seg">${['artificiel', 'maternel'].map(v => `<label><input type="radio" name="milk" value="${v}" ${S.milk === v ? 'checked' : ''}>Lait ${v}</label>`).join('')}</div>
@@ -388,9 +436,9 @@ function bibDialog() {
 }
 
 function coucheDialog() {
-  dialog(`<h3>🧷 Couche</h3>
-    <div class="grid2"><button class="btn" value="p">💧 Pipi</button><button class="btn" value="c">💩 Caca</button></div>
-    <button class="btn primary" value="pc">💧 + 💩 Les deux</button>
+  dialog(`<h3>${ic('diaper')} Couche</h3>
+    <div class="grid2"><button class="btn" value="p">${ic('drop')}Pipi</button><button class="btn" value="c">${ic('poop')}Caca</button></div>
+    <button class="btn primary" value="pc">Les deux</button>
     <menu><button class="btn" value="cancel">Annuler</button></menu>`,
     v => { const t = now(); put({ id: uid(), type: 'couche', start: t, end: t, pipi: v.includes('p'), caca: v.includes('c') }) });
 }
@@ -406,9 +454,9 @@ function editDialog(e, isNew) {
       <div class="sub" data-endhint></div>`;
   if (e.type === 'biberon') body = `<label>Quantité (ml)<input type="number" name="ml" min="0" step="5" inputmode="numeric" value="${e.ml ?? S.ml}"></label>
       <div class="seg">${['artificiel', 'maternel'].map(v => `<label><input type="radio" name="milk" value="${v}" ${(e.milk || S.milk) === v ? 'checked' : ''}>Lait ${v}</label>`).join('')}</div>`;
-  if (e.type === 'couche') body = `<div class="seg"><label><input type="checkbox" name="pipi" ${e.pipi ? 'checked' : ''}>💧 Pipi</label>
-      <label><input type="checkbox" name="caca" ${e.caca ? 'checked' : ''}>💩 Caca</label></div>`;
-  const title = { sein: '🤱 Tétée', biberon: '🍼 Biberon', couche: '🧷 Couche' }[e.type];
+  if (e.type === 'couche') body = `<div class="seg"><label><input type="checkbox" name="pipi" ${e.pipi ? 'checked' : ''}>Pipi</label>
+      <label><input type="checkbox" name="caca" ${e.caca ? 'checked' : ''}>Caca</label></div>`;
+  const title = { sein: ic('feed') + ' Tétée', biberon: ic('bottle') + ' Biberon', couche: ic('diaper') + ' Couche' }[e.type];
   dialog(`<h3>${title}</h3>
     <label>Début<input type="datetime-local" name="start" value="${dtl(e.start)}" required></label>
     ${body}
@@ -452,7 +500,7 @@ document.addEventListener('click', ev => {
   if (nb) { view = nb.dataset.view; render(true); $('#main').scrollTop = 0; return }
   const b = ev.target.closest('[data-act]'); if (!b) return;
   const a = b.dataset.act;
-  if (a === 'side') tapSide(b.dataset.s);
+  if (a === 'side') sideTap(b.dataset.s);
   else if (a === 'pause') pause();
   else if (a === 'resume') resume();
   else if (a === 'stop') stop();
@@ -495,7 +543,7 @@ document.addEventListener('change', ev => {
 /* ---------- synchro Firebase ---------- */
 function setSync(s, err) {
   const el = $('#sync');
-  el.textContent = { local: 'local', wait: 'connexion…', ok: '☁ synchro', off: '☁ hors ligne', err: '⚠ erreur synchro' }[s];
+  el.innerHTML = { local: 'local', wait: 'connexion…', ok: ic('cloud') + 'synchro', off: ic('cloudOff') + 'hors ligne', err: ic('alert') + 'erreur synchro' }[s];
   el.className = 'chip ' + (s === 'ok' ? 'ok' : s === 'err' ? 'err' : '');
   if (err) { console.error(err); el.title = String(err.message || err) }
 }

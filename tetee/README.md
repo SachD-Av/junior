@@ -2,7 +2,7 @@
 
 Appli web installable sur Android (PWA) : pas de Play Store, pas de compilation.
 
-- **Tétée** : un tap sur **G** ou **D** démarre le chrono. Un tap sur l'autre sein change de côté. **⏸ Pause rot**, **▶ Reprendre**, **✓ Terminer**.
+- **Tétée** : un tap sur **G** ou **D** démarre le chrono. Gros bouton **Pause** et **Reprendre** en 1 tap. Changer de sein demande 2 taps, pour éviter les erreurs. Puis **Terminer**.
 - Le dernier sein utilisé est marqué « dernier ». L'écran reste allumé pendant une tétée.
 - **Biberon** (ml, lait maternel ou artificiel) et **Couche** (pipi / caca) en 2 taps.
 - **Historique** : appuyer sur une ligne pour la modifier ou la supprimer. Les boutons « + » servent à ajouter un oubli.
