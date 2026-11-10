@@ -18,7 +18,16 @@ const dayName = t => { const d0 = dayStart(now()), d = dayStart(t);
   return new Date(t).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }) };
 const dtl = t => { const d = new Date(t); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}` };
 const buzz = () => navigator.vibrate?.(25);
-const SIDE = { G: 'Gauche', D: 'Droit' };
+const SIDE = { G: 'Gauche', D: 'Droit' };    // libellés des boutons (sein gauche / sein droit)
+const SEIN = { G: 'gauche', D: 'droit' };     // « sein gauche / sein droit »
+/* Types de couche (pipi/caca restent calculés pour la compatibilité et les stats) */
+const COUCHE = {
+  humide: { l: 'Humide', ic: 'drop', pipi: true, caca: false },
+  sale: { l: 'Sale', ic: 'poop', pipi: false, caca: true },
+  mixte: { l: 'Mixte', ic: 'mixed', pipi: true, caca: true },
+  explosion: { l: 'Explosion', ic: 'burst', pipi: true, caca: true }
+};
+const coucheKind = e => COUCHE[e.kind] ? e.kind : e.pipi && e.caca ? 'mixte' : e.caca ? 'sale' : 'humide';
 
 /* Icônes vectorielles (trait 2 px, couleur du texte) */
 const ICONS = {
@@ -38,6 +47,8 @@ const ICONS = {
   bottle: '<path d="M10 2h4v3h-4z"/><path d="M9 5h6l1.5 3.5V20a2 2 0 0 1-2 2h-5a2 2 0 0 1-2-2V8.5z"/><path d="M7.5 12H11M7.5 16H11"/>',
   diaper: '<path d="M3 6h18v4a9 9 0 0 1-18 0z"/><path d="M8 6v3M16 6v3"/>',
   drop: '<path d="M12 2.7S6 9.3 6 14a6 6 0 0 0 12 0c0-4.7-6-11.3-6-11.3z"/>',
+  mixed: '<path d="M7 3S3 7.5 3 10.5a4 4 0 0 0 8 0C11 7.5 7 3 7 3z"/><path d="M12.5 21h7.5a2.2 2.2 0 0 0 .3-4.4 2.2 2.2 0 0 0-1.8-3.5A2.6 2.6 0 0 0 16 10.5c.3 1.1-.4 1.8-1.3 2.1a2.2 2.2 0 0 0-1.6 4A2.2 2.2 0 0 0 12.5 21z"/>',
+  burst: '<path d="M12 2l1.8 4.6L18 4l-1 4.9L22 10l-4.2 2.6L20 17l-4.8-.8L14 21l-2-4-2 4-1.2-4.8L4 17l2.2-4.4L2 10l5-1.1L6 4l4.2 2.6z"/>',
   poop: '<path d="M6.5 20h11a3 3 0 0 0 .4-6 3 3 0 0 0-2.4-4.9A3.5 3.5 0 0 0 12 4c.4 1.6-.6 2.5-1.8 2.9A3 3 0 0 0 8 13.6 3 3 0 0 0 6.5 20z"/>',
   share: '<path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7M16 6l-4-4-4 4M12 2v13"/>',
   download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>',
@@ -74,7 +85,7 @@ function clean(e, forcedId) {
       .map(x => ({ s: x.s, a: num(x.a), b: x.b == null ? null : num(x.b) }));
   } else o.end = o.start;
   if (o.type === 'biberon') { o.ml = Math.min(2000, Math.max(0, Math.round(num(e.ml)))); o.milk = e.milk === 'maternel' ? 'maternel' : 'artificiel' }
-  if (o.type === 'couche') { o.pipi = !!e.pipi; o.caca = !!e.caca }
+  if (o.type === 'couche') { const k = coucheKind(e); o.kind = k; o.pipi = COUCHE[k].pipi; o.caca = COUCHE[k].caca }
   return o;
 }
 const FAM_RE = /^[a-z0-9]{9,32}$/;
@@ -166,11 +177,11 @@ function tapSide(side) {
 }
 function sideTap(side) {
   const e = active();
-  if (!e) return guard('start', { ask: `Démarrer sur le sein ${SIDE[side].toLowerCase()} ?`, done: `Tétée démarrée · sein ${SIDE[side].toLowerCase()}` }, () => tapSide(side), 'start' + side);
+  if (!e) return guard('start', { ask: `Démarrer sur le sein ${SEIN[side]} ?`, done: `Tétée démarrée · sein ${SEIN[side]}` }, () => tapSide(side), 'start' + side);
   const o = openSeg(e), last = e.segs.at(-1)?.s;
   if (o?.s === side) return;
   if (!o && last === side) return resume();
-  guard('switch', { ask: `Passer au sein ${SIDE[side].toLowerCase()} ?`, done: `Passage au sein ${SIDE[side].toLowerCase()}` }, () => tapSide(side), 'switch' + side);
+  guard('switch', { ask: `Passer au sein ${SEIN[side]} ?`, done: `Passage au sein ${SEIN[side]}` }, () => tapSide(side), 'switch' + side);
 }
 function pause() { const e = active(), o = e && openSeg(e); if (o) { o.b = now(); buzz(); put(e) } }
 function resume() { const e = active(); if (!e) return; e.segs.push({ s: e.segs.at(-1)?.s || 'G', a: now(), b: null }); buzz(); put(e) }
@@ -222,7 +233,7 @@ function forgotDialog() {
 function newEntry(type) {
   const t = now();
   editDialog(type === 'sein' ? { id: uid(), type, start: t - 15 * 6e4, end: t, segs: [] }
-    : { id: uid(), type, start: t, end: t, ml: 0, milk: S.milk, pipi: true, caca: false }, true);
+    : { id: uid(), type, start: t, end: t, ml: 0, milk: S.milk, kind: 'humide' }, true);
 }
 function cancelFeed() { guard('cancel', { ask: 'Supprimer cette tétée ?', done: 'Tétée supprimée' }, () => { const e = active(); if (e) { e.del = true; put(e); return e.id } }) }
 
@@ -293,13 +304,13 @@ function homeHTML() {
     };
     return `<section class="home">
       <div class="card since">
-        <div class="lbl">${o ? 'Sein ' + SIDE[o.s].toLowerCase() : 'En pause'}</div>
+        <div class="lbl">${o ? 'Sein ' + SEIN[o.s] : 'En pause'}</div>
         <div class="big" data-t="total"></div>
         <div class="sub ${o ? '' : 'paused'}" data-t="pause"></div>
       </div>
       <div class="grid2">${sideBtn('G')}${sideBtn('D')}</div>
       ${o ? `<button class="btn huge" data-act="pause">${ic('pause')}<span>Pause</span><small>rot, câlin, changement…</small></button>`
-          : `<button class="btn huge resume ${last}" data-act="resume">${ic('play')}<span>Reprendre</span><small>sein ${SIDE[last].toLowerCase()}</small></button>`}
+          : `<button class="btn huge resume ${last}" data-act="resume">${ic('play')}<span>Reprendre</span><small>sein ${SEIN[last]}</small></button>`}
       <div class="grid2">
         <button class="btn" data-act="adjust">${ic('pencil')}<small>Corriger</small></button>
         <button class="btn primary${armCls('stop')}" data-act="stop">${ic('check')}<span>Terminer</span></button>
@@ -312,7 +323,7 @@ function homeHTML() {
   const t0 = dayStart(now()), today = summarize(L.filter(x => x.start >= t0));
   let sub = '—';
   if (meal) sub = meal.type === 'sein'
-    ? [hm(meal.start), dur(sideMs(meal)), meal.segs.length && 'fin sein ' + SIDE[meal.segs.at(-1).s].toLowerCase()].filter(Boolean).join(' · ')
+    ? [hm(meal.start), dur(sideMs(meal)), meal.segs.length && 'fin sein ' + SEIN[meal.segs.at(-1).s]].filter(Boolean).join(' · ')
     : `${hm(meal.start)} · biberon ${meal.ml} ml`;
   return `<section class="home">
     <div class="card since">
@@ -324,7 +335,7 @@ function homeHTML() {
       <div class="card tile"><span class="lbl">Dernier sein</span><b>${lastSein ? (lastSide ? SIDE[lastSide] : '—') : '—'}</b>
         <small>${lastSein ? `${hm(lastSein.start)} · ${dur(sideMs(lastSein))}` : 'aucune tétée'}</small></div>
       <div class="card tile"><span class="lbl">Dernière couche</span><b data-t="sinceCouche">${lastCouche ? '' : '—'}</b>
-        <small>${lastCouche ? `${hm(lastCouche.start)} · ${[lastCouche.pipi && 'pipi', lastCouche.caca && 'caca'].filter(Boolean).join(' + ') || 'couche'}` : 'aucune'}</small></div>
+        <small>${lastCouche ? `${hm(lastCouche.start)} · ${COUCHE[coucheKind(lastCouche)].l.toLowerCase()}` : 'aucune'}</small></div>
     </div>
     <div class="card today">
       <div class="today-h"><span class="lbl">Aujourd'hui</span>
@@ -353,7 +364,7 @@ function timeline(L) {
     if (e.type === 'sein') for (const g of e.segs) {
       const a = Math.max(g.a, t0), b = g.b ?? T; if (b <= t0) continue;
       marks += `<i class="tl-s ${g.s}" style="left:${pct(a)}%;width:max(3px,${(pct(b) - pct(a)).toFixed(2)}%)"></i>`;
-    } else if (e.start >= t0) marks += `<i class="tl-${e.type === 'biberon' ? 'b' : 'c'}" style="left:${pct(e.start)}%"></i>`;
+    } else if (e.start >= t0) marks += `<i class="tl-${e.type === 'biberon' ? 'b' : 'c'}${e.type === 'couche' ? ' ' + coucheKind(e) : ''}" style="left:${pct(e.start)}%"></i>`;
   }
   return `<div class="tl">${marks}<i class="tl-now" style="left:${pct(T)}%"></i></div>
     <div class="tl-h"><span>0 h</span><span>6 h</span><span>12 h</span><span>18 h</span><span>24 h</span></div>
@@ -366,7 +377,8 @@ function describe(e) {
     return { ic: ic('feed'), t: e.end ? parts.join(' · ') || '0 min' : 'En cours…', d: e.end ? `Total ${dur(sideMs(e))}` : '' };
   }
   if (e.type === 'biberon') return { ic: ic('bottle'), t: `${e.ml} ml`, d: e.milk === 'maternel' ? 'Lait maternel' : 'Lait artificiel' };
-  return { ic: ic(e.caca ? 'poop' : 'drop'), t: [e.pipi && 'Pipi', e.caca && 'Caca'].filter(Boolean).join(' + ') || 'Couche', d: '' };
+  const k = COUCHE[coucheKind(e)];
+  return { ic: ic(k.ic), t: `Couche ${k.l.toLowerCase()}`, d: '' };
 }
 
 function historyHTML() {
@@ -403,7 +415,8 @@ function summarize(evs) {
     ml: bibs.reduce((m, e) => m + (+e.ml || 0), 0),
     gap: gaps.length ? gaps.reduce((a, b) => a + b, 0) / gaps.length : 0,
     avgSein: seins.length ? (tG + tD) / seins.length : 0,
-    couches: couches.length, pipi: couches.filter(e => e.pipi).length, caca: couches.filter(e => e.caca).length
+    couches: couches.length, pipi: couches.filter(e => e.pipi).length, caca: couches.filter(e => e.caca).length,
+    byKind: Object.fromEntries(Object.keys(COUCHE).map(k => [k, couches.filter(e => coucheKind(e) === k).length]))
   };
 }
 const kpi = (v, l) => `<div class="kpi"><b>${v}</b><span>${l}</span></div>`;
@@ -419,7 +432,7 @@ function block(title, s, perDay = 1) {
       ${kpi(dur(s.tSein / perDay), 'au sein' + (perDay > 1 ? ' / jour' : ''))}
       ${kpi(Math.round(s.ml / perDay) + ' ml', `biberons (${r(s.bibs)})` + (perDay > 1 ? ' / jour' : ''))}
       ${kpi(r(s.couches), 'couches' + (perDay > 1 ? ' / jour' : ''))}
-      ${kpi(`${r(s.pipi)} / ${r(s.caca)}`, 'pipi / caca')}
+      <div class="kpi"><span>Détail des couches</span><div class="kinds">${Object.entries(COUCHE).map(([k, c]) => `<span>${c.l} <b>${r(s.byKind[k])}</b></span>`).join('')}</div></div>
     </div>
     ${s.tSein ? `<div class="split"><i style="width:${s.tG / tot * 100}%;background:var(--g)"></i><i style="flex:1;background:var(--d)"></i></div>
       <div class="sub" style="display:flex;justify-content:space-between"><span>G ${dur(s.tG)} (${Math.round(s.tG / tot * 100)}%)</span><span>D ${dur(s.tD)}</span></div>` : ''}
@@ -564,11 +577,10 @@ function bibDialog() {
 
 function coucheDialog() {
   dialog(`<h3>${ic('diaper')} Couche</h3>
-    <div class="grid2"><button class="btn" value="p">${ic('drop')}Pipi</button><button class="btn" value="c">${ic('poop')}Caca</button></div>
-    <button class="btn primary" value="pc">Les deux</button>
+    <div class="grid2 couches">${Object.entries(COUCHE).map(([k, c]) => `<button class="btn row-btn ck ${k}" value="${k}">${ic(c.ic)}${c.l}</button>`).join('')}</div>
     <menu><button class="btn" value="cancel">Annuler</button></menu>`,
-    v => { const t = now(), e = { id: uid(), type: 'couche', start: t, end: t, pipi: v.includes('p'), caca: v.includes('c') };
-      guard('quick', { done: `Couche notée · ${[e.pipi && 'pipi', e.caca && 'caca'].filter(Boolean).join(' + ')}` }, () => { put(e); return e.id }) });
+    v => { if (!COUCHE[v]) return; const t = now(), e = { id: uid(), type: 'couche', start: t, end: t, kind: v };
+      guard('quick', { done: `Couche notée · ${COUCHE[v].l.toLowerCase()}` }, () => { put(e); return e.id }) });
 }
 
 function editDialog(e, isNew) {
@@ -582,8 +594,8 @@ function editDialog(e, isNew) {
       <div class="sub" data-endhint></div>`;
   if (e.type === 'biberon') body = `<label>Quantité (ml)<input type="number" name="ml" min="1" step="1" inputmode="numeric" placeholder="0" required value="${e.ml || ''}"></label>
       <div class="seg">${['artificiel', 'maternel'].map(v => `<label><input type="radio" name="milk" value="${v}" ${(e.milk || S.milk) === v ? 'checked' : ''}>Lait ${v}</label>`).join('')}</div>`;
-  if (e.type === 'couche') body = `<div class="seg"><label><input type="checkbox" name="pipi" ${e.pipi ? 'checked' : ''}>Pipi</label>
-      <label><input type="checkbox" name="caca" ${e.caca ? 'checked' : ''}>Caca</label></div>`;
+  if (e.type === 'couche') body = `<div class="seg">${Object.entries(COUCHE).map(([k, c]) =>
+      `<label><input type="radio" name="kind" value="${k}" ${coucheKind(e) === k ? 'checked' : ''}>${c.l}</label>`).join('')}</div>`;
   const title = { sein: ic('feed') + ' Tétée', biberon: ic('bottle') + ' Biberon', couche: ic('diaper') + ' Couche' }[e.type];
   dialog(`<h3>${title}</h3>
     <label>Début<input type="datetime-local" name="start" value="${dtl(e.start)}" required></label>
@@ -607,7 +619,7 @@ function editDialog(e, isNew) {
       } else {
         e.start = e.end = start;
         if (e.type === 'biberon') { e.ml = Math.max(0, +f.ml.value || 0); e.milk = f.milk.value }
-        if (e.type === 'couche') { e.pipi = f.pipi.checked; e.caca = f.caca.checked }
+        if (e.type === 'couche') e.kind = f.kind.value;
       }
       e.note = f.note.value.trim() || null;
       put(e);
@@ -675,9 +687,11 @@ document.addEventListener('change', ev => {
 });
 
 /* ---------- synchro Firebase ---------- */
+let rulesOld = false;
 function setSync(s, err) {
+  if (s === 'ok' && rulesOld) s = 'rules';
   const el = $('#sync');
-  el.innerHTML = { local: 'local', wait: 'connexion…', ok: ic('cloud') + 'synchro', off: ic('cloudOff') + 'hors ligne', err: ic('alert') + 'erreur synchro' }[s];
+  el.innerHTML = { local: 'local', wait: 'connexion…', ok: ic('cloud') + 'synchro', off: ic('cloudOff') + 'hors ligne', err: ic('alert') + 'erreur synchro', rules: ic('alert') + 'règles à mettre à jour' }[s];
   el.className = 'chip ' + (s === 'ok' ? 'ok' : s === 'err' ? 'err' : '');
   if (err) { console.error(err); el.title = String(err.message || err) }
 }
@@ -736,7 +750,10 @@ async function connectCloud() {
     const full = S.syncedFam !== S.fam;
     const since = full ? 0 : [...events.values()].reduce((m, e) => Math.max(m, e.u || 0), 0) - 864e5;
     const q = since > 0 ? fs.query(col, fs.where('u', '>=', since)) : col;
-    const me = { write: e => fs.setDoc(fs.doc(col, e.id), JSON.parse(JSON.stringify(e))).catch(err => setSync('err', err)) };
+    const me = { write: e => fs.setDoc(fs.doc(col, e.id), JSON.parse(JSON.stringify(e))).catch(err => {
+      // règles Firestore pas encore mises à jour (champ « kind » des couches) : on envoie sans ce champ
+      if (err?.code === 'permission-denied' && 'kind' in e) { const { kind, ...rest } = e; return fs.setDoc(fs.doc(col, e.id), JSON.parse(JSON.stringify(rest))).then(() => { rulesOld = true; setSync('rules') }) }
+      setSync('err', err) }) };
     let reconciled = false;
     me.unsub = fs.onSnapshot(q, { includeMetadataChanges: true }, snap => {
       if (cloud !== me) return;
