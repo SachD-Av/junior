@@ -510,10 +510,10 @@ function historyHTML() {
     const x = describe(e);
     let gap = '';
     if (isMeal(e)) { const i = meals.indexOf(e), prev = meals[i + 1]; if (prev) gap = `écart ${dur((Math.floor(mealRef(e).t / 6e4) - Math.floor(mealRef(prev).t / 6e4)) * 6e4)}` }
-    const extra = [x.d, e.type === 'sein' && e.end && refNote(e), e.note && esc(e.note), e.by && 'par ' + esc(e.by)].filter(Boolean).join(' · ');
+    const extra = [x.d, e.type === 'sein' && e.end && mealRef(e).pause && `commencée à ${hm(e.start)}`, e.note && esc(e.note), e.by && 'par ' + esc(e.by)].filter(Boolean).join(' · ');
     html += `<button class="row" data-act="edit" data-id="${e.id}"><span class="ic">${x.ic}</span>
       <span class="tx"><div>${x.t}</div>${extra ? `<div>${extra}</div>` : ''}</span>
-      <span class="tm">${hm(e.start)}<small>${gap}</small></span></button>`;
+      <span class="tm">${hm(isMeal(e) ? mealRef(e).t : e.start)}<small>${gap}</small></span></button>`;
   }
   return html;
 }
