@@ -1,0 +1,18 @@
+# En-têtes HTTP pour Cloudflare Pages (ignoré par GitHub Pages).
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://www.gstatic.com/firebasejs/10.12.2/; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://www.google.com; connect-src 'self' https://firestore.googleapis.com https://www.gstatic.com; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: no-referrer
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
+  Cross-Origin-Opener-Policy: same-origin
+
+# le service worker et le code doivent toujours être revérifiés (mises à jour immédiates)
+/sw.js
+  Cache-Control: no-cache
+/app.js
+  Cache-Control: no-cache
+/index.html
+  Cache-Control: no-cache
+/
+  Cache-Control: no-cache
