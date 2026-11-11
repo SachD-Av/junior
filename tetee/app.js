@@ -17,6 +17,22 @@ const dayName = t => { const d0 = dayStart(now()), d = dayStart(t);
   if (d === d0) return "Aujourd'hui"; if (d0 - d < 864e5 * 1.5) return 'Hier';
   return new Date(t).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }) };
 const dtl = t => { const d = new Date(t); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}` };
+/* Champ « quand » : l'heure (champ principal) + le jour (Aujourd'hui par défaut, Hier, …) */
+const hhmm = t => { const d = new Date(t); return `${pad(d.getHours())}:${pad(d.getMinutes())}` };
+function whenHTML(name, t, optional = false) {
+  const d0 = dayStart(now()), off = t == null ? 0 : Math.round((dayStart(t) - d0) / 864e5);
+  const label = i => i === 0 ? "Aujourd'hui" : i === -1 ? 'Hier' : new Date(d0 + i * 864e5 + 432e5).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' });
+  const opts = []; for (let i = 0; i >= -6; i--) opts.push(i);
+  if (!opts.includes(off)) opts.push(off);
+  return `<div class="when"><input type="time" name="${name}" value="${t == null ? '' : hhmm(t)}" ${optional ? '' : 'required'}>
+    <select name="${name}_d" aria-label="Jour">${opts.map(i => `<option value="${i}" ${i === off ? 'selected' : ''}>${label(i)}</option>`).join('')}</select></div>`;
+}
+function readWhen(f, name) {
+  const v = f[name]?.value; if (!v) return null;
+  const [h, m] = v.split(':').map(Number), d = new Date(dayStart(now()));
+  d.setDate(d.getDate() + (+f[name + '_d'].value || 0)); d.setHours(h, m, 0, 0);
+  return d.getTime();
+}
 const buzz = () => navigator.vibrate?.(25);
 const SIDE = { G: 'Gauche', D: 'Droit' };    // libellés des boutons (sein gauche / sein droit)
 const SEIN = { G: 'gauche', D: 'droit' };     // « sein gauche / sein droit »
@@ -697,12 +713,12 @@ function bibDialog() {
     <label class="mlv"><input id="mlv" type="number" min="1" max="2000" step="1" inputmode="numeric" placeholder="0" required><span>ml</span></label>
     <input id="mlr" type="range" min="0" max="300" step="1" value="0">
     <div class="seg">${['artificiel', 'maternel'].map(v => `<label><input type="radio" name="milk" value="${v}" ${S.milk === v ? 'checked' : ''}>Lait ${v}</label>`).join('')}</div>
-    <label>Heure<input type="datetime-local" name="start" value="${dtl(now())}"></label>
+    <div class="fld"><span>Heure</span>${whenHTML('start', now())}</div>
     <menu><button class="btn" value="cancel" formnovalidate>Annuler</button><button class="btn primary" value="ok">Enregistrer</button></menu>`,
     (v, f) => {
       ml = Math.min(2000, Math.max(0, Math.round(+f.querySelector('#mlv').value || 0)));
       S.milk = f.milk.value; saveSettings();
-      const t = new Date(f.start.value).getTime() || now();
+      const t = readWhen(f, 'start') || now();
       guard('quick', { done: `Biberon noté · ${ml} ml` }, () => { const e = { id: uid(), type: 'biberon', start: t, end: t, ml, milk: S.milk }; put(e); return e.id });
     },
     f => {
@@ -721,11 +737,11 @@ function tirageDialog() {
   dialog(`<h3>${ic('pump')} Tirage</h3>
     ${side('G')}${side('D')}
     <div class="sub" style="text-align:center">Total : <b id="pT">0</b> ml</div>
-    <label>Heure<input type="datetime-local" name="start" value="${dtl(now())}"></label>
+    <div class="fld"><span>Heure</span>${whenHTML('start', now())}</div>
     <menu><button class="btn" value="cancel" formnovalidate>Annuler</button><button class="btn primary" value="ok">Enregistrer</button></menu>`,
     (v, f) => {
       const q = s => Math.min(2000, Math.max(0, Math.round(+f.querySelector('#p' + s).value || 0)));
-      const t = new Date(f.start.value).getTime() || now(), e = { id: uid(), type: 'tirage', start: t, end: t, mlG: q('G'), mlD: q('D') };
+      const t = readWhen(f, 'start') || now(), e = { id: uid(), type: 'tirage', start: t, end: t, mlG: q('G'), mlD: q('D') };
       guard('quick', { done: `Tirage noté · ${e.mlG + e.mlD} ml` }, () => { put(e); return e.id });
     },
     f => {
@@ -758,7 +774,7 @@ function editDialog(e, isNew) {
         <label class="val"><input type="number" name="${n}" min="0" max="300" inputmode="numeric" value="${min(s)}"><span>min</span></label>
         <button type="button" class="btn" data-step="1" data-for="${n}" aria-label="plus 1 minute">+</button></div>`).join('')}</div>
       <div class="endhint" data-endhint></div>`;
-  if (e.type === 'sommeil') body = `<label>Fin (vide = dort encore)<input type="datetime-local" name="end" value="${e.end != null ? dtl(e.end) : ''}"></label>
+  if (e.type === 'sommeil') body = `<div class="fld"><span>Fin (vide = dort encore)</span>${whenHTML('end', e.end, true)}</div>
       <div class="sub" data-sleephint></div>`;
   if (e.type === 'mesure') body = `<label>Poids (g)<input type="number" name="poids" min="0" max="30000" step="1" inputmode="numeric" placeholder="ex. 4250" value="${e.poids ?? ''}"></label>
       <div class="grid2"><label>Taille (cm)<input type="number" name="taille" min="0" max="150" step="0.1" inputmode="decimal" placeholder="ex. 54,5" value="${e.taille ?? ''}"></label>
@@ -772,13 +788,13 @@ function editDialog(e, isNew) {
       `<label><input type="radio" name="kind" value="${k}" ${coucheKind(e) === k ? 'checked' : ''}>${c.l}</label>`).join('')}</div>`;
   const title = { sein: ic('feed') + ' Tétée', biberon: ic('bottle') + ' Biberon', couche: ic('diaper') + ' Couche', tirage: ic('pump') + ' Tirage', sommeil: ic('moon2') + ' Sommeil', mesure: ic('scale') + ' Mesure' }[e.type];
   dialog(`<h3>${title}${isNew ? '' : `<button class="trash" value="del" formnovalidate aria-label="Supprimer">${ic('trash')}<span>Supprimer</span></button>`}</h3>
-    <label>Début<input type="datetime-local" name="start" value="${dtl(e.start)}" required></label>
+    <div class="fld"><span>Début</span>${whenHTML('start', e.start)}</div>
     ${body}
     <label>Note<input name="note" value="${esc(e.note)}" placeholder="optionnel"></label>
     <menu><button class="btn" value="cancel" formnovalidate>Annuler</button><button class="btn primary" value="ok">Enregistrer</button></menu>`,
     (v, f) => {
       if (v === 'del') { if (confirm('Supprimer ?')) { e.del = true; put(e) } return }
-      const start = new Date(f.start.value).getTime() || e.start;
+      const start = readWhen(f, 'start') || e.start;
       if (e.type === 'sein') {
         const g = Math.max(0, +f.g.value || 0), d = Math.max(0, +f.d.value || 0);
         if (!isNew && g === min('G') && d === min('D')) {           // durées inchangées : on décale juste l'heure
@@ -790,7 +806,8 @@ function editDialog(e, isNew) {
         }
         e.start = start; e.end = e.segs.at(-1)?.b ?? start;
       } else if (e.type === 'sommeil') {
-        const end = f.end.value ? new Date(f.end.value).getTime() : null;
+        let end = readWhen(f, 'end');
+        if (end != null && end <= start && f.end_d.value === f.start_d.value) end += 864e5; // fin après minuit
         if (end != null && end <= start) return alert('La fin doit être après le début.');
         e.start = start; e.end = end;
       } else if (e.type === 'mesure') {
@@ -808,12 +825,12 @@ function editDialog(e, isNew) {
     },
     f => {
       if (e.type === 'sommeil') {
-        const h = () => { const a = new Date(f.start.value).getTime(), b = f.end.value ? new Date(f.end.value).getTime() : null;
+        const h = () => { const a = readWhen(f, 'start'); let b = readWhen(f, 'end'); if (b != null && a && b <= a && f.end_d.value === f.start_d.value) b += 864e5;
           f.querySelector('[data-sleephint]').textContent = a && b && b > a ? `Durée : ${dur(b - a)}` : b ? 'La fin doit être après le début' : 'En cours' };
         f.addEventListener('input', h); h(); return;
       }
       if (e.type !== 'sein') return;
-      const hint = () => { const t = new Date(f.start.value).getTime(), m = (+f.g.value || 0) + (+f.d.value || 0);
+      const hint = () => { const t = readWhen(f, 'start'), m = (+f.g.value || 0) + (+f.d.value || 0);
         f.querySelector('[data-endhint]').innerHTML = t ? `${hm(t)} → <b>${hm(t + m * 6e4)}</b> · total <b>${m} min</b>` : '' };
       f.addEventListener('click', ev => { const b = ev.target.closest('[data-step]'); if (!b) return;
         const i = f[b.dataset.for]; i.value = Math.max(0, (+i.value || 0) + +b.dataset.step); buzz(); hint() });
