@@ -88,7 +88,7 @@ document.querySelectorAll('[data-i]').forEach(el => el.innerHTML = ic(el.dataset
 
 /* ---------- état ---------- */
 const S = Object.assign({ theme: 'auto', onehand: true, name: '', fb: null, fam: null, milk: 'artificiel',
-  guard: 'undo', delay: 10, morning: 8, minFeed: 5,
+  guard: 'undo', delay: 10, morning: 8, minFeed: 5, longPause: 15,
   remind: false, remindEvery: 180, remindNight: true, remindNotified: null, remindSnooze: null, remindU: 0, ntfy: false, ntfyTopic: null,
   prot: { start: true, switch: true, stop: true, cancel: true, quick: true } }, LS.get('tt_settings', {}));
 if (!S.themeV2) { S.theme = 'auto'; S.themeV2 = 1; if (!OLD_HOST) LS.set('tt_settings', S) } // l'ancien bouton 🌙 désactivait l'auto pour toujours
@@ -128,7 +128,7 @@ function cleanSettings() {
   one('theme', inL(['auto', 'day', 'night']), 'auto'); one('onehand', isB, true);
   S.name = typeof S.name === 'string' ? S.name.slice(0, 40) : '';
   one('milk', inL(['artificiel', 'maternel']), 'artificiel'); one('guard', inL(['undo', 'double', 'confirm', 'none']), 'undo');
-  one('delay', inL([3, 5, 10, 15]), 10); one('morning', inL([6, 7, 8, 9, 10]), 8); one('minFeed', inL([0, 5, 30, 60]), 5);
+  one('delay', inL([3, 5, 10, 15]), 10); one('morning', inL([6, 7, 8, 9, 10]), 8); one('minFeed', inL([0, 5, 30, 60]), 5); one('longPause', inL([0, 10, 15, 20, 30]), 15);
   one('remind', isB, false); one('remindEvery', v => Number.isInteger(v) && v >= 30 && v <= 720, 180); one('remindNight', isB, true);
   one('remindSnooze', v => v === null || isN(v), null); one('remindU', isN, 0); one('remindNotified', v => v === null || typeof v === 'string', null);
   one('ntfy', isB, false); one('ntfyTopic', v => v === null || /^tetee-[0-9a-f]{24}$/.test(v), null);
@@ -153,6 +153,23 @@ const sleeping = () => list().find(e => e.type === 'sommeil' && e.end == null);
 const sleepMs = (e, a = -Infinity, b = Infinity, t = now()) => Math.max(0, Math.min(e.end ?? t, b) - Math.max(e.start, a));
 const openSeg = e => e.segs.find(s => !s.b);
 const sideMs = (e, side, t = now()) => e.segs.filter(s => !side || s.s === side).reduce((m, s) => m + ((s.b ?? t) - s.a), 0);
+/* Heure retenue d'un repas : son début, sauf si la tétée contient une longue pause
+   (couche, câlin… ≥ S.longPause min) : on compte alors à partir de la reprise qui suit la dernière longue pause.
+   Sert pour « Dernier repas », l'écart, les stats et le rappel. */
+function mealRef(e) {
+  const r = { t: e.start, pause: 0 };
+  if (e.type !== 'sein' || !S.longPause) return r;
+  const segs = [...e.segs].sort((a, b) => a.a - b.a);
+  for (let i = 1; i < segs.length; i++) {
+    const prevEnd = segs[i - 1].b; if (prevEnd == null) continue;
+    const gap = segs[i].a - prevEnd;
+    if (gap >= S.longPause * 6e4) { r.t = segs[i].a; r.pause = gap }
+  }
+  return r;
+}
+const refNote = (e, long) => { const r = mealRef(e); if (!r.pause) return '';
+  return long ? `Commencé à ${hm(e.start)} · pause de ${dur(r.pause)} · <b>compté à partir de ${hm(r.t)}</b>`
+              : `Pause de ${dur(r.pause)} : compté à partir de ${hm(r.t)}` };
 const isMeal = e => e.type === 'biberon' || (e.type === 'sein' && e.end);
 
 function put(e) {
@@ -406,7 +423,8 @@ function homeHTML() {
   const t0 = dayStart(now()), today = summarize(L.filter(x => x.start >= t0));
   let sub = '—';
   if (meal) sub = meal.type === 'sein'
-    ? [hm(meal.start), dur(sideMs(meal)), meal.segs.length && 'fin sein ' + SEIN[meal.segs.at(-1).s]].filter(Boolean).join(' · ')
+    ? (refNote(meal, true) ? `${refNote(meal, true)}<br>${dur(sideMs(meal))} au sein · fin sein ${SEIN[meal.segs.at(-1).s]}`
+      : [hm(meal.start), dur(sideMs(meal)), meal.segs.length && 'fin sein ' + SEIN[meal.segs.at(-1).s]].filter(Boolean).join(' · '))
     : `${hm(meal.start)} · biberon ${meal.ml} ml`;
   return `<section class="home idle">
     <button class="card since tap" data-view="history" aria-label="Voir l'historique">
@@ -486,7 +504,7 @@ function historyHTML() {
     <button class="btn" data-act="add" data-type="sommeil">+ Sommeil</button>
     <button class="btn" data-act="add" data-type="mesure">+ Mesure</button></div>`;
   if (!L.length) return html + `<p class="sub" style="text-align:center;margin-top:40px">Rien pour l'instant.</p>`;
-  html += `<p class="sub" style="margin:10px 4px 0;font-size:12px">« écart » = temps entre le début d'un repas et le début du repas précédent.</p>`;
+  html += `<p class="sub" style="margin:10px 4px 0;font-size:12px">« écart » = temps entre deux repas, de début à début (après une pause de plus de ${S.longPause || '—'} min, le repas est compté à partir de la reprise).</p>`;
   const meals = L.filter(isMeal);
   let day = null;
   for (const e of L.slice(0, 400)) {
@@ -494,8 +512,8 @@ function historyHTML() {
     if (dn !== day) { day = dn; html += `<div class="day">${dn}</div>` }
     const x = describe(e);
     let gap = '';
-    if (isMeal(e)) { const i = meals.indexOf(e), prev = meals[i + 1]; if (prev) gap = `écart ${dur((Math.floor(e.start / 6e4) - Math.floor(prev.start / 6e4)) * 6e4)}` }
-    const extra = [x.d, e.note && esc(e.note), e.by && 'par ' + esc(e.by)].filter(Boolean).join(' · ');
+    if (isMeal(e)) { const i = meals.indexOf(e), prev = meals[i + 1]; if (prev) gap = `écart ${dur((Math.floor(mealRef(e).t / 6e4) - Math.floor(mealRef(prev).t / 6e4)) * 6e4)}` }
+    const extra = [x.d, e.type === 'sein' && e.end && refNote(e), e.note && esc(e.note), e.by && 'par ' + esc(e.by)].filter(Boolean).join(' · ');
     html += `<button class="row" data-act="edit" data-id="${e.id}"><span class="ic">${x.ic}</span>
       <span class="tx"><div>${x.t}</div>${extra ? `<div>${extra}</div>` : ''}</span>
       <span class="tm">${hm(e.start)}<small>${gap}</small></span></button>`;
@@ -506,7 +524,7 @@ function historyHTML() {
 function summarize(evs, from = -Infinity, to = Infinity) {
   const seins = evs.filter(e => e.type === 'sein' && e.end), bibs = evs.filter(e => e.type === 'biberon'), tirs = evs.filter(e => e.type === 'tirage');
   const meals = evs.filter(isMeal).sort((a, b) => a.start - b.start);
-  const gaps = meals.slice(1).map((e, i) => e.start - meals[i].start);
+  const gaps = meals.slice(1).map((e, i) => mealRef(e).t - mealRef(meals[i]).t);
   const tG = seins.reduce((m, e) => m + sideMs(e, 'G'), 0), tD = seins.reduce((m, e) => m + sideMs(e, 'D'), 0);
   const couches = evs.filter(e => e.type === 'couche');
   const zz = evs.filter(e => e.type === 'sommeil');
@@ -602,6 +620,13 @@ function settingsHTML() {
       <label class="toggle"><span>Mode une main <small class="sub">(boutons en bas)</small></span><input type="checkbox" id="onehand" ${S.onehand ? 'checked' : ''}></label>
       <label>Votre prénom (affiché dans l'historique)<input id="name" value="${esc(S.name)}" placeholder="ex. Papa"></label>
     </div>
+    <h2>Longues pauses pendant une tétée</h2>
+    <div class="card set">
+      <p>Si la tétée a été interrompue longtemps (couche, câlin…), elle est comptée <b>à partir de la reprise</b> et non du début :
+        c'est cette heure qui sert pour « Dernier repas », l'écart dans l'historique, les stats et le rappel. La durée au sein ne change pas.</p>
+      <div class="fld"><span>Une pause compte comme une reprise à partir de</span><div class="seg" id="pauseSeg">${[[10, '10 min'], [15, '15 min'], [20, '20 min'], [30, '30 min'], [0, 'jamais']]
+        .map(([v, l]) => `<label><input type="radio" name="longPause" value="${v}" ${S.longPause === v ? 'checked' : ''}>${l}</label>`).join('')}</div></div>
+    </div>
     <h2>Rappels</h2>
     <div class="card set">
       <label class="toggle"><span>Rappel de la prochaine tétée</span><input type="checkbox" id="remind" ${S.remind ? 'checked' : ''}></label>
@@ -680,7 +705,7 @@ function settingsHTML() {
 const nightHours = (t = now()) => { const h = new Date(t).getHours(); return h >= 22 || h < 7 };
 function nextMeal() {
   const m = list().find(isMeal); if (!S.remind || !m) return null;
-  const base = m.start + S.remindEvery * 6e4, snz = S.remindSnooze && S.remindSnooze > m.start ? S.remindSnooze : 0;
+  const ref = mealRef(m).t, base = ref + S.remindEvery * 6e4, snz = S.remindSnooze && S.remindSnooze > ref ? S.remindSnooze : 0;
   return { meal: m, at: Math.max(base, snz), key: m.id + ':' + (snz || 0) };
 }
 function saveRemind() {
@@ -698,18 +723,18 @@ function checkReminder() {
   if (!S.remindNight && nightHours()) return;
   if (active()) return;                                   // tétée en cours : pas de rappel
   S.remindNotified = n.key; saveSettings();
-  const body = `Dernier repas à ${hm(n.meal.start)}, il y a ${dur(now() - n.meal.start)}.`;
+  const rt = mealRef(n.meal).t, body = `Dernier repas à ${hm(rt)}, il y a ${dur(now() - rt)}.`;
   navigator.vibrate?.([300, 150, 300]);
   if (!(NTFY_ACTIF && S.ntfy) && 'Notification' in window && Notification.permission === 'granted')
     navigator.serviceWorker?.ready.then(r => r.showNotification("C'est l'heure de la tétée", { body, icon: 'icon-192.png', badge: 'icon-192.png', tag: 'rappel', renotify: true })).catch(() => {});
-  toast(`C'est l'heure de la tétée (dernier repas ${hm(n.meal.start)})`);
+  toast(`C'est l'heure de la tétée (dernier repas ${hm(rt)})`);
 }
 
 function tick() {
   const t = now(), e = active();
   document.querySelectorAll('[data-t]').forEach(el => {
     const k = el.dataset.t;
-    if (k === 'since') { const m = list().find(isMeal); if (m) el.textContent = dur(t - m.start) }
+    if (k === 'since') { const m = list().find(isMeal); if (m) el.textContent = dur(t - mealRef(m).t) }
     else if (k === 'next') { const n = nextMeal(); if (n) { const d = n.at - t;
       el.textContent = d > 0 ? `Prochaine tétée vers ${hm(n.at)} · dans ${dur(d)}` : `Prochaine tétée prévue à ${hm(n.at)} · en retard de ${dur(-d)}`;
       el.classList.toggle('late', d <= 0) } }
@@ -934,6 +959,7 @@ document.addEventListener('change', ev => {
   else if (t.name === 'guard') { S.guard = t.value; armed = null; saveSettings(); render(true) }
   else if (t.name === 'delay') { S.delay = +t.value; saveSettings() }
   else if (t.name === 'minFeed') { S.minFeed = +t.value; saveSettings() }
+  else if (t.name === 'longPause') { S.longPause = +t.value; saveSettings() }
   else if (t.dataset.prot) { S.prot[t.dataset.prot] = t.checked; saveSettings() }
   else if (t.id === 'remind') {
     S.remind = t.checked; saveRemind();
