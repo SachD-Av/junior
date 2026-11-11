@@ -446,6 +446,7 @@ function historyHTML() {
     <button class="btn" data-act="add" data-type="sommeil">+ Sommeil</button>
     <button class="btn" data-act="add" data-type="mesure">+ Mesure</button></div>`;
   if (!L.length) return html + `<p class="sub" style="text-align:center;margin-top:40px">Rien pour l'instant.</p>`;
+  html += `<p class="sub" style="margin:10px 4px 0;font-size:12px">« écart » = temps entre le début d'un repas et le début du repas précédent.</p>`;
   const meals = L.filter(isMeal);
   let day = null;
   for (const e of L.slice(0, 400)) {
@@ -453,7 +454,7 @@ function historyHTML() {
     if (dn !== day) { day = dn; html += `<div class="day">${dn}</div>` }
     const x = describe(e);
     let gap = '';
-    if (isMeal(e)) { const i = meals.indexOf(e), prev = meals[i + 1]; if (prev) gap = `+${dur(e.start - prev.start)}` }
+    if (isMeal(e)) { const i = meals.indexOf(e), prev = meals[i + 1]; if (prev) gap = `écart ${dur((Math.floor(e.start / 6e4) - Math.floor(prev.start / 6e4)) * 6e4)}` }
     const extra = [x.d, e.note && esc(e.note), e.by && 'par ' + esc(e.by)].filter(Boolean).join(' · ');
     html += `<button class="row" data-act="edit" data-id="${e.id}"><span class="ic">${x.ic}</span>
       <span class="tx"><div>${x.t}</div>${extra ? `<div>${extra}</div>` : ''}</span>
