@@ -1,5 +1,9 @@
 /* ---------- utilitaires ---------- */
 const $ = s => document.querySelector(s);
+/* Ancienne adresse (GitHub Pages, partagée avec l'appli prénoms) : l'appli n'y tourne plus,
+   elle n'affiche que la page de déménagement vers sa propre adresse. */
+const NEW_HOME = 'https://tetee.sach-d.workers.dev/';
+const OLD_HOST = /(^|\.)github\.io$/.test(location.hostname);
 const LS = {
   get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d } catch { return d } },
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)) } catch {
@@ -87,9 +91,9 @@ const S = Object.assign({ theme: 'auto', onehand: true, name: '', fb: null, fam:
   guard: 'undo', delay: 10, morning: 8, minFeed: 5,
   remind: false, remindEvery: 180, remindNight: true, remindNotified: null, remindSnooze: null, remindU: 0, ntfy: false, ntfyTopic: null,
   prot: { start: true, switch: true, stop: true, cancel: true, quick: true } }, LS.get('tt_settings', {}));
-if (!S.themeV2) { S.theme = 'auto'; S.themeV2 = 1; LS.set('tt_settings', S) } // l'ancien bouton 🌙 désactivait l'auto pour toujours
+if (!S.themeV2) { S.theme = 'auto'; S.themeV2 = 1; if (!OLD_HOST) LS.set('tt_settings', S) } // l'ancien bouton 🌙 désactivait l'auto pour toujours
 S.prot = Object.assign({ start: true, switch: true, stop: true, cancel: true, quick: true }, S.prot);
-const saveSettings = () => LS.set('tt_settings', S);
+const saveSettings = () => { if (!OLD_HOST) LS.set('tt_settings', S) };   // rien n'est plus écrit à l'ancienne adresse
 /* Toute donnée venant de l'extérieur (synchro, import, stockage) est revalidée :
    types stricts, longueurs bornées, id alphanumérique. Rien d'autre n'atteint le HTML. */
 const num = v => { const n = +v; return Number.isFinite(n) ? n : 0 };
@@ -139,7 +143,7 @@ function cleanSettings() {
 }
 cleanSettings();
 const events = new Map(LS.get('tt_events', []).map(e => clean(e)).filter(Boolean).map(e => [e.id, e]));
-const saveLocal = () => LS.set('tt_events', [...events.values()]);
+const saveLocal = () => { if (!OLD_HOST) LS.set('tt_events', [...events.values()]) };
 saveLocal();                                         // stockage réécrit avec les données nettoyées
 let view = 'home', cloud = null;
 
@@ -360,6 +364,7 @@ function applyTheme() {
 
 /* ---------- rendu ---------- */
 function render(force) {
+  if (OLD_HOST) return;
   applyTheme();
   document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.view === view));
   if (view === 'settings' && !force) return; // ne pas effacer une saisie en cours
@@ -688,6 +693,7 @@ function snooze(min = 30) {
   toast(`Rappel repoussé à ${hm(S.remindSnooze)}`); render();
 }
 function checkReminder() {
+  if (OLD_HOST) return;
   const n = nextMeal(); if (!n || now() < n.at || S.remindNotified === n.key) return;
   if (!S.remindNight && nightHours()) return;
   if (active()) return;                                   // tétée en cours : pas de rappel
@@ -999,7 +1005,10 @@ function joinFrom(txt) {
     if (!confirm(`Rejoindre le suivi partagé (projet Firebase « ${c.projectId} ») ?\n\nLes données de ce téléphone y seront envoyées. N'acceptez que si le lien vient de l'autre parent.`)) return true;
     j.c = c;
     cloud?.unsub?.(); cloud = null;
-    S.fb = j.c; S.fam = j.f; saveSettings(); connectCloud(); ensureTopic(); view = 'home'; render(true); return true;
+    S.fb = j.c; S.fam = j.f;
+    if (j.s && typeof j.s === 'object')        // déménagement : on garde aussi les réglages (revalidés)
+      for (const k of MOVE_KEYS) if (k in j.s) S[k] = j.s[k];
+    cleanSettings(); saveSettings(); connectCloud(); ensureTopic(); view = 'home'; render(true); return true;
   } catch { return false }
 }
 
@@ -1009,6 +1018,7 @@ function newFamCode() { // 16 caractères parmi 32 = 80 bits, sans biais
 }
 let connecting = false, retryIn = 5e3, retryTimer = 0;
 async function connectCloud() {
+  if (OLD_HOST) return;
   if (!S.fb || !S.fam || !FAM_RE.test(S.fam)) return setSync('local');
   if (connecting || (cloud && cloud.fam === S.fam)) return;     // déjà connecté ou en cours
   connecting = true; clearTimeout(retryTimer);
@@ -1083,16 +1093,56 @@ async function connectCloud() {
 }
 window.addEventListener('online', () => { if (!cloud) connectCloud() });
 
+/* ---------- déménagement ---------- */
+const MOVE_KEYS = ['name', 'onehand', 'theme', 'guard', 'delay', 'prot', 'minFeed', 'morning', 'milk'];
+function moveLink() {
+  return NEW_HOME + '#join=' + b64e(JSON.stringify({ c: S.fb, f: S.fam, s: Object.fromEntries(MOVE_KEYS.map(k => [k, S[k]])) }));
+}
+async function wipeOld() {   // efface tout ce que Tétée a stocké à l'ancienne adresse
+  for (const k of Object.keys(localStorage)) if (k.startsWith('tt_')) localStorage.removeItem(k);
+  try { for (const d of await indexedDB.databases()) if (/firestore|firebase/i.test(d.name || '')) indexedDB.deleteDatabase(d.name) } catch {}
+  try { for (const k of await caches.keys()) if (k.startsWith('tetee-')) await caches.delete(k) } catch {}
+  try { for (const r of await navigator.serviceWorker.getRegistrations()) if (r.scope.includes('/tetee/')) await r.unregister() } catch {}
+}
+function moveScreen() {
+  for (const sel of ['nav', '#sync', '[data-act=night]']) { const el = document.querySelector(sel); if (el) el.style.display = 'none' }
+  const m = $('#main'), synced = !!S.fam, hasData = events.size > 0;
+  m.className = 'v-move';
+  m.innerHTML = `<div class="move">
+    <div class="logo big-logo">${ic('feed')}</div>
+    <h2>Tétée déménage</h2>
+    <p>L'appli a maintenant sa propre adresse, séparée de l'appli prénoms :</p>
+    <p class="code">${NEW_HOME.replace('https://', '').replace(/\/$/, '')}</p>
+    ${synced ? `<p>Votre historique est dans la synchro : il revient tout seul à la nouvelle adresse, avec vos réglages.</p>
+      <button class="btn primary" data-act="move">Passer à la nouvelle adresse</button>
+      <p class="sub">Les données de Tétée seront effacées de cette ancienne adresse. Installez ensuite l'appli depuis la nouvelle (⋮ → Installer) et supprimez l'ancienne icône.</p>`
+    : hasData ? `<p><b>Vos données ne sont que sur ce téléphone</b> (pas de synchro) : exportez-les d'abord, puis importez le fichier à la nouvelle adresse (Réglages → Importer).</p>
+      <button class="btn" data-act="export">${ic('download')}<small>1. Exporter mes données</small></button>
+      <a class="btn primary" href="${NEW_HOME}">2. Ouvrir la nouvelle adresse</a>
+      <button class="link" data-act="wipeold">3. Une fois importées là-bas : effacer les données d'ici</button>`
+    : `<a class="btn primary" href="${NEW_HOME}">Ouvrir la nouvelle adresse</a>`}
+  </div>`;
+}
+document.addEventListener('click', async ev => {
+  if (!OLD_HOST) return;
+  const b = ev.target.closest('[data-act=move],[data-act=wipeold]'); if (!b) return;
+  if (b.dataset.act === 'move') { const link = moveLink(); await wipeOld(); location.href = link }
+  else if (confirm('Effacer les données de Tétée de cette ancienne adresse ? (faites-le seulement après les avoir importées à la nouvelle)')) { await wipeOld(); location.href = NEW_HOME }
+});
+
 /* ---------- démarrage ---------- */
 function checkJoinHash() {
   if (!location.hash.startsWith('#join=')) return;
   const h = location.hash; history.replaceState(null, '', location.pathname);
   if (!joinFrom(h)) alert('Lien d\'invitation invalide.');
 }
-window.addEventListener('hashchange', checkJoinHash);
-checkJoinHash();
-fixOpenFeeds();
-connectCloud();
-render(true);
-ensureTopic().then(t => { if (t && view === 'settings') render(true) });
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+if (OLD_HOST) moveScreen();
+else {
+  window.addEventListener('hashchange', checkJoinHash);
+  checkJoinHash();
+  fixOpenFeeds();
+  connectCloud();
+  render(true);
+  ensureTopic().then(t => { if (t && view === 'settings') render(true) });
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+}
