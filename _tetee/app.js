@@ -650,7 +650,7 @@ function settingsHTML() {
       <p style="margin-top:8px"><b>Premier téléphone :</b> collez la configuration Firebase (gratuite, 5 min, voir le guide).</p>
       <textarea id="cfgTxt" rows="5" placeholder="const firebaseConfig = { apiKey: &quot;…&quot;, projectId: &quot;…&quot;, … }"></textarea>
       <button class="btn primary" data-act="create">Activer la synchro</button>
-      <a class="link" href="https://github.com/SachD-Av/junior/blob/main/tetee/README.md" target="_blank">Guide de configuration</a>`}
+      <a class="link" href="https://github.com/SachD-Av/junior/blob/main/_tetee/README.md" target="_blank">Guide de configuration</a>`}
     </div>
     ${S.fam ? `<h2>Sauvegarde automatique Google Drive</h2>
     <div class="card set">
