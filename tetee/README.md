@@ -13,6 +13,13 @@ Appli web installable sur Android (PWA) : pas de Play Store, pas de compilation.
 - **Hors ligne** : tout marche sans réseau, la synchro reprend toute seule.
 - **Synchro en direct entre deux téléphones**, même pour une tétée en cours.
 
+## Hébergement (Cloudflare Pages)
+
+L'appli a sa propre adresse, séparée de l'appli « prénoms » (stockage du navigateur non partagé).
+Cloudflare Pages publie automatiquement le dossier `tetee/` à chaque mise à jour de la branche `main` :
+projet relié au dépôt GitHub, *Framework* « None », commande de build vide, dossier de sortie `tetee`.
+Le fichier [`_headers`](_headers) ajoute les en-têtes de sécurité (CSP, anti-iframe…).
+
 ## Installer sur Android
 
 1. Ouvrir `https://sachd-av.github.io/junior/tetee/` dans Chrome
