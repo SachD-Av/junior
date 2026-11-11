@@ -19,7 +19,8 @@ const FAMILLE = '__FAMILLE__';
 // sont lus dans Firebase à chaque passage : on les change depuis l'appli, rien à modifier ici.
 const NTFY = '__NTFY__';
 const RAPPELS_ACTIFS = false;      // rappels ntfy prêts mais désactivés pour le moment (mettre true pour les activer)
-const FUSEAU = 'Europe/Paris';     // heures de la nuit, heure affichée et sauvegarde de 3 h, quel que soit le réglage du projet
+const FUSEAU = 'Europe/Paris';
+const PAUSE_LONGUE = 15;           // min : après une telle pause, le repas est compté à partir de la reprise (comme l'appli)     // heures de la nuit, heure affichée et sauvegarde de 3 h, quel que soit le réglage du projet
 
 const DOSSIER = 'Tétée – sauvegardes';
 const GARDER = { Quotidien: 7, Hebdomadaire: 8, Mensuel: 24 };
@@ -51,14 +52,15 @@ function rappel() {
   const repas = recents.find(e => e.type === 'biberon' || (e.type === 'sein' && e.end));
   if (!repas) return;
   // même règle que l'appli : début du dernier repas + intervalle, repoussé par « Repousser »
-  const snz = c.snooze && c.snooze > repas.start ? c.snooze : 0;
-  const quand = Math.max(repas.start + c.every * 6e4, snz), maintenant = Date.now(), du = maintenant - repas.start;
+  const ref = heureRetenue(repas);
+  const snz = c.snooze && c.snooze > ref ? c.snooze : 0;
+  const quand = Math.max(ref + c.every * 6e4, snz), maintenant = Date.now(), du = maintenant - ref;
   if (maintenant < quand || maintenant > quand + 12 * 36e5) return;      // pas encore l'heure, ou trop ancien (12 h)
   const props = PropertiesService.getScriptProperties(), cle = repas.id + ':' + (snz || 0);
   if (props.getProperty('rappel') === cle) return;                       // déjà prévenu pour ce repas
   const tz = FUSEAU, h = +Utilities.formatDate(new Date(), tz, 'H');
   if (!c.night && (h >= 22 || h < 7)) return;                            // la nuit : on attend 7 h (comme l'appli)
-  const heure = Utilities.formatDate(new Date(repas.start), tz, 'HH:mm');
+  const heure = Utilities.formatDate(new Date(ref), tz, 'HH:mm');
   envoyer("C'est l'heure de la tétée", `Dernier repas à ${heure}, il y a ${duree(du)}.`, 4);
   props.setProperty('rappel', cle);
 }
@@ -164,4 +166,12 @@ function existe(dos, nom) {
   const it = dos.getFilesByName(nom);
   while (it.hasNext()) if (!it.next().isTrashed()) return true;
   return false;
+}
+/** Heure retenue d'un repas : la reprise après la dernière longue pause d'une tétée, sinon son début. */
+function heureRetenue(e) {
+  let t = e.start;
+  if (e.type !== 'sein' || !Array.isArray(e.segs)) return t;
+  const s = e.segs.slice().sort((a, b) => a.a - b.a);
+  for (let i = 1; i < s.length; i++) if (s[i - 1].b != null && s[i].a - s[i - 1].b >= PAUSE_LONGUE * 6e4) t = s[i].a;
+  return t;
 }
