@@ -1,0 +1,10 @@
+// Publication de l'appli Tétée sur Cloudflare (Workers, fichiers statiques).
+// Seul le dossier « tetee » est mis en ligne ; l'appli prénoms reste sur GitHub Pages.
+// Les en-têtes de sécurité sont dans tetee/_headers.
+{
+  "name": "tetee",
+  "compatibility_date": "2025-11-01",
+  "assets": {
+    "directory": "./tetee"
+  }
+}
