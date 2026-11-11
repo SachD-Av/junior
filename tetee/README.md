@@ -22,8 +22,8 @@ Le fichier [`_headers`](_headers) ajoute les en-têtes de sécurité (CSP, anti-
 
 ## Installer sur Android
 
-1. Ouvrir `https://sachd-av.github.io/junior/tetee/` dans Chrome
-   (il faut que GitHub Pages soit activé sur le dépôt : *Settings → Pages → Deploy from branch → main / root*).
+1. Ouvrir **https://tetee.sach-d.workers.dev** dans Chrome.
+   (L'ancienne adresse `sachd-av.github.io/junior/tetee/` n'affiche plus qu'une page de déménagement.)
 2. Menu ⋮ → **Ajouter à l'écran d'accueil** (ou **Installer l'application**).
 
 L'appli marche tout de suite, en local. Pour partager avec l'autre parent, il faut la synchro (une seule fois, environ 5 min, gratuit).
