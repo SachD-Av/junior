@@ -1,5 +1,5 @@
 // Cache de l'appli pour qu'elle marche sans réseau (la synchro reprend toute seule).
-const CACHE = 'tetee-v26';
+const CACHE = 'tetee-v28';
 const SHELL = ['./', './index.html', './app.js', './sauvegarde-drive.gs', './manifest.webmanifest', './icon-192.png', './icon-512.png', './maskable-192.png', './maskable-512.png'];
 
 self.addEventListener('install', e => {
@@ -13,10 +13,15 @@ self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   // seulement l'appli et les fichiers du SDK Firebase ; jamais les requêtes Firestore
   if (url.origin !== location.origin && url.host !== 'www.gstatic.com') return;
+  // page, code de l'appli et script Google : réseau d'abord (une correction s'applique dès l'ouverture),
+  // cache si pas de réseau ou réseau trop lent (3 s)
+  const fresh = e.request.mode === 'navigate' || (url.origin === location.origin && /\.(html|js|gs|webmanifest)$|\/$/.test(url.pathname));
   e.respondWith(caches.open(CACHE).then(async c => {
     const cached = await c.match(e.request, { ignoreSearch: true });
-    const net = fetch(e.request).then(r => { if (r.ok) c.put(e.request, r.clone()); return r }).catch(() => cached);
-    return cached || net;
+    const net = fetch(e.request).then(r => { if (r.ok) c.put(e.request, r.clone()); return r });
+    if (!fresh) return cached || net;                                   // icônes, SDK Firebase (versionné) : cache d'abord
+    const slow = new Promise(res => setTimeout(() => res(cached), 3000));
+    try { return (await Promise.race([net, cached ? slow : net])) || await net } catch { return cached || Response.error() }
   }));
 });
 

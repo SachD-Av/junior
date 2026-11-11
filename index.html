@@ -5034,6 +5034,8 @@ async function fetchSessionLikes() {
   const matchIds = myIds.filter(id => otherIds.includes(id));
   return { myIds, otherUser, otherIds, matchIds };
 }
+// texte venant du serveur (nom du partenaire, erreurs) : jamais inséré tel quel dans le HTML
+function escHTML(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])) }
 
 function setMatchBadge(count) {
   const badge = document.getElementById('matchBadge');
@@ -5328,7 +5330,7 @@ async function loadLists() {
     if (otherUser) {
       const otS = document.createElement('div');
       otS.className = 'match-section';
-      otS.innerHTML = '<div class="match-section-title">Coups de cœur de ' + otherUser + ' (' + otherIds.length + ')</div><div class="col-likes"></div>';
+      otS.innerHTML = '<div class="match-section-title">Coups de cœur de ' + escHTML(otherUser) + ' (' + otherIds.length + ')</div><div class="col-likes"></div>';
       const otCol = otS.querySelector('.col-likes');
       if (!otherIds.length) {
         otCol.innerHTML = '<div class="no-match" style="padding:8px 0">Aucun pour l\'instant</div>';
@@ -5350,7 +5352,7 @@ async function loadLists() {
       body.appendChild(w);
     }
   } catch (e) {
-    body.innerHTML = '<div class="no-match">Erreur : ' + e.message + '</div>';
+    body.innerHTML = '<div class="no-match">Erreur : ' + escHTML(e.message) + '</div>';
   }
 }
 

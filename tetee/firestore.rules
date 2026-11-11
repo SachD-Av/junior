@@ -6,7 +6,9 @@ service cloud.firestore {
   match /databases/{database}/documents {
     match /families/{fam}/events/{id} {
       allow get, list: if validFam(fam);
-      allow create, update: if validFam(fam) && validEvent(id, request.resource.data);
+      allow create: if validFam(fam) && validEvent(id, request.resource.data);
+      // une modification doit être plus récente que la version enregistrée (pas d'écrasement par une vieille copie)
+      allow update: if validFam(fam) && validEvent(id, request.resource.data) && request.resource.data.u > resource.data.u;
       allow delete: if false;
     }
 
@@ -18,7 +20,8 @@ service cloud.firestore {
         && request.resource.data.on is bool && request.resource.data.night is bool
         && request.resource.data.every is number && request.resource.data.every >= 30 && request.resource.data.every <= 720
         && (request.resource.data.snooze == null || request.resource.data.snooze is number)
-        && request.resource.data.u is number;
+        && request.resource.data.u is number && request.resource.data.u <= request.time.toMillis() + 600000
+        && (resource == null || request.resource.data.u > resource.data.u);
       allow delete: if false;
     }
 
@@ -41,12 +44,12 @@ service cloud.firestore {
         && d.id == id
         && d.keys().hasOnly(['id', 'type', 'start', 'end', 'segs', 'ml', 'milk', 'pipi', 'caca', 'kind', 'mlG', 'mlD', 'poids', 'taille', 'tete', 'note', 'by', 'u', 'del'])
         && d.type in ['sein', 'biberon', 'couche', 'tirage', 'sommeil', 'mesure']
-        && d.start is number && d.u is number
+        && d.start is number && d.u is number && d.u <= request.time.toMillis() + 600000
         && optNum(d, 'end') && optBool(d, 'del') && optBool(d, 'pipi') && optBool(d, 'caca')
         && optStr(d, 'note', 500) && optStr(d, 'by', 40)
         && (!('milk' in d) || d.milk in ['maternel', 'artificiel'])
         && (!('kind' in d) || d.kind in ['humide', 'sale', 'mixte', 'explosion'])
-        && (!('ml' in d) || (d.ml is number && d.ml >= 0 && d.ml <= 2000))
+        && (!('ml' in d) || (d.ml is number && d.ml >= 0 && d.ml <= 4000))
         && (!('mlG' in d) || (d.mlG is number && d.mlG >= 0 && d.mlG <= 2000))
         && (!('mlD' in d) || (d.mlD is number && d.mlD >= 0 && d.mlD <= 2000))
         && optNum(d, 'poids') && optNum(d, 'taille') && optNum(d, 'tete')
