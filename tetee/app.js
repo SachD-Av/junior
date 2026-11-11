@@ -51,6 +51,7 @@ const ICONS = {
   pump: '<path d="M7 3h10l-3 5h-4z"/><path d="M10 8v2M14 8v2"/><rect x="7" y="10" width="10" height="11" rx="2.5"/><path d="M7 15h3.5M7 18h3.5"/>',
   moon2: '<path d="M20 14.5A8 8 0 1 1 9.5 4a6.2 6.2 0 0 0 10.5 10.5z"/><path d="M15 3h4l-4 4h4"/>',
   scale: '<rect x="3" y="4" width="18" height="17" rx="3"/><path d="M8.5 11a3.5 3.5 0 0 1 7 0"/><path d="M12 11l1.5-2"/>',
+  trash: '<path d="M3 6h18M8 6V4h8v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6"/>',
   burst: '<path d="M12 2l1.8 4.6L18 4l-1 4.9L22 10l-4.2 2.6L20 17l-4.8-.8L14 21l-2-4-2 4-1.2-4.8L4 17l2.2-4.4L2 10l5-1.1L6 4l4.2 2.6z"/>',
   poop: '<path d="M6.5 20h11a3 3 0 0 0 .4-6 3 3 0 0 0-2.4-4.9A3.5 3.5 0 0 0 12 4c.4 1.6-.6 2.5-1.8 2.9A3 3 0 0 0 8 13.6 3 3 0 0 0 6.5 20z"/>',
   share: '<path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7M16 6l-4-4-4 4M12 2v13"/>',
@@ -750,12 +751,13 @@ function coucheDialog() {
 function editDialog(e, isNew) {
   const min = s => Math.round(sideMs(e, s) / 60000);
   let body = '';
-  if (e.type === 'sein') body = `<div class="grid2">
-      ${[['g', 'G', 'Gauche'], ['d', 'D', 'Droit']].map(([n, s, l]) => `<label>${l} (min)<span class="step">
-        <button type="button" class="btn" data-step="-1" data-for="${n}">−</button>
-        <input type="number" name="${n}" min="0" inputmode="numeric" value="${min(s)}">
-        <button type="button" class="btn" data-step="1" data-for="${n}">+</button></span></label>`).join('')}</div>
-      <div class="sub" data-endhint></div>`;
+  if (e.type === 'sein') body = `<div class="sides">
+      ${[['g', 'G', 'Gauche'], ['d', 'D', 'Droit']].map(([n, s, l]) => `<div class="srow">
+        <b class="tag ${s}">${s}</b><span class="sname">${l}</span>
+        <button type="button" class="btn" data-step="-1" data-for="${n}" aria-label="moins 1 minute">−</button>
+        <label class="val"><input type="number" name="${n}" min="0" max="300" inputmode="numeric" value="${min(s)}"><span>min</span></label>
+        <button type="button" class="btn" data-step="1" data-for="${n}" aria-label="plus 1 minute">+</button></div>`).join('')}</div>
+      <div class="endhint" data-endhint></div>`;
   if (e.type === 'sommeil') body = `<label>Fin (vide = dort encore)<input type="datetime-local" name="end" value="${e.end != null ? dtl(e.end) : ''}"></label>
       <div class="sub" data-sleephint></div>`;
   if (e.type === 'mesure') body = `<label>Poids (g)<input type="number" name="poids" min="0" max="30000" step="1" inputmode="numeric" placeholder="ex. 4250" value="${e.poids ?? ''}"></label>
@@ -769,12 +771,11 @@ function editDialog(e, isNew) {
   if (e.type === 'couche') body = `<div class="seg">${Object.entries(COUCHE).map(([k, c]) =>
       `<label><input type="radio" name="kind" value="${k}" ${coucheKind(e) === k ? 'checked' : ''}>${c.l}</label>`).join('')}</div>`;
   const title = { sein: ic('feed') + ' Tétée', biberon: ic('bottle') + ' Biberon', couche: ic('diaper') + ' Couche', tirage: ic('pump') + ' Tirage', sommeil: ic('moon2') + ' Sommeil', mesure: ic('scale') + ' Mesure' }[e.type];
-  dialog(`<h3>${title}</h3>
+  dialog(`<h3>${title}${isNew ? '' : `<button class="trash" value="del" formnovalidate aria-label="Supprimer">${ic('trash')}<span>Supprimer</span></button>`}</h3>
     <label>Début<input type="datetime-local" name="start" value="${dtl(e.start)}" required></label>
     ${body}
     <label>Note<input name="note" value="${esc(e.note)}" placeholder="optionnel"></label>
-    <menu>${isNew ? '' : '<button class="btn danger" value="del" formnovalidate>Supprimer</button>'}
-      <button class="btn" value="cancel" formnovalidate>Annuler</button><button class="btn primary" value="ok">Enregistrer</button></menu>`,
+    <menu><button class="btn" value="cancel" formnovalidate>Annuler</button><button class="btn primary" value="ok">Enregistrer</button></menu>`,
     (v, f) => {
       if (v === 'del') { if (confirm('Supprimer ?')) { e.del = true; put(e) } return }
       const start = new Date(f.start.value).getTime() || e.start;
@@ -813,7 +814,7 @@ function editDialog(e, isNew) {
       }
       if (e.type !== 'sein') return;
       const hint = () => { const t = new Date(f.start.value).getTime(), m = (+f.g.value || 0) + (+f.d.value || 0);
-        f.querySelector('[data-endhint]').textContent = t ? `Fin : ${hm(t + m * 6e4)} · total ${m} min` : '' };
+        f.querySelector('[data-endhint]').innerHTML = t ? `${hm(t)} → <b>${hm(t + m * 6e4)}</b> · total <b>${m} min</b>` : '' };
       f.addEventListener('click', ev => { const b = ev.target.closest('[data-step]'); if (!b) return;
         const i = f[b.dataset.for]; i.value = Math.max(0, (+i.value || 0) + +b.dataset.step); buzz(); hint() });
       f.addEventListener('input', hint); hint();

@@ -66,8 +66,8 @@ nav button.on{color:var(--accent);font-weight:600}
 .side.on{outline:4px solid var(--fg);outline-offset:-4px}
 .side .t{font-size:22px;font-weight:600;font-variant-numeric:tabular-nums}
 .badge{position:absolute;top:8px;right:10px;font-size:11px;font-weight:600;background:rgba(0,0,0,.18);color:#fff;padding:2px 8px;border-radius:99px}
-.onehand .side{min-height:170px}
-.onehand .btn{min-height:80px}
+.onehand main .side{min-height:170px}
+.onehand main .btn{min-height:80px}
 .link{color:var(--muted);font-size:14px;padding:8px;text-decoration:underline}
 .paused{color:var(--warn)}
 
@@ -118,8 +118,8 @@ dialog::backdrop{background:rgba(0,0,0,.5)}
 dialog form{display:flex;flex-direction:column;gap:12px}
 dialog h3{font-size:20px}
 dialog label{display:flex;flex-direction:column;gap:4px;font-size:14px;color:var(--muted)}
-dialog menu{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
-dialog menu .btn{min-height:48px;font-size:15px;padding:10px 16px;flex:1}
+dialog menu{display:flex;gap:10px;margin-top:4px}
+dialog menu .btn{min-height:52px;font-size:16px;padding:10px 16px;flex:1}
 .mlv{display:flex!important;flex-direction:row!important;align-items:baseline;justify-content:center;gap:4px}
 .mlv input{width:140px;font-size:44px;font-weight:700;text-align:center;padding:4px 0;background:none;border:0;border-bottom:2px solid var(--line);border-radius:0;font-variant-numeric:tabular-nums;-moz-appearance:textfield}
 .mlv input::-webkit-inner-spin-button,.mlv input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
@@ -288,6 +288,21 @@ main.v-home{container-type:size}
 .v-stats .bars .b{margin:3px 0} .v-stats .bars .b .track{height:24px}
 @media (max-height:660px){ .v-stats .bars .b{margin:2px 0} .v-stats .bars .b .track{height:20px} .v-stats .bars .b .val{top:2px} }
 @media (max-height:700px){ .v-stats .compact .split,.v-stats .compact .split + .sub,.v-stats .compact .kpi:nth-child(n+7){display:none} }
+/* fenêtre de modification */
+dialog h3 .trash{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:14px;font-weight:600;color:var(--accent);padding:8px 10px;border-radius:10px}
+dialog h3 .trash .i{width:18px;height:18px;color:var(--accent)}
+.sides{display:flex;flex-direction:column;gap:8px}
+.srow{display:grid;grid-template-columns:40px 1fr 48px 92px 48px;align-items:center;gap:8px;background:var(--soft);border-radius:14px;padding:8px}
+.srow .tag{height:40px;border-radius:10px;display:grid;place-items:center;font-size:18px;color:#fff}
+.srow .tag.G{background:var(--g)} .srow .tag.D{background:var(--d)}
+.srow .sname{font-size:15px;color:var(--fg)}
+.srow .btn{min-height:44px!important;height:44px;padding:0;font-size:24px;border-radius:12px}
+.srow .val{display:flex!important;flex-direction:row!important;align-items:baseline;justify-content:center;gap:3px;color:var(--muted)}
+.srow .val input{width:52px;padding:4px 0;font-size:24px;font-weight:700;text-align:center;background:none;border:0;border-bottom:2px solid var(--line);border-radius:0;-moz-appearance:textfield}
+.srow .val input::-webkit-inner-spin-button,.srow .val input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.endhint{font-size:14px;color:var(--muted);text-align:center}
+.endhint b{color:var(--fg)}
+@media (max-width:370px){ .srow{grid-template-columns:36px 1fr 44px 80px 44px;gap:6px} .srow .sname{font-size:13px} }
 </style>
 </head>
 <body>
