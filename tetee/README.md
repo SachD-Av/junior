@@ -33,9 +33,11 @@ L'appli marche tout de suite, en local. Pour partager avec l'autre parent, il fa
 
 Les données sont rangées sous un code famille aléatoire de 16 caractères, que seul le lien d'invitation contient. Ne partagez ce lien qu'avec l'autre parent.
 
-**Conseillé (2 min) :** dans <https://console.cloud.google.com/apis/credentials> (même projet), ouvrez la clé *Browser key*,
-puis choisissez *Restrictions relatives aux applications → Sites web* et ajoutez `https://sachd-av.github.io/*`.
-La clé ne marchera alors que depuis l'appli.
+La clé API Firebase n'est pas un secret. La restreindre au site ne protège pas Firestore (le SDK Firestore
+ne l'envoie pas) : la protection vient des règles et du code famille. Une restriction déjà posée ne gêne pas.
+
+**Après chaque mise à jour de `firestore.rules`**, recollez les règles dans Firebase (Firestore → Règles → Publier).
+En cas de doute sur la synchro : **Réglages → Tout resynchroniser** retélécharge tout l'historique.
 
 Le détail de l'audit de sécurité est dans [SECURITE.md](SECURITE.md).
 
@@ -58,6 +60,9 @@ dans le dossier Drive **Tétée – sauvegardes** : 7 copies quotidiennes, 8 heb
 Le script contient le code d'accès au suivi : ne le partagez pas.
 
 ## Rappels de tétée (même appli fermée)
+
+> **Désactivé pour le moment.** Le code est en place mais masqué (`NTFY_ACTIF = false` dans `app.js`,
+> `RAPPELS_ACTIFS = false` dans le script). Les rappels dans l'appli ouverte restent disponibles.
 
 1. **Réglages → Rappels** : activer et choisir l'intervalle (compté depuis le début du dernier repas).
 2. Sur chaque téléphone, installer l'appli gratuite **ntfy** (Play Store), puis dans **Réglages → Rappels**,

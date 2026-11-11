@@ -18,6 +18,8 @@ const FAMILLE = '__FAMILLE__';
 // Rappels (appli ntfy) : canal secret. Les réglages (activé, intervalle, nuit, « Repousser »)
 // sont lus dans Firebase à chaque passage : on les change depuis l'appli, rien à modifier ici.
 const NTFY = '__NTFY__';
+const RAPPELS_ACTIFS = false;      // rappels ntfy prêts mais désactivés pour le moment (mettre true pour les activer)
+const FUSEAU = 'Europe/Paris';     // heures de la nuit, heure affichée et sauvegarde de 3 h, quel que soit le réglage du projet
 
 const DOSSIER = 'Tétée – sauvegardes';
 const GARDER = { Quotidien: 7, Hebdomadaire: 8, Mensuel: 24 };
@@ -28,8 +30,8 @@ function installer() {
   ScriptApp.getProjectTriggers()
     .filter(t => ['sauvegarder', 'rappel'].includes(t.getHandlerFunction()))
     .forEach(t => ScriptApp.deleteTrigger(t));
-  ScriptApp.newTrigger('sauvegarder').timeBased().everyDays(1).atHour(3).create();
-  if (NTFY) {
+  ScriptApp.newTrigger('sauvegarder').timeBased().everyDays(1).atHour(3).inTimezone(FUSEAU).create();
+  if (RAPPELS_ACTIFS && NTFY) {
     ScriptApp.newTrigger('rappel').timeBased().everyMinutes(5).create();
     const c = reglages();
     envoyer('Rappels de tétée installés', c.on ? `Activés : ${duree(c.every * 6e4)} après le début de chaque repas.` : "Ils s'activent depuis l'appli (Réglages → Rappels).", 3);
@@ -42,20 +44,20 @@ function testerNotification() { envoyer('Test Tétée', 'Les notifications fonct
 
 /** Toutes les 5 min : si l'heure du rappel est passée, une notification (une seule par repas). */
 function rappel() {
-  if (!NTFY) return;
+  if (!RAPPELS_ACTIFS || !NTFY) return;
   const c = reglages(); if (!c.on) return;
-  const recents = derniers(8);
+  const recents = derniers(40);   // assez large même avec couches, dodos, tirages et entrées supprimées
   if (recents.some(e => e.type === 'sein' && !e.end)) return;           // tétée en cours
   const repas = recents.find(e => e.type === 'biberon' || (e.type === 'sein' && e.end));
   if (!repas) return;
   // même règle que l'appli : début du dernier repas + intervalle, repoussé par « Repousser »
   const snz = c.snooze && c.snooze > repas.start ? c.snooze : 0;
   const quand = Math.max(repas.start + c.every * 6e4, snz), maintenant = Date.now(), du = maintenant - repas.start;
-  if (maintenant < quand || maintenant > quand + 180 * 6e4) return;       // pas encore l'heure, ou trop ancien
+  if (maintenant < quand || maintenant > quand + 12 * 36e5) return;      // pas encore l'heure, ou trop ancien (12 h)
   const props = PropertiesService.getScriptProperties(), cle = repas.id + ':' + (snz || 0);
   if (props.getProperty('rappel') === cle) return;                       // déjà prévenu pour ce repas
-  const tz = Session.getScriptTimeZone(), h = +Utilities.formatDate(new Date(), tz, 'H');
-  if (!c.night && (h >= 22 || h < 7)) return;
+  const tz = FUSEAU, h = +Utilities.formatDate(new Date(), tz, 'H');
+  if (!c.night && (h >= 22 || h < 7)) return;                            // la nuit : on attend 7 h (comme l'appli)
   const heure = Utilities.formatDate(new Date(repas.start), tz, 'HH:mm');
   envoyer("C'est l'heure de la tétée", `Dernier repas à ${heure}, il y a ${duree(du)}.`, 4);
   props.setProperty('rappel', cle);
@@ -92,14 +94,14 @@ function sauvegarder() {
   const events = lireTout();
   const json = JSON.stringify(events, null, 1);
   const racine = dossier(DriveApp.getRootFolder(), DOSSIER);
-  const tz = Session.getScriptTimeZone(), d = new Date();
+  const tz = FUSEAU, d = new Date();
   const jour = Utilities.formatDate(d, tz, 'yyyy-MM-dd');
 
   ecrire(dossier(racine, 'Quotidien'), `tetee-${jour}.json`, json);
   const hebdo = dossier(racine, 'Hebdomadaire');
   if (plusRecent(hebdo) < d.getTime() - 6.5 * 864e5) ecrire(hebdo, `tetee-semaine-${jour}.json`, json);
   const mois = dossier(racine, 'Mensuel'), nomMois = `tetee-${Utilities.formatDate(d, tz, 'yyyy-MM')}.json`;
-  if (!mois.getFilesByName(nomMois).hasNext()) ecrire(mois, nomMois, json);
+  if (!existe(mois, nomMois)) ecrire(mois, nomMois, json);
   console.log(`${events.length} entrées sauvegardées`);
 }
 
@@ -148,13 +150,18 @@ function ecrire(dos, nom, contenu) {
   // rotation : on garde les N plus récents
   const fichiers = [];
   const all = dos.getFiles();
-  while (all.hasNext()) fichiers.push(all.next());
+  while (all.hasNext()) { const f = all.next(); if (!f.isTrashed()) fichiers.push(f) }   // sans la corbeille
   fichiers.sort((a, b) => b.getDateCreated() - a.getDateCreated());
   fichiers.slice(GARDER[dos.getName()] || 1000).forEach(f => f.setTrashed(true));
 }
 function plusRecent(dos) {
   let max = 0;
   const it = dos.getFiles();
-  while (it.hasNext()) max = Math.max(max, it.next().getDateCreated().getTime());
+  while (it.hasNext()) { const f = it.next(); if (!f.isTrashed()) max = Math.max(max, f.getDateCreated().getTime()) }
   return max;
+}
+function existe(dos, nom) {
+  const it = dos.getFilesByName(nom);
+  while (it.hasNext()) if (!it.next().isTrashed()) return true;
+  return false;
 }

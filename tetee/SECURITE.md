@@ -22,10 +22,27 @@ Date : 10 novembre 2026. Fichiers audités : `index.html`, `app.js`, `sw.js`, `m
 ## Risques restants (acceptés, ou à faire de votre côté)
 
 - **Le lien d'invitation est la clé d'accès.** Toute personne qui l'a peut lire et modifier le suivi. Ne l'envoyez qu'à l'autre parent. S'il fuit : *Réglages → Arrêter la synchro*, puis réactivez-la pour générer un nouveau code.
-- **La clé API Firebase n'est pas un secret** (c'est le fonctionnement normal de Firebase). Restreignez-la au site `https://sachd-av.github.io/*` dans la console Google Cloud (voir le README) pour limiter les abus de quota.
+- **La clé API Firebase n'est pas un secret** (c'est le fonctionnement normal de Firebase). La restreindre au site ne protège pas Firestore : le SDK Firestore ne l'envoie pas et l'API REST fonctionne sans. La protection repose sur les règles et le code famille.
+- **Origine partagée** : l'appli est servie sur `sachd-av.github.io`, comme l'appli « prénoms » du même dépôt ; le stockage du navigateur est commun aux deux. Toute faille d'injection dans l'une exposerait le code famille. La faille relevée dans l'appli prénoms (nom du partenaire affiché sans échappement) est corrigée ; l'idéal reste une adresse dédiée à Tétée.
 - **Pas de comptes utilisateurs.** C'est un choix de simplicité. La sécurité repose sur le code de 80 bits, impossible à deviner. On peut ajouter plus tard Firebase Auth et Firebase App Check.
 - **SDK Firebase chargé depuis `www.gstatic.com` sans contrôle d'intégrité (SRI)**, car les imports dynamiques ne le permettent pas. Le risque est très faible (CDN officiel de Google, version figée `10.12.2`).
 - **Script de sauvegarde Google Drive** : il contient le code famille et tourne dans votre compte Google. Il lit Firestore en lecture seule par l'API REST publique (les règles exigent le code), et n'écrit que dans le dossier Drive « Tétée – sauvegardes ». Ne le partagez pas.
 - **Rappels ntfy** : les notifications passent par le service public ntfy.sh, sur un canal dont le nom est dérivé du code famille (SHA-256, 96 bits) et donc impossible à deviner. Le message ne contient que l'heure du dernier repas. Quiconque connaît le nom du canal peut lire ces notifications : ne le partagez pas.
 - **Données en clair sur le téléphone** (`localStorage`) : protégées par le verrouillage du téléphone.
 - **GitHub Pages ne permet pas les en-têtes HTTP** : la CSP est en `<meta>`, donc `frame-ancestors` (anti-clickjacking) n'est pas applicable. Risque faible : l'appli n'a pas d'action sensible en un clic.
+
+## Revue de code indépendante (11 novembre 2026)
+
+Corrigé à la suite de la revue :
+- appli prénoms : nom du partenaire et messages d'erreur échappés ;
+- réglages du stockage revalidés au démarrage (listes blanches, configuration Firebase contrôlée comme à l'invitation) ;
+- synchro incrémentale fondée sur la dernière modification **reçue du serveur** (et non sur les saisies locales), bouton « Tout resynchroniser » ;
+- règles : une modification doit être plus récente que la version enregistrée ; horodatage borné (10 min d'avance au plus) ; l'appli récupère la version du serveur quand elle est plus récente ;
+- import seulement après la synchro complète, sans écraser le serveur ;
+- deux tétées ouvertes en même temps : la plus ancienne est fermée automatiquement ;
+- nouvel essai de connexion si le réseau manquait ; plus de double connexion ;
+- verrou d'écran sans fuite ; stats justes au changement d'heure ; sommeil coupé aux bornes de la période ;
+- modifier les minutes d'une tétée garde le dernier sein en dernier ;
+- tirage jusqu'à 4 000 ml au total ;
+- CSP limitée au SDK Firebase 10.12.2 ; service worker « réseau d'abord » pour le code (les corrections s'appliquent dès l'ouverture) ;
+- script Google : fuseau Europe/Paris forcé, 40 entrées lues, rappel de nuit reporté à 7 h, corbeille ignorée dans la rotation des sauvegardes.

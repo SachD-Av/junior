@@ -2,7 +2,8 @@
 const $ = s => document.querySelector(s);
 const LS = {
   get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d } catch { return d } },
-  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)) } catch {} }
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)) } catch {
+    if (!LS.warned) { LS.warned = true; setTimeout(() => toast('Stockage du téléphone plein : exportez vos données (Réglages)'), 0) } } }
 };
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
@@ -98,7 +99,7 @@ function clean(e, forcedId) {
   const id = String(forcedId ?? e.id ?? '');
   if (!/^[\w-]{1,40}$/.test(id)) return null;
   const o = { id, type: e.type, start: num(e.start), end: e.end == null ? null : num(e.end),
-    u: num(e.u), del: !!e.del, note: str(e.note, 500), by: str(e.by, 40) };
+    u: Math.min(num(e.u), Date.now() + 6e5), del: !!e.del, note: str(e.note, 500), by: str(e.by, 40) };
   if (!o.start) return null;
   if (o.type === 'sein') {
     o.segs = (Array.isArray(e.segs) ? e.segs : []).slice(0, 200)
@@ -116,8 +117,30 @@ function clean(e, forcedId) {
   return o;
 }
 const FAM_RE = /^[a-z0-9]{9,32}$/;
+/* Réglages lus dans le stockage : revalidés un par un (listes blanches), jamais utilisés tels quels */
+function cleanSettings() {
+  const one = (k, ok, d) => { if (!ok(S[k])) S[k] = d };
+  const isB = v => typeof v === 'boolean', isN = v => typeof v === 'number' && Number.isFinite(v), inL = l => v => l.includes(v);
+  one('theme', inL(['auto', 'day', 'night']), 'auto'); one('onehand', isB, true);
+  S.name = typeof S.name === 'string' ? S.name.slice(0, 40) : '';
+  one('milk', inL(['artificiel', 'maternel']), 'artificiel'); one('guard', inL(['undo', 'double', 'confirm', 'none']), 'undo');
+  one('delay', inL([3, 5, 10, 15]), 10); one('morning', inL([6, 7, 8, 9, 10]), 8); one('minFeed', inL([0, 5, 30, 60]), 5);
+  one('remind', isB, false); one('remindEvery', v => Number.isInteger(v) && v >= 30 && v <= 720, 180); one('remindNight', isB, true);
+  one('remindSnooze', v => v === null || isN(v), null); one('remindU', isN, 0); one('remindNotified', v => v === null || typeof v === 'string', null);
+  one('ntfy', isB, false); one('ntfyTopic', v => v === null || /^tetee-[0-9a-f]{24}$/.test(v), null);
+  one('statTab', inL(['today', '24h', 'week', 'growth']), 'today'); one('syncedAt', isN, 0);
+  one('syncedFam', v => v === null || v === undefined || FAM_RE.test(v), null);
+  one('force', v => v === null || v === undefined || (v && isB(v.night) && isN(v.until)), null);
+  S.prot = Object.fromEntries(['start', 'switch', 'stop', 'cancel', 'quick'].map(k => [k, S.prot?.[k] !== false]));
+  // configuration Firebase : mêmes contrôles qu'à l'invitation (sinon on repasse en local)
+  const c = S.fb && parseCfg(JSON.stringify(S.fb));
+  if (!c || !/^[a-z0-9-]{4,40}$/.test(c.projectId) || !FAM_RE.test(S.fam || '')) { S.fb = null; S.fam = null } else S.fb = c;
+  saveSettings();                                    // la version nettoyée remplace l'ancienne
+}
+cleanSettings();
 const events = new Map(LS.get('tt_events', []).map(e => clean(e)).filter(Boolean).map(e => [e.id, e]));
 const saveLocal = () => LS.set('tt_events', [...events.values()]);
+saveLocal();                                         // stockage réécrit avec les données nettoyées
 let view = 'home', cloud = null;
 
 const list = () => [...events.values()].filter(e => !e.del).sort((a, b) => b.start - a.start);
@@ -129,7 +152,7 @@ const sideMs = (e, side, t = now()) => e.segs.filter(s => !side || s.s === side)
 const isMeal = e => e.type === 'biberon' || (e.type === 'sein' && e.end);
 
 function put(e) {
-  e.u = now();
+  e.u = Math.max(now(), (events.get(e.id)?.u || 0) + 1);   // toujours plus récent que la version connue (horloges décalées)
   if (!e.by && S.name) e.by = S.name;
   e = clean(e); if (!e) return;
   events.set(e.id, e);
@@ -192,6 +215,18 @@ function confirmDialog(ask, fn) {
     () => { clearTimeout(timer); fn() },
     f => { timer = setTimeout(() => $('#dlg').open && $('#dlg').close(), S.delay * 1000);
       $('#dlg').addEventListener('close', () => clearTimeout(timer), { once: true }) });
+}
+
+/* Deux tétées ouvertes en même temps (démarrées sur les 2 téléphones avant la synchro,
+   ou téléphone hors ligne) : on garde la plus récente et on ferme les autres à son début. */
+function fixOpenFeeds() {
+  const open = list().filter(e => e.type === 'sein' && !e.end);
+  for (const e of open.slice(1)) {
+    const cut = Math.min(open[0].start, now()), o = openSeg(e);
+    if (o) o.b = Math.max(o.a, cut);
+    e.end = e.segs.at(-1)?.b ?? e.start;
+    put(e);
+  }
 }
 
 function tapSide(side) {
@@ -463,7 +498,7 @@ function historyHTML() {
   return html;
 }
 
-function summarize(evs) {
+function summarize(evs, from = -Infinity, to = Infinity) {
   const seins = evs.filter(e => e.type === 'sein' && e.end), bibs = evs.filter(e => e.type === 'biberon'), tirs = evs.filter(e => e.type === 'tirage');
   const meals = evs.filter(isMeal).sort((a, b) => a.start - b.start);
   const gaps = meals.slice(1).map((e, i) => e.start - meals[i].start);
@@ -473,7 +508,7 @@ function summarize(evs) {
   return {
     seins: seins.length, bibs: bibs.length, meals: meals.length, tG, tD, tSein: tG + tD,
     ml: bibs.reduce((m, e) => m + (+e.ml || 0), 0),
-    naps: zz.length, tSleep: zz.reduce((m, e) => m + sleepMs(e), 0),
+    naps: zz.length, tSleep: zz.reduce((m, e) => m + sleepMs(e, from, to), 0),
     tirs: tirs.length, tirG: tirs.reduce((m, e) => m + (e.mlG || 0), 0), tirD: tirs.reduce((m, e) => m + (e.mlD || 0), 0),
     gap: gaps.length ? gaps.reduce((a, b) => a + b, 0) / gaps.length : 0,
     avgSein: seins.length ? (tG + tD) / seins.length : 0,
@@ -505,14 +540,15 @@ function block(title, s, perDay = 1, compact = false) {
 function statsHTML() {
   const L = list(), t = now(), t0 = dayStart(t);
   const days = [];
-  for (let i = 0; i < 7; i++) { const a = t0 - i * 864e5, b = a + 864e5; days.push({ a, s: summarize(L.filter(e => e.start >= a && e.start < b)) }) }
-  const week = summarize(L.filter(e => e.start >= t0 - 6 * 864e5));
+  const dayAt = i => { const d = new Date(t0); d.setDate(d.getDate() - i); return d.getTime() };   // jours réels, même au changement d'heure
+  for (let i = 0; i < 7; i++) { const a = dayAt(i), b = dayAt(i - 1); days.push({ a, s: summarize(L.filter(e => e.start >= a && e.start < b), a, b) }) }
+  const week = summarize(L.filter(e => e.start >= dayAt(6)), dayAt(6), t);
   const max = Math.max(1, ...days.map(d => d.s.meals));
   const tabs = [['today', "Aujourd'hui"], ['24h', '24 h'], ['week', '7 jours'], ['growth', 'Croissance']];
   const tab = tabs.some(x => x[0] === S.statTab) ? S.statTab : 'today';
   const head = `<div class="tabs">${tabs.map(([k, l]) => `<button class="${k === tab ? 'on' : ''}" data-act="stattab" data-tab="${k}">${l}</button>`).join('')}</div>`;
   const pane = tab === 'today' ? block(null, days[0].s)
-    : tab === '24h' ? block(null, summarize(L.filter(e => e.start >= t - 864e5)))
+    : tab === '24h' ? block(null, summarize(L.filter(e => e.start >= t - 864e5), t - 864e5, t))
     : tab === 'growth' ? growthHTML(L, true)
     : block(null, week, 7, true) + `<div class="card bars">${days.map(d => `<div class="b">
         <span>${new Date(d.a).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' })}</span>
@@ -569,7 +605,7 @@ function settingsHTML() {
       <label class="toggle"><span>Aussi la nuit <small class="sub">(22 h – 7 h)</small></span><input type="checkbox" id="remindNight" ${S.remindNight ? 'checked' : ''}></label>
       <p>Réglages partagés avec l'autre téléphone. Sans ntfy, la notification n'arrive que si l'appli est ouverte ou en arrière-plan récent.
         ${'Notification' in window && Notification.permission !== 'granted' && !S.ntfy ? '<br><b>Les notifications ne sont pas autorisées</b> : touchez à nouveau l\'interrupteur pour les autoriser.' : ''}</p>
-      ${S.fam ? `<p style="margin-top:6px"><b>Même appli fermée (ntfy, gratuit)</b> — sur chaque téléphone :</p>
+      ${S.fam && NTFY_ACTIF ? `<p style="margin-top:6px"><b>Même appli fermée (ntfy, gratuit)</b> — sur chaque téléphone :</p>
       <p>1. Installez l'appli <a class="link" href="https://play.google.com/store/apps/details?id=io.heckel.ntfy" target="_blank" rel="noopener">ntfy</a>.<br>
          2. Abonnez-vous au canal de la famille :</p>
       <div class="grid2"><a class="btn" href="ntfy://ntfy.sh/${esc(S.ntfyTopic || '')}">${ic('share')}<small>S'abonner dans ntfy</small></a>
@@ -598,6 +634,7 @@ function settingsHTML() {
     <div class="card set">
     ${S.fam ? `
       <p>Synchro active. Code famille :</p><div class="code">${esc(S.fam)}</div>
+      <button class="btn" data-act="resync">Tout resynchroniser</button>
       <button class="btn primary" data-act="invite">${ic('share')} Envoyer le lien à l'autre parent</button>
       <p>L'autre parent ouvre le lien sur son téléphone : tout est partagé en direct (même une tétée en cours).</p>
       <button class="link danger" data-act="unlink">Arrêter la synchro sur ce téléphone</button>`
@@ -657,7 +694,7 @@ function checkReminder() {
   S.remindNotified = n.key; saveSettings();
   const body = `Dernier repas à ${hm(n.meal.start)}, il y a ${dur(now() - n.meal.start)}.`;
   navigator.vibrate?.([300, 150, 300]);
-  if (!S.ntfy && 'Notification' in window && Notification.permission === 'granted')
+  if (!(NTFY_ACTIF && S.ntfy) && 'Notification' in window && Notification.permission === 'granted')
     navigator.serviceWorker?.ready.then(r => r.showNotification("C'est l'heure de la tétée", { body, icon: 'icon-192.png', badge: 'icon-192.png', tag: 'rappel', renotify: true })).catch(() => {});
   toast(`C'est l'heure de la tétée (dernier repas ${hm(n.meal.start)})`);
 }
@@ -685,15 +722,18 @@ function tick() {
 setInterval(() => { tick(); checkReminder(); if (isNight() !== (document.documentElement.dataset.theme === 'night')) applyTheme() }, 1000);
 
 /* garder l'écran allumé pendant une tétée */
-let wl = null;
-async function wake(on) {
-  try {
-    if (on && !wl && 'wakeLock' in navigator && document.visibilityState === 'visible') {
-      wl = await navigator.wakeLock.request('screen'); wl.addEventListener('release', () => wl = null);
-    } else if (!on && wl) { await wl.release(); wl = null }
-  } catch {}
+let wl = null, wlBusy = Promise.resolve();
+function wake(on) {   // les demandes sont faites l'une après l'autre : jamais deux verrous à la fois
+  wlBusy = wlBusy.then(async () => {
+    try {
+      if (on && !wl && 'wakeLock' in navigator && document.visibilityState === 'visible') {
+        const l = await navigator.wakeLock.request('screen'); wl = l; l.addEventListener('release', () => { if (wl === l) wl = null });
+      } else if (!on && wl) { const l = wl; wl = null; await l.release() }
+    } catch {}
+  });
+  return wlBusy;
 }
-document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { render(); wake(!!active()) } });
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { render(); if (!cloud && !connecting) connectCloud() } });
 
 /* ---------- boîtes de dialogue ---------- */
 function dialog(html, onClose, setup) {
@@ -801,7 +841,8 @@ function editDialog(e, isNew) {
         if (!isNew && g === min('G') && d === min('D')) {           // durées inchangées : on décale juste l'heure
           const dt = start - e.start; e.segs.forEach(s => { s.a += dt; s.b += dt });
         } else {                                                     // on reconstruit les segments
-          const first = e.segs[0]?.s || 'G', order = first === 'G' ? [['G', g], ['D', d]] : [['D', d], ['G', g]];
+          const last = e.segs.at(-1)?.s || 'G', other = last === 'G' ? 'D' : 'G', val = { G: g, D: d };
+          const order = [[other, val[other]], [last, val[last]]];      // le dernier sein reste le dernier
           let t = start; e.segs = [];
           for (const [s, m] of order) if (m) { e.segs.push({ s, a: t, b: t + m * 6e4 }); t += m * 6e4 }
         }
@@ -856,7 +897,7 @@ document.addEventListener('click', ev => {
   else if (a === 'mesure') newEntry('mesure');
   else if (a === 'couche') coucheDialog();
   else if (a === 'night') toggleNight();
-  else if (a === 'edit') { const e = events.get(b.dataset.id); if (e && !e.end && e.type === 'sein') { view = 'home'; render() } else if (e) editDialog(structuredClone(e)) }
+  else if (a === 'edit') { const e = events.get(b.dataset.id); if (e && !e.end && e.type === 'sein' && active()?.id === e.id) { view = 'home'; render() } else if (e) editDialog(structuredClone(e)) }
   else if (a === 'add') newEntry(b.dataset.type);
   else if (a === 'adjust') adjustDialog();
   else if (a === 'forgot') forgotDialog();
@@ -865,7 +906,8 @@ document.addEventListener('click', ev => {
   else if (a === 'snooze') snooze(30);
   else if (a === 'stattab') { S.statTab = b.dataset.tab; saveSettings(); render(true) }
   else if (a === 'copytopic') ensureTopic().then(t => navigator.clipboard.writeText(t)).then(() => toast('Nom du canal copié')).catch(() => prompt('Nom du canal :', S.ntfyTopic));
-  else if (a === 'unlink') { if (confirm('Arrêter la synchro ? Les données restent sur ce téléphone.')) { cloud?.unsub?.(); cloud = null; S.fb = S.fam = null; saveSettings(); setSync('local'); render(true) } }
+  else if (a === 'resync') { cloud?.unsub?.(); cloud = null; S.syncedFam = null; S.syncedAt = 0; saveSettings(); connectCloud(); toast('Resynchronisation complète en cours…') }
+  else if (a === 'unlink') { if (confirm('Arrêter la synchro ? Les données restent sur ce téléphone.')) { cloud?.unsub?.(); cloud = null; S.fb = S.fam = null; S.syncedFam = null; S.syncedAt = 0; saveSettings(); setSync('local'); render(true) } }
   else if (a === 'join') { if (!joinFrom($('#joinTxt').value)) alert('Lien invalide') }
   else if (a === 'create') {
     const c = parseCfg($('#cfgTxt').value);
@@ -900,7 +942,8 @@ document.addEventListener('change', ev => {
   else if (t.id === 'importFile' && t.files[0]) t.files[0].text().then(txt => {
     try {
       const arr = JSON.parse(txt); let n = 0;
-      for (const raw of Array.isArray(arr) ? arr : []) { const e = clean(raw); if (!e) continue; const l = events.get(e.id); if (!l || e.u > l.u) { events.set(e.id, e); cloud?.write(e); n++ } }
+      if (cloud && !cloud.ready) return alert('Attendez la fin de la synchronisation (pastille « synchro »), puis réessayez.');
+      for (const raw of Array.isArray(arr) ? arr : []) { const e = clean(raw); if (!e) continue; const l = events.get(e.id); if (!l || e.u > l.u) { events.set(e.id, e); cloud?.write(e, true); n++ } }
       saveLocal(); alert(`${n} entrée(s) importée(s)`); render(true);
     } catch { alert('Fichier invalide') }
   });
@@ -924,6 +967,7 @@ function parseCfg(txt) {
 const b64e = s => btoa(unescape(encodeURIComponent(s))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 const b64d = s => decodeURIComponent(escape(atob(s.replace(/-/g, '+').replace(/_/g, '/'))));
 function inviteLink() { return location.origin + location.pathname + '#join=' + b64e(JSON.stringify({ c: S.fb, f: S.fam })) }
+const NTFY_ACTIF = false;   // rappels par ntfy (appli fermée) : prêts mais désactivés pour le moment
 async function ensureTopic() {
   if (!S.fam) return null;
   const want = async () => { const h = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('tetee-ntfy:' + S.fam));
@@ -963,8 +1007,11 @@ function newFamCode() { // 16 caractères parmi 32 = 80 bits, sans biais
   const A = 'abcdefghjkmnpqrstuvwxyz234567890';
   return Array.from(crypto.getRandomValues(new Uint8Array(16)), x => A[x & 31]).join('');
 }
+let connecting = false, retryIn = 5e3, retryTimer = 0;
 async function connectCloud() {
   if (!S.fb || !S.fam || !FAM_RE.test(S.fam)) return setSync('local');
+  if (connecting || (cloud && cloud.fam === S.fam)) return;     // déjà connecté ou en cours
+  connecting = true; clearTimeout(retryTimer);
   setSync('wait');
   try {
     const B = 'https://www.gstatic.com/firebasejs/10.12.2/';
@@ -976,14 +1023,23 @@ async function connectCloud() {
     const col = fs.collection(db, 'families', S.fam, 'events');
     /* Économie de lectures (quota gratuit : 50 000/jour) : après la première synchro complète,
        on n'écoute que les entrées modifiées depuis la dernière connue (moins 1 jour de marge). */
-    const full = S.syncedFam !== S.fam;
-    const since = full ? 0 : [...events.values()].reduce((m, e) => Math.max(m, e.u || 0), 0) - 864e5;
+    const full = S.syncedFam !== S.fam || !S.syncedAt;
+    if (full) S.syncedAt = 0;
+    // fenêtre = dernière modification reçue du serveur (et non nos propres saisies), moins 1 jour de marge
+    const since = full ? 0 : S.syncedAt - 864e5;
     const q = since > 0 ? fs.query(col, fs.where('u', '>=', since)) : col;
-    const me = { write: e => fs.setDoc(fs.doc(col, e.id), JSON.parse(JSON.stringify(e))).catch(err => {
-      // règles Firestore pas encore mises à jour (champ « kind » des couches) : on envoie sans ce champ
-      if (err?.code === 'permission-denied' && 'kind' in e) { const { kind, ...rest } = e; return fs.setDoc(fs.doc(col, e.id), JSON.parse(JSON.stringify(rest))).then(() => { rulesOld = true; setSync('rules') }) }
-      if (err?.code === 'permission-denied') { rulesOld = true; return setSync('rules', err) }
-      setSync('err', err) }) };
+    const ref = id => fs.doc(col, id), plain = x => JSON.parse(JSON.stringify(x));
+    const me = { fam: S.fam, write: (e, quiet) => fs.setDoc(ref(e.id), plain(e)).catch(async err => {
+      if (err?.code !== 'permission-denied') return setSync('err', err);
+      // refus : soit le serveur a une version plus récente (l'autre téléphone a gagné), soit les règles sont anciennes
+      try {
+        const d = await fs.getDoc(ref(e.id)), r = d.exists() ? clean(d.data(), e.id) : null;
+        if (r && r.u >= e.u) { const l = events.get(e.id); if (!l || r.u > l.u) { events.set(r.id, r); saveLocal(); render() } return }
+      } catch {}
+      if (quiet) return;
+      if ('kind' in e) { const { kind, ...rest } = e; return fs.setDoc(ref(e.id), plain(rest)).then(() => { rulesOld = true; setSync('rules') }, er => setSync('rules', er)) }
+      rulesOld = true; setSync('rules', err);
+    }) };
     let reconciled = false;
     const cfgRef = fs.doc(db, 'families', S.fam, 'config', 'rappel');
     me.writeCfg = c => fs.setDoc(cfgRef, c).catch(err => { if (err?.code === 'permission-denied') { rulesOld = true; setSync('rules', err) } });
@@ -1005,19 +1061,27 @@ async function connectCloud() {
         const r = clean(ch.doc.data(), ch.doc.id), l = events.get(ch.doc.id);
         if (r && (!l || r.u > l.u)) { events.set(r.id, r); changed = true }
       });
+      if (!snap.metadata.fromCache) {                  // mémorise la dernière modification reçue du serveur
+        const got = snap.docs.filter(d => !d.metadata.hasPendingWrites).reduce((m, d) => Math.max(m, num(d.data().u)), 0);
+        if (got > S.syncedAt) { S.syncedAt = Math.min(got, Date.now() + 6e5); saveSettings() }
+      }
       if (!reconciled && !snap.metadata.fromCache) {   // envoie ce qui n'existe qu'ici (ou plus récent ici)
-        reconciled = true;
+        reconciled = true; me.ready = true;
         const remote = new Map(snap.docs.map(d => [d.id, d.data().u || 0]));
         for (const e of events.values())
           if ((full || e.u >= since) && (!remote.has(e.id) || e.u > remote.get(e.id))) me.write(e);
         if (full) { S.syncedFam = S.fam; saveSettings() }
       }
       setSync(snap.metadata.fromCache ? 'off' : 'ok');
-      if (changed) { saveLocal(); render() }
+      if (changed) { saveLocal(); fixOpenFeeds(); render() }
     }, err => setSync('err', err));
-    cloud = me;
-  } catch (err) { setSync('err', err) }
+    cloud = me; retryIn = 5e3;
+  } catch (err) {
+    setSync('err', err);
+    retryTimer = setTimeout(connectCloud, retryIn); retryIn = Math.min(retryIn * 2, 5 * 6e4);   // nouvel essai : 5 s, 10 s, … 5 min
+  } finally { connecting = false }
 }
+window.addEventListener('online', () => { if (!cloud) connectCloud() });
 
 /* ---------- démarrage ---------- */
 function checkJoinHash() {
@@ -1027,6 +1091,7 @@ function checkJoinHash() {
 }
 window.addEventListener('hashchange', checkJoinHash);
 checkJoinHash();
+fixOpenFeeds();
 connectCloud();
 render(true);
 ensureTopic().then(t => { if (t && view === 'settings') render(true) });
