@@ -167,9 +167,7 @@ function mealRef(e) {
   }
   return r;
 }
-const refNote = (e, long) => { const r = mealRef(e); if (!r.pause) return '';
-  return long ? `Commencé à ${hm(e.start)} · pause de ${dur(r.pause)} · <b>compté à partir de ${hm(r.t)}</b>`
-              : `Pause de ${dur(r.pause)} : compté à partir de ${hm(r.t)}` };
+const refNote = e => { const r = mealRef(e); return r.pause ? `repris à ${hm(r.t)}` : '' };
 const isMeal = e => e.type === 'biberon' || (e.type === 'sein' && e.end);
 
 function put(e) {
@@ -423,8 +421,7 @@ function homeHTML() {
   const t0 = dayStart(now()), today = summarize(L.filter(x => x.start >= t0));
   let sub = '—';
   if (meal) sub = meal.type === 'sein'
-    ? (refNote(meal, true) ? `${refNote(meal, true)}<br>${dur(sideMs(meal))} au sein · fin sein ${SEIN[meal.segs.at(-1).s]}`
-      : [hm(meal.start), dur(sideMs(meal)), meal.segs.length && 'fin sein ' + SEIN[meal.segs.at(-1).s]].filter(Boolean).join(' · '))
+    ? [hm(meal.start), refNote(meal), dur(sideMs(meal)), meal.segs.length && 'fin sein ' + SEIN[meal.segs.at(-1).s]].filter(Boolean).join(' · ')
     : `${hm(meal.start)} · biberon ${meal.ml} ml`;
   return `<section class="home idle">
     <button class="card since tap" data-view="history" aria-label="Voir l'historique">
@@ -504,7 +501,7 @@ function historyHTML() {
     <button class="btn" data-act="add" data-type="sommeil">+ Sommeil</button>
     <button class="btn" data-act="add" data-type="mesure">+ Mesure</button></div>`;
   if (!L.length) return html + `<p class="sub" style="text-align:center;margin-top:40px">Rien pour l'instant.</p>`;
-  html += `<p class="sub" style="margin:10px 4px 0;font-size:12px">« écart » = temps entre deux repas, de début à début (après une pause de plus de ${S.longPause || '—'} min, le repas est compté à partir de la reprise).</p>`;
+  html += `<p class="sub" style="margin:10px 4px 0;font-size:12px">« écart » = temps depuis le repas précédent.</p>`;
   const meals = L.filter(isMeal);
   let day = null;
   for (const e of L.slice(0, 400)) {
@@ -620,11 +617,9 @@ function settingsHTML() {
       <label class="toggle"><span>Mode une main <small class="sub">(boutons en bas)</small></span><input type="checkbox" id="onehand" ${S.onehand ? 'checked' : ''}></label>
       <label>Votre prénom (affiché dans l'historique)<input id="name" value="${esc(S.name)}" placeholder="ex. Papa"></label>
     </div>
-    <h2>Longues pauses pendant une tétée</h2>
+    <h2>Longue pause pendant une tétée</h2>
     <div class="card set">
-      <p>Si la tétée a été interrompue longtemps (couche, câlin…), elle est comptée <b>à partir de la reprise</b> et non du début :
-        c'est cette heure qui sert pour « Dernier repas », l'écart dans l'historique, les stats et le rappel. La durée au sein ne change pas.</p>
-      <div class="fld"><span>Une pause compte comme une reprise à partir de</span><div class="seg" id="pauseSeg">${[[10, '10 min'], [15, '15 min'], [20, '20 min'], [30, '30 min'], [0, 'jamais']]
+      <div class="fld"><span>Après une pause de plus de…, le repas compte à la reprise</span><div class="seg" id="pauseSeg">${[[10, '10 min'], [15, '15 min'], [20, '20 min'], [30, '30 min'], [0, 'jamais']]
         .map(([v, l]) => `<label><input type="radio" name="longPause" value="${v}" ${S.longPause === v ? 'checked' : ''}>${l}</label>`).join('')}</div></div>
     </div>
     <h2>Rappels</h2>
