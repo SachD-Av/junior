@@ -9,6 +9,7 @@
  *   - Hebdomadaire : une copie par semaine, on garde les 8 dernières
  *   - Mensuel      : une copie par mois, on garde les 24 dernières
  * Les fichiers .json se réimportent dans l'appli (Réglages → Importer).
+ * La feuille Google Sheets « Tétée – journal » (même dossier) est la version lisible, refaite chaque nuit.
  */
 
 // Rempli automatiquement par l'appli (Réglages → Sauvegarde Google Drive → Copier le script)
@@ -104,6 +105,7 @@ function sauvegarder() {
   if (plusRecent(hebdo) < d.getTime() - 6.5 * 864e5) ecrire(hebdo, `tetee-semaine-${jour}.json`, json);
   const mois = dossier(racine, 'Mensuel'), nomMois = `tetee-${Utilities.formatDate(d, tz, 'yyyy-MM')}.json`;
   if (!existe(mois, nomMois)) ecrire(mois, nomMois, json);
+  journal(events, racine);
   console.log(`${events.length} entrées sauvegardées`);
 }
 
@@ -174,4 +176,56 @@ function heureRetenue(e) {
   const s = e.segs.slice().sort((a, b) => a.a - b.a);
   for (let i = 1; i < s.length; i++) if (s[i - 1].b != null && s[i].a - s[i - 1].b >= PAUSE_LONGUE * 6e4) t = s[i].a;
   return t;
+}
+
+/* ---------- Journal lisible (Google Sheets) ---------- */
+const JOURNAL = 'Tétée – journal';
+const COUCHES = { humide: 'Humide (pipi)', sale: 'Sale (caca)', mixte: 'Mixte (pipi + caca)', explosion: 'Explosion' };
+
+/** Refait la feuille « Tétée – journal » : une ligne par entrée, des plus récentes aux plus anciennes. */
+function journal(events, racine) {
+  const tz = FUSEAU, j = t => Utilities.formatDate(new Date(t), tz, 'dd/MM/yyyy'), h = t => Utilities.formatDate(new Date(t), tz, 'HH:mm');
+  const lignes = events.filter(e => !e.del && e.start).map(e => {
+    const l = ligne(e, h);
+    return { t: l.t, row: [j(l.t), h(l.t), l.type, l.detail, l.duree, e.by || '', e.note || ''] };
+  }).sort((a, b) => b.t - a.t).map(x => x.row);
+  const entete = ['Date', 'Heure', 'Type', 'Détail', 'Durée', 'Par', 'Note'];
+
+  const it = racine.getFilesByName(JOURNAL);
+  let ss = null;
+  while (it.hasNext()) { const f = it.next(); if (!f.isTrashed()) { ss = SpreadsheetApp.openById(f.getId()); break } }
+  if (!ss) { ss = SpreadsheetApp.create(JOURNAL); DriveApp.getFileById(ss.getId()).moveTo(racine) }
+  ss.setSpreadsheetTimeZone(tz);
+  const sh = ss.getSheets()[0];
+  sh.setName('Journal');
+  sh.clear();
+  const data = [entete].concat(lignes);
+  sh.getRange(1, 1, data.length, entete.length).setNumberFormat('@').setValues(data);   // tout en texte : rien n'est réinterprété
+  sh.getRange(1, 1, 1, entete.length).setFontWeight('bold').setBackground('#F0E8DC');
+  sh.setFrozenRows(1);
+  sh.autoResizeColumns(1, entete.length);
+}
+
+/** Une entrée → heure retenue, type et détail en clair. */
+function ligne(e, h) {
+  const min = ms => Math.round(ms / 6e4), d = m => m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')}`;
+  const n = v => String(v).replace('.', ',');
+  switch (e.type) {
+    case 'sein': {
+      const segs = Array.isArray(e.segs) ? e.segs : [], fin = e.end || Date.now();
+      const cote = s => segs.filter(x => x.s === s).reduce((m, x) => m + ((x.b || fin) - x.a), 0);
+      const g = min(cote('G')), dr = min(cote('D')), t = heureRetenue(e);
+      const parts = [g && `G ${g} min`, dr && `D ${dr} min`].filter(Boolean).join(' · ') || '0 min';
+      return { t, type: 'Tétée', detail: parts + (t !== e.start ? ` (commencée à ${h(e.start)})` : '') + (e.end ? '' : ' — en cours'), duree: d(g + dr) };
+    }
+    case 'biberon': return { t: e.start, type: 'Biberon', detail: `${e.ml || 0} ml · lait ${e.milk === 'maternel' ? 'maternel' : 'artificiel'}`, duree: '' };
+    case 'tirage': return { t: e.start, type: 'Tirage', detail: `${(e.mlG || 0) + (e.mlD || 0)} ml (G ${e.mlG || 0} · D ${e.mlD || 0})`, duree: '' };
+    case 'couche': {
+      const k = COUCHES[e.kind] ? e.kind : e.pipi && e.caca ? 'mixte' : e.caca ? 'sale' : 'humide';
+      return { t: e.start, type: 'Couche', detail: COUCHES[k], duree: '' };
+    }
+    case 'sommeil': return { t: e.start, type: 'Sommeil', detail: e.end ? `jusqu'à ${h(e.end)}` : 'dort encore', duree: e.end ? d(min(e.end - e.start)) : '' };
+    case 'mesure': return { t: e.start, type: 'Mesure', detail: [e.poids && `${n((e.poids / 1000).toFixed(3))} kg`, e.taille && `${n(e.taille)} cm`, e.tete && `tête ${n(e.tete)} cm`].filter(Boolean).join(' · '), duree: '' };
+    default: return { t: e.start, type: e.type, detail: '', duree: '' };
+  }
 }
