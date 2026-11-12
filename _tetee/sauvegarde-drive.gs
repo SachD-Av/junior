@@ -9,7 +9,8 @@
  *   - Hebdomadaire : une copie par semaine, on garde les 8 dernières
  *   - Mensuel      : une copie par mois, on garde les 24 dernières
  * Les fichiers .json se réimportent dans l'appli (Réglages → Importer).
- * La feuille Google Sheets « Tétée – journal » (même dossier) est la version lisible, refaite chaque nuit.
+ * La feuille Google Sheets « Tétée – journal » (même dossier) est la version lisible, refaite chaque nuit :
+ * onglets Journal, Tétées, Biberons, Couches.
  */
 
 // Rempli automatiquement par l'appli (Réglages → Sauvegarde Google Drive → Copier le script)
@@ -182,25 +183,42 @@ function heureRetenue(e) {
 const JOURNAL = 'Tétée – journal';
 const COUCHES = { humide: 'Humide (pipi)', sale: 'Sale (caca)', mixte: 'Mixte (pipi + caca)', explosion: 'Explosion' };
 
-/** Refait la feuille « Tétée – journal » : une ligne par entrée, des plus récentes aux plus anciennes. */
+/** Refait la feuille « Tétée – journal » : onglets Journal (tout), Tétées, Biberons, Couches,
+    des plus récentes aux plus anciennes. Date et heure en texte ; minutes et ml en nombres (totaux possibles). */
 function journal(events, racine) {
   const tz = FUSEAU, j = t => Utilities.formatDate(new Date(t), tz, 'dd/MM/yyyy'), h = t => Utilities.formatDate(new Date(t), tz, 'HH:mm');
-  const lignes = events.filter(e => !e.del && e.start).map(e => {
-    const l = ligne(e, h);
-    return { t: l.t, row: [j(l.t), h(l.t), l.type, l.detail, l.duree, e.by || '', e.note || ''] };
-  }).sort((a, b) => b.t - a.t).map(x => x.row);
-  const entete = ['Date', 'Heure', 'Type', 'Détail', 'Durée', 'Par', 'Note'];
+  const ok = events.filter(e => !e.del && e.start).map(e => ({ e, l: ligne(e, h) })).sort((a, b) => b.l.t - a.l.t);
+  const dh = x => [j(x.l.t), h(x.l.t)], par = x => [x.e.by || '', x.e.note || ''];
 
   const it = racine.getFilesByName(JOURNAL);
   let ss = null;
   while (it.hasNext()) { const f = it.next(); if (!f.isTrashed()) { ss = SpreadsheetApp.openById(f.getId()); break } }
   if (!ss) { ss = SpreadsheetApp.create(JOURNAL); DriveApp.getFileById(ss.getId()).moveTo(racine) }
   ss.setSpreadsheetTimeZone(tz);
-  const sh = ss.getSheets()[0];
-  sh.setName('Journal');
+
+  onglet(ss, 'Journal', 0, ['Date', 'Heure', 'Type', 'Détail', 'Durée', 'Par', 'Note'],
+    ok.map(x => [...dh(x), x.l.type, x.l.detail, x.l.duree, ...par(x)]));
+  onglet(ss, 'Tétées', 1, ['Date', 'Heure', 'Gauche (min)', 'Droit (min)', 'Total (min)', 'Commencée à', 'Dernier sein', 'Par', 'Note'],
+    ok.filter(x => x.e.type === 'sein').map(x => [...dh(x), x.l.g, x.l.d, x.l.g + x.l.d, x.l.t !== x.e.start ? h(x.e.start) : '', x.l.dernier, ...par(x)]));
+  onglet(ss, 'Biberons', 2, ['Date', 'Heure', 'Quantité (ml)', 'Lait', 'Par', 'Note'],
+    ok.filter(x => x.e.type === 'biberon').map(x => [...dh(x), x.e.ml || 0, x.e.milk === 'maternel' ? 'maternel' : 'artificiel', ...par(x)]));
+  onglet(ss, 'Couches', 3, ['Date', 'Heure', 'Type', 'Par', 'Note'],
+    ok.filter(x => x.e.type === 'couche').map(x => [...dh(x), x.l.detail, ...par(x)]));
+}
+
+/** Crée ou vide l'onglet, puis écrit l'en-tête et les lignes. */
+function onglet(ss, nom, position, entete, lignes) {
+  let sh = ss.getSheetByName(nom);
+  if (!sh) {
+    // la feuille créée par Google a un premier onglet vide (« Feuille 1 ») : on le réutilise pour le Journal
+    const premier = ss.getSheets()[0];
+    sh = position === 0 && premier && premier.getLastRow() === 0 && !['Tétées', 'Biberons', 'Couches'].includes(premier.getName())
+      ? premier.setName(nom) : ss.insertSheet(nom, position);
+  }
   sh.clear();
   const data = [entete].concat(lignes);
-  sh.getRange(1, 1, data.length, entete.length).setNumberFormat('@').setValues(data);   // tout en texte : rien n'est réinterprété
+  sh.getRange(1, 1, data.length, 2).setNumberFormat('@');                 // date et heure : texte, jamais réinterprétées
+  sh.getRange(1, 1, data.length, entete.length).setValues(data);
   sh.getRange(1, 1, 1, entete.length).setFontWeight('bold').setBackground('#F0E8DC');
   sh.setFrozenRows(1);
   sh.autoResizeColumns(1, entete.length);
@@ -216,7 +234,9 @@ function ligne(e, h) {
       const cote = s => segs.filter(x => x.s === s).reduce((m, x) => m + ((x.b || fin) - x.a), 0);
       const g = min(cote('G')), dr = min(cote('D')), t = heureRetenue(e);
       const parts = [g && `G ${g} min`, dr && `D ${dr} min`].filter(Boolean).join(' · ') || '0 min';
-      return { t, type: 'Tétée', detail: parts + (t !== e.start ? ` (commencée à ${h(e.start)})` : '') + (e.end ? '' : ' — en cours'), duree: d(g + dr) };
+      const der = segs.slice().sort((a, b) => a.a - b.a).pop();
+      return { t, type: 'Tétée', detail: parts + (t !== e.start ? ` (commencée à ${h(e.start)})` : '') + (e.end ? '' : ' — en cours'), duree: d(g + dr),
+        g, d: dr, dernier: der ? (der.s === 'G' ? 'gauche' : 'droit') : '' };
     }
     case 'biberon': return { t: e.start, type: 'Biberon', detail: `${e.ml || 0} ml · lait ${e.milk === 'maternel' ? 'maternel' : 'artificiel'}`, duree: '' };
     case 'tirage': return { t: e.start, type: 'Tirage', detail: `${(e.mlG || 0) + (e.mlD || 0)} ml (G ${e.mlG || 0} · D ${e.mlD || 0})`, duree: '' };
