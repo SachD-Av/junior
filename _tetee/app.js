@@ -1157,8 +1157,25 @@ function checkJoinHash() {
   const h = location.hash; history.replaceState(null, '', location.pathname);
   if (!joinFrom(h)) alert('Lien d\'invitation invalide.');
 }
+/* Geste / bouton retour : fenêtre ouverte → on la ferme ; autre page → accueil ; accueil → on reste.
+   Sans ça, le retour quitte l'appli et affiche une page blanche (Firefox, Chrome).
+   Une entrée « appli » est ajoutée à l'historique au premier toucher (les navigateurs ignorent
+   celles ajoutées sans geste de l'utilisateur), puis remise après chaque retour. */
+function armBack() { if (history.state?.tt !== 'app') history.pushState({ tt: 'app' }, '') }
+function initBack() {
+  if (history.state?.tt !== 'app') history.replaceState({ tt: 'base' }, '');
+  document.addEventListener('pointerdown', armBack, { capture: true, passive: true });
+  window.addEventListener('popstate', () => {
+    const d = $('#dlg');
+    if (d.open) d.close();
+    else if (view !== 'home') { view = 'home'; render(true); $('#main').scrollTop = 0 }
+    armBack();                              // prêt pour le retour suivant
+  });
+}
+
 if (OLD_HOST) moveScreen();
 else {
+  initBack();
   window.addEventListener('hashchange', checkJoinHash);
   checkJoinHash();
   fixOpenFeeds();
