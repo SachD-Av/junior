@@ -21,8 +21,8 @@ const FAMILLE = '__FAMILLE__';
 // sont lus dans Firebase à chaque passage : on les change depuis l'appli, rien à modifier ici.
 const NTFY = '__NTFY__';
 const RAPPELS_ACTIFS = false;      // rappels ntfy prêts mais désactivés pour le moment (mettre true pour les activer)
-const FUSEAU = 'Europe/Paris';
-const PAUSE_LONGUE = 15;           // min : après une telle pause, le repas est compté à partir de la reprise (comme l'appli)     // heures de la nuit, heure affichée et sauvegarde de 3 h, quel que soit le réglage du projet
+const FUSEAU = 'Europe/Paris';     // heures de la nuit, heure affichée et sauvegarde de 3 h, quel que soit le réglage du projet
+const PAUSE_LONGUE = 20;           // min : en dessous, même repas (tétées/biberons rapprochés) ; au-dessus, nouveau repas (comme l'appli)
 
 const DOSSIER = 'Tétée – sauvegardes';
 const GARDER = { Quotidien: 7, Hebdomadaire: 8, Mensuel: 24 };
@@ -54,11 +54,18 @@ function rappel() {
   const repas = recents.find(e => e.type === 'biberon' || (e.type === 'sein' && e.end));
   if (!repas) return;
   // même règle que l'appli : début du dernier repas + intervalle, repoussé par « Repousser »
-  const ref = heureRetenue(repas);
+  // même règle que l'appli : on remonte les tétées/biberons rapprochés (< PAUSE_LONGUE) qui forment le même repas
+  const repasListe = recents.filter(e => e.type === 'biberon' || (e.type === 'sein' && e.end));   // du plus récent au plus ancien
+  let premier = repas;
+  for (let i = repasListe.indexOf(repas) + 1; i < repasListe.length; i++) {
+    const p = repasListe[i], fin = p.type === 'sein' ? p.end : p.start;
+    if (premier.start - fin < PAUSE_LONGUE * 6e4) premier = p; else break;
+  }
+  const ref = heureRetenue(premier);
   const snz = c.snooze && c.snooze > ref ? c.snooze : 0;
   const quand = Math.max(ref + c.every * 6e4, snz), maintenant = Date.now(), du = maintenant - ref;
   if (maintenant < quand || maintenant > quand + 12 * 36e5) return;      // pas encore l'heure, ou trop ancien (12 h)
-  const props = PropertiesService.getScriptProperties(), cle = repas.id + ':' + (snz || 0);
+  const props = PropertiesService.getScriptProperties(), cle = premier.id + ':' + (snz || 0);
   if (props.getProperty('rappel') === cle) return;                       // déjà prévenu pour ce repas
   const tz = FUSEAU, h = +Utilities.formatDate(new Date(), tz, 'H');
   if (!c.night && (h >= 22 || h < 7)) return;                            // la nuit : on attend 7 h (comme l'appli)

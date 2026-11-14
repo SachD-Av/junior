@@ -89,7 +89,7 @@ document.querySelectorAll('[data-i]').forEach(el => el.innerHTML = ic(el.dataset
 
 /* ---------- état ---------- */
 const S = Object.assign({ theme: 'auto', onehand: true, name: '', fb: null, fam: null, milk: 'artificiel',
-  guard: 'undo', delay: 10, morning: 8, minFeed: 5, longPause: 15,
+  guard: 'undo', delay: 10, morning: 8, minFeed: 5, longPause: 20,
   remind: false, remindEvery: 180, remindNight: true, remindNotified: null, remindSnooze: null, remindU: 0, ntfy: false, ntfyTopic: null,
   prot: { start: true, switch: true, stop: true, cancel: true, quick: true } }, LS.get('tt_settings', {}));
 if (!S.themeV2) { S.theme = 'auto'; S.themeV2 = 1; if (!OLD_HOST) LS.set('tt_settings', S) } // l'ancien bouton 🌙 désactivait l'auto pour toujours
@@ -129,7 +129,7 @@ function cleanSettings() {
   one('theme', inL(['auto', 'day', 'night']), 'auto'); one('onehand', isB, true);
   S.name = typeof S.name === 'string' ? S.name.slice(0, 40) : '';
   one('milk', inL(['artificiel', 'maternel']), 'artificiel'); one('guard', inL(['undo', 'double', 'confirm', 'none']), 'undo');
-  one('delay', inL([3, 5, 10, 15]), 10); one('morning', inL([6, 7, 8, 9, 10]), 8); one('minFeed', inL([0, 5, 30, 60]), 5); one('longPause', inL([0, 10, 15, 20, 30]), 15);
+  one('delay', inL([3, 5, 10, 15]), 10); one('morning', inL([6, 7, 8, 9, 10]), 8); one('minFeed', inL([0, 5, 30, 60]), 5); one('longPause', inL([0, 10, 15, 20, 30]), 20);
   one('remind', isB, false); one('remindEvery', v => Number.isInteger(v) && v >= 30 && v <= 720, 180); one('remindNight', isB, true);
   one('remindSnooze', v => v === null || isN(v), null); one('remindU', isN, 0); one('remindNotified', v => v === null || typeof v === 'string', null);
   one('ntfy', isB, false); one('ntfyTopic', v => v === null || /^tetee-[0-9a-f]{24}$/.test(v), null);
@@ -142,6 +142,7 @@ function cleanSettings() {
   if (!c || !/^[a-z0-9-]{4,40}$/.test(c.projectId) || !FAM_RE.test(S.fam || '')) { S.fb = null; S.fam = null } else S.fb = c;
   saveSettings();                                    // la version nettoyée remplace l'ancienne
 }
+if (!S.mealV2) { if (S.longPause === 15) S.longPause = 20; S.mealV2 = 1 }   // nouveau seuil par défaut : 20 min
 cleanSettings();
 const events = new Map(LS.get('tt_events', []).map(e => clean(e)).filter(Boolean).map(e => [e.id, e]));
 const saveLocal = () => { if (!OLD_HOST) LS.set('tt_events', [...events.values()]) };
@@ -169,6 +170,20 @@ function mealRef(e) {
   return r;
 }
 const refNote = e => { const r = mealRef(e); return r.pause ? `repris à ${hm(r.t)}` : '' };
+/* Repas = tétées et biberons rapprochés : une entrée qui commence moins de S.longPause min
+   après la fin de la précédente fait partie du même repas (« Terminer » puis l'autre sein, biberon de complément…).
+   Heure du repas = heure retenue de sa première entrée. Liste du plus ancien au plus récent. */
+function repasList(L = list()) {
+  const T = (S.longPause || 0) * 6e4, out = [];
+  for (const e of L.filter(isMeal).sort((a, b) => a.start - b.start)) {
+    const end = e.type === 'sein' ? e.end : e.start, c = out.at(-1);
+    if (c && T && e.start - c.end < T) { c.entries.push(e); c.end = Math.max(c.end, end) }
+    else out.push({ entries: [e], first: e, ref: mealRef(e).t, end });
+  }
+  for (const c of out) { c.seins = c.entries.filter(e => e.type === 'sein'); c.bibs = c.entries.filter(e => e.type === 'biberon') }
+  return out;
+}
+const lastRepas = () => repasList().at(-1);
 const isMeal = e => e.type === 'biberon' || (e.type === 'sein' && e.end);
 
 function put(e) {
@@ -418,13 +433,13 @@ function homeHTML() {
       <button class="link${armCls('cancel')}" data-act="cancel">Annuler la tétée</button>
     </section>`;
   }
-  const L = list(), meal = L.find(isMeal), lastSein = L.find(x => x.type === 'sein' && x.end);
+  const L = list(), rp = repasList(L).at(-1), meal = rp?.first, lastSein = L.find(x => x.type === 'sein' && x.end);
   const lastSide = lastSein?.segs.at(-1)?.s, lastCouche = L.find(x => x.type === 'couche'), zz = sleeping();
   const t0 = dayStart(now()), today = summarize(L.filter(x => x.start >= t0));
   let sub = '—';
-  if (meal) sub = meal.type === 'sein'
-    ? [hm(meal.start), refNote(meal), dur(sideMs(meal)), meal.segs.length && 'fin sein ' + SEIN[meal.segs.at(-1).s]].filter(Boolean).join(' · ')
-    : `${hm(meal.start)} · biberon ${meal.ml} ml`;
+  if (rp) { const sn = rp.seins.at(-1), ml = rp.bibs.reduce((m, e) => m + (+e.ml || 0), 0);
+    sub = [hm(meal.start), refNote(meal), rp.seins.length && dur(rp.seins.reduce((m, e) => m + sideMs(e), 0)),
+      sn?.segs.length && 'fin sein ' + SEIN[sn.segs.at(-1).s], ml && `biberon ${ml} ml`].filter(Boolean).join(' · ') }
   return `<section class="home idle">
     <button class="card since tap" data-view="history" aria-label="Voir l'historique">
       <div class="lbl">Dernier repas il y a</div>
@@ -520,36 +535,56 @@ function historyHTML() {
     <button class="btn" data-act="add" data-type="mesure">+ Mesure</button></div>`;
   if (!L.length) return html + `<p class="sub" style="text-align:center;margin-top:40px">Rien pour l'instant.</p>`;
   html += `<p class="sub" style="margin:10px 4px 0;font-size:12px">« écart » = temps depuis le repas précédent.</p>`;
-  const meals = L.filter(isMeal);
+  const reps = repasList(L), items = L.filter(e => !isMeal(e)).map(e => ({ t: e.start, e }));
+  reps.forEach((c, i) => items.push({ t: c.first.start, c, prev: reps[i - 1] }));
+  items.sort((a, b) => b.t - a.t);
+  const row = (act, ic_, title, extra, time, gap, cls = '') => `<button class="row${cls}" ${act}><span class="ic">${ic_}</span>
+      <span class="tx"><div>${title}</div>${extra ? `<div>${extra}</div>` : ''}</span>
+      <span class="tm">${time}<small>${gap || ''}</small></span></button>`;
+  const pick = list => list.length === 1 ? `data-act="edit" data-id="${list[0].id}"` : `data-act="pickmeal" data-ids="${list.map(e => e.id).join(',')}"`;
+  const by = list => [...new Set(list.map(e => e.by).filter(Boolean))].map(esc).join(', ');
   let day = null;
-  for (const e of L.slice(0, 400)) {
-    const dn = dayName(e.start);
+  for (const it of items.slice(0, 400)) {
+    const dn = dayName(it.t);
     if (dn !== day) { day = dn; html += `<div class="day">${dn}</div>` }
-    const x = describe(e);
-    let gap = '';
-    if (isMeal(e)) { const i = meals.indexOf(e), prev = meals[i + 1]; if (prev) gap = `écart ${dur((Math.floor(mealRef(e).t / 6e4) - Math.floor(mealRef(prev).t / 6e4)) * 6e4)}` }
-    const extra = [x.d, e.type === 'sein' && e.end && mealRef(e).pause && `commencée à ${hm(e.start)}`, e.note && esc(e.note), e.by && 'par ' + esc(e.by)].filter(Boolean).join(' · ');
-    html += `<button class="row" data-act="edit" data-id="${e.id}"><span class="ic">${x.ic}</span>
-      <span class="tx"><div>${x.t}</div>${extra ? `<div>${extra}</div>` : ''}</span>
-      <span class="tm">${hm(isMeal(e) ? mealRef(e).t : e.start)}<small>${gap}</small></span></button>`;
+    if (it.e) {                                       // couche, tirage, sommeil, mesure, vitamine D, tétée en cours
+      const e = it.e, x = describe(e), extra = [x.d, e.note && esc(e.note), e.by && 'par ' + esc(e.by)].filter(Boolean).join(' · ');
+      html += row(`data-act="edit" data-id="${e.id}"`, x.ic, x.t, extra, hm(e.start), '');
+      continue;
+    }
+    const c = it.c, gap = it.prev ? `écart ${dur((Math.floor(c.ref / 6e4) - Math.floor(it.prev.ref / 6e4)) * 6e4)}` : '';
+    let gapDone = false;
+    if (c.seins.length) {                             // une ligne : gauche et/ou droit, toutes tétées du repas réunies
+      const g = c.seins.reduce((m, e) => m + sideMs(e, 'G'), 0), d = c.seins.reduce((m, e) => m + sideMs(e, 'D'), 0);
+      const title = [g && `G ${dur(g)}`, d && `D ${dur(d)}`].filter(Boolean).join(' · ') || '0 min';
+      const notes = c.seins.map(e => e.note).filter(Boolean).map(esc).join(' · ');
+      const extra = [`Total ${dur(g + d)}`, c.ref !== c.first.start && `commencée à ${hm(c.first.start)}`, c.seins.length > 1 && `${c.seins.length} tétées`, notes, by(c.seins) && 'par ' + by(c.seins)].filter(Boolean).join(' · ');
+      html += row(pick(c.seins), ic('feed'), title, extra, hm(c.ref), gap, c.bibs.length ? ' grp-top' : ''); gapDone = true;
+    }
+    if (c.bibs.length) {                              // une ligne : biberon(s) du repas
+      const ml = c.bibs.reduce((m, e) => m + (+e.ml || 0), 0), milks = [...new Set(c.bibs.map(e => e.milk === 'maternel' ? 'Lait maternel' : 'Lait artificiel'))].join(' + ');
+      const notes = c.bibs.map(e => e.note).filter(Boolean).map(esc).join(' · ');
+      const extra = [milks, c.bibs.length > 1 && `${c.bibs.length} biberons`, notes, by(c.bibs) && 'par ' + by(c.bibs)].filter(Boolean).join(' · ');
+      html += row(pick(c.bibs), ic('bottle'), `${ml} ml`, extra, hm(c.seins.length ? c.bibs[0].start : c.ref), gapDone ? '' : gap, gapDone ? ' grp-bot' : '');
+    }
   }
   return html;
 }
 
 function summarize(evs, from = -Infinity, to = Infinity) {
   const seins = evs.filter(e => e.type === 'sein' && e.end), bibs = evs.filter(e => e.type === 'biberon'), tirs = evs.filter(e => e.type === 'tirage');
-  const meals = evs.filter(isMeal).sort((a, b) => a.start - b.start);
-  const gaps = meals.slice(1).map((e, i) => mealRef(e).t - mealRef(meals[i]).t);
+  const meals = repasList(evs), seinRepas = meals.filter(c => c.seins.length);
+  const gaps = meals.slice(1).map((c, i) => c.ref - meals[i].ref);
   const tG = seins.reduce((m, e) => m + sideMs(e, 'G'), 0), tD = seins.reduce((m, e) => m + sideMs(e, 'D'), 0);
   const couches = evs.filter(e => e.type === 'couche');
   const zz = evs.filter(e => e.type === 'sommeil');
   return {
-    seins: seins.length, bibs: bibs.length, meals: meals.length, tG, tD, tSein: tG + tD,
+    seins: seinRepas.length, bibs: bibs.length, meals: meals.length, tG, tD, tSein: tG + tD,
     ml: bibs.reduce((m, e) => m + (+e.ml || 0), 0),
     naps: zz.length, tSleep: zz.reduce((m, e) => m + sleepMs(e, from, to), 0),
     tirs: tirs.length, tirG: tirs.reduce((m, e) => m + (e.mlG || 0), 0), tirD: tirs.reduce((m, e) => m + (e.mlD || 0), 0),
     gap: gaps.length ? gaps.reduce((a, b) => a + b, 0) / gaps.length : 0,
-    avgSein: seins.length ? (tG + tD) / seins.length : 0,
+    avgSein: seinRepas.length ? (tG + tD) / seinRepas.length : 0,
     couches: couches.length, pipi: couches.filter(e => e.pipi).length, caca: couches.filter(e => e.caca).length,
     byKind: Object.fromEntries(Object.keys(COUCHE).map(k => [k, couches.filter(e => coucheKind(e) === k).length]))
   };
@@ -635,9 +670,9 @@ function settingsHTML() {
       <label class="toggle"><span>Mode une main <small class="sub">(boutons en bas)</small></span><input type="checkbox" id="onehand" ${S.onehand ? 'checked' : ''}></label>
       <label>Votre prénom (affiché dans l'historique)<input id="name" value="${esc(S.name)}" placeholder="ex. Papa"></label>
     </div>
-    <h2>Longue pause pendant une tétée</h2>
+    <h2>Repas</h2>
     <div class="card set">
-      <div class="fld"><span>Après une pause de plus de…, le repas compte à la reprise</span><div class="seg" id="pauseSeg">${[[10, '10 min'], [15, '15 min'], [20, '20 min'], [30, '30 min'], [0, 'jamais']]
+      <div class="fld"><span>Nouveau repas après une interruption de plus de</span><div class="seg" id="pauseSeg">${[[10, '10 min'], [15, '15 min'], [20, '20 min'], [30, '30 min'], [0, 'jamais']]
         .map(([v, l]) => `<label><input type="radio" name="longPause" value="${v}" ${S.longPause === v ? 'checked' : ''}>${l}</label>`).join('')}</div></div>
     </div>
     <h2>Rappels</h2>
@@ -717,8 +752,8 @@ function settingsHTML() {
    a été touché après ce repas ; la nuit = 22 h – 7 h. Les réglages sont partagés via Firebase. */
 const nightHours = (t = now()) => { const h = new Date(t).getHours(); return h >= 22 || h < 7 };
 function nextMeal() {
-  const m = list().find(isMeal); if (!S.remind || !m) return null;
-  const ref = mealRef(m).t, base = ref + S.remindEvery * 6e4, snz = S.remindSnooze && S.remindSnooze > ref ? S.remindSnooze : 0;
+  const r = lastRepas(), m = r?.first; if (!S.remind || !m) return null;
+  const ref = r.ref, base = ref + S.remindEvery * 6e4, snz = S.remindSnooze && S.remindSnooze > ref ? S.remindSnooze : 0;
   return { meal: m, at: Math.max(base, snz), key: m.id + ':' + (snz || 0) };
 }
 function saveRemind() {
@@ -736,7 +771,7 @@ function checkReminder() {
   if (!S.remindNight && nightHours()) return;
   if (active()) return;                                   // tétée en cours : pas de rappel
   S.remindNotified = n.key; saveSettings();
-  const rt = mealRef(n.meal).t, body = `Dernier repas à ${hm(rt)}, il y a ${dur(now() - rt)}.`;
+  const rt = lastRepas()?.ref ?? n.meal.start, body = `Dernier repas à ${hm(rt)}, il y a ${dur(now() - rt)}.`;
   navigator.vibrate?.([300, 150, 300]);
   if (!(NTFY_ACTIF && S.ntfy) && 'Notification' in window && Notification.permission === 'granted')
     navigator.serviceWorker?.ready.then(r => r.showNotification("C'est l'heure de la tétée", { body, icon: 'icon-192.png', badge: 'icon-192.png', tag: 'rappel', renotify: true })).catch(() => {});
@@ -747,7 +782,7 @@ function tick() {
   const t = now(), e = active();
   document.querySelectorAll('[data-t]').forEach(el => {
     const k = el.dataset.t;
-    if (k === 'since') { const m = list().find(isMeal); if (m) el.textContent = dur(t - mealRef(m).t) }
+    if (k === 'since') { const r = lastRepas(); if (r) el.textContent = dur(t - r.ref) }
     else if (k === 'next') { const n = nextMeal(); if (n) { const d = n.at - t;
       el.textContent = d > 0 ? `Prochaine tétée vers ${hm(n.at)} · dans ${dur(d)}` : `Prochaine tétée prévue à ${hm(n.at)} · en retard de ${dur(-d)}`;
       el.classList.toggle('late', d <= 0) } }
@@ -939,6 +974,11 @@ document.addEventListener('click', ev => {
   else if (a === 'tirage') tirageDialog();
   else if (a === 'sleep') sleepToggle();
   else if (a === 'vitd') vitdTap();
+  else if (a === 'pickmeal') {
+    const es = b.dataset.ids.split(',').map(id => events.get(id)).filter(Boolean);
+    dialog(`<h3>${ic('pencil')} Modifier</h3>${es.map(e => `<button class="btn row-btn" value="${e.id}">${ic(e.type === 'sein' ? 'feed' : 'bottle')}${hm(e.start)} · ${describe(e).t}</button>`).join('')}
+      <menu><button class="btn" value="cancel">Annuler</button></menu>`, v => { const e = events.get(v); if (e) setTimeout(() => editDialog(structuredClone(e))) });
+  }
   else if (a === 'mesure') newEntry('mesure');
   else if (a === 'couche') coucheDialog();
   else if (a === 'night') toggleNight();
