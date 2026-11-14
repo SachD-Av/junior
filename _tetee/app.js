@@ -553,21 +553,25 @@ function historyHTML() {
       html += row(`data-act="edit" data-id="${e.id}"`, x.ic, x.t, extra, hm(e.start), '');
       continue;
     }
+    // repas : en-tête (heure du repas, écart) puis ses lignes, de la plus récente à la plus ancienne
     const c = it.c, gap = it.prev ? `écart ${dur((Math.floor(c.ref / 6e4) - Math.floor(it.prev.ref / 6e4)) * 6e4)}` : '';
-    let gapDone = false;
+    const lines = [];
     if (c.seins.length) {                             // une ligne : gauche et/ou droit, toutes tétées du repas réunies
       const g = c.seins.reduce((m, e) => m + sideMs(e, 'G'), 0), d = c.seins.reduce((m, e) => m + sideMs(e, 'D'), 0);
       const title = [g && `G ${dur(g)}`, d && `D ${dur(d)}`].filter(Boolean).join(' · ') || '0 min';
       const notes = c.seins.map(e => e.note).filter(Boolean).map(esc).join(' · ');
       const extra = [`Total ${dur(g + d)}`, c.ref !== c.first.start && `commencée à ${hm(c.first.start)}`, c.seins.length > 1 && `${c.seins.length} tétées`, notes, by(c.seins) && 'par ' + by(c.seins)].filter(Boolean).join(' · ');
-      html += row(pick(c.seins), ic('feed'), title, extra, hm(c.ref), gap, c.bibs.length ? ' grp-top' : ''); gapDone = true;
+      lines.push({ t: c.ref, html: row(pick(c.seins), ic('feed'), title, extra, hm(c.ref), '') });
     }
     if (c.bibs.length) {                              // une ligne : biberon(s) du repas
       const ml = c.bibs.reduce((m, e) => m + (+e.ml || 0), 0), milks = [...new Set(c.bibs.map(e => e.milk === 'maternel' ? 'Lait maternel' : 'Lait artificiel'))].join(' + ');
       const notes = c.bibs.map(e => e.note).filter(Boolean).map(esc).join(' · ');
       const extra = [milks, c.bibs.length > 1 && `${c.bibs.length} biberons`, notes, by(c.bibs) && 'par ' + by(c.bibs)].filter(Boolean).join(' · ');
-      html += row(pick(c.bibs), ic('bottle'), `${ml} ml`, extra, hm(c.seins.length ? c.bibs[0].start : c.ref), gapDone ? '' : gap, gapDone ? ' grp-bot' : '');
+      const t = c.seins.length ? c.bibs[0].start : c.ref;
+      lines.push({ t, html: row(pick(c.bibs), ic('bottle'), `${ml} ml`, extra, hm(t), '') });
     }
+    lines.sort((x, y) => y.t - x.t);
+    html += `<div class="meal"><div class="meal-h"><span>Repas · ${hm(c.ref)}</span><span>${gap}</span></div>${lines.map(l => l.html).join('')}</div>`;
   }
   return html;
 }
