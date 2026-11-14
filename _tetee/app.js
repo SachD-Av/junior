@@ -407,6 +407,7 @@ function homeHTML() {
         <div class="big" data-t="total"></div>
         <div class="sub ${o ? '' : 'paused'}" data-t="pause"></div>
       </div>
+      ${vitdHTML()}
       <div class="grid2 minis">${sideBtn('G')}${sideBtn('D')}</div>
       ${o ? `<button class="btn huge" data-act="pause">${ic('pause')}<span>Pause</span><small>rot, câlin, changement…</small></button>`
           : `<button class="btn huge resume ${last}" data-act="resume">${ic('play')}<span>Reprendre</span><small>sein ${SEIN[last]}</small></button>`}
