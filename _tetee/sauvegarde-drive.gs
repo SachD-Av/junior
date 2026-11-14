@@ -9,8 +9,8 @@
  *   - Hebdomadaire : une copie par semaine, on garde les 8 dernières
  *   - Mensuel      : une copie par mois, on garde les 24 dernières
  * Les fichiers .json se réimportent dans l'appli (Réglages → Importer).
- * Version lisible : une feuille Google Sheets par année, « Tétée – journal 2026 », « Tétée – journal 2027 »…
- * (même dossier), refaite chaque nuit pour l'année en cours : onglets Journal, Tétées, Biberons, Couches,
+ * Version lisible : la feuille Google Sheets « Tétée – journal » (même dossier), avec 4 onglets par année
+ * (Journal 2026, Tétées 2026, Biberons 2026, Couches 2026, puis 2025…), refaits chaque nuit pour l'année en cours,
  * regroupés par repas comme l'historique de l'appli.
  */
 
@@ -244,52 +244,46 @@ function journal(events, racine) {
   const lignesC = events.filter(e => e.type === 'couche').sort((a, b) => b.start - a.start).map(e => ({ t: e.start,
     row: [j(e.start), h(e.start), ligne(e, h).detail, e.by || '', e.note || ''] }));
 
-  // une feuille par année : celle en cours chaque nuit ; l'année précédente aussi début janvier (corrections tardives) ;
-  // une année passée sans feuille est créée une fois
+  // un seul fichier, 4 onglets par année : l'année en cours chaque nuit ; l'année précédente aussi la première
+  // semaine de janvier (corrections tardives) ; les onglets d'une année passée qui manquent sont créés une fois
   const annee = t => +Utilities.formatDate(new Date(t), tz, 'yyyy'), maintenant = new Date(), cette = annee(maintenant);
   const anDe = x => annee(x.an ?? x.t);                 // une ligne de repas suit l'année du repas (même à cheval sur minuit)
-  const annees = [...new Set(lignesJ.map(anDe))].sort();
+  const annees = [...new Set(lignesJ.map(anDe).concat(cette))].sort((a, b) => b - a);   // la plus récente d'abord
+  const ss = ouvrirJournal(racine);
+  ss.setSpreadsheetTimeZone(tz);
+  const TYPES = [
+    ['Journal', ['Date', 'Heure', 'Type', 'Détail', 'Durée', 'Écart', 'Par', 'Note'], an => lignesJ.filter(x => anDe(x) === an).map(x => [j(x.t), h(x.t), ...x.row])],
+    ['Tétées', ['Date', 'Heure', 'Gauche (min)', 'Droit (min)', 'Total (min)', 'Tétées', 'Commencée à', 'Dernier sein', 'Biberon (ml)', 'Écart', 'Par', 'Note'], an => lignesT.filter(x => anDe(x) === an).map(x => x.row)],
+    ['Biberons', ['Date', 'Heure', 'Quantité (ml)', 'Lait', 'Après une tétée', 'Par', 'Note'], an => lignesB.filter(x => anDe(x) === an).map(x => x.row)],
+    ['Couches', ['Date', 'Heure', 'Type', 'Par', 'Note'], an => lignesC.filter(x => anDe(x) === an).map(x => x.row)]
+  ];
   for (const an of annees) {
-    const existe = trouverFeuille(racine, `${JOURNAL} ${an}`, an === cette);
-    if (an !== cette && existe && !(an === cette - 1 && maintenant.getMonth() === 0 && maintenant.getDate() <= 7)) continue;
-    const ss = existe || creerFeuille(racine, `${JOURNAL} ${an}`);
-    ss.setSpreadsheetTimeZone(tz);
-    const de = l => l.filter(x => anDe(x) === an);
-    onglet(ss, 'Journal', 0, ['Date', 'Heure', 'Type', 'Détail', 'Durée', 'Écart', 'Par', 'Note'], de(lignesJ).map(x => [j(x.t), h(x.t), ...x.row]));
-    onglet(ss, 'Tétées', 1, ['Date', 'Heure', 'Gauche (min)', 'Droit (min)', 'Total (min)', 'Tétées', 'Commencée à', 'Dernier sein', 'Biberon (ml)', 'Écart', 'Par', 'Note'], de(lignesT).map(x => x.row));
-    onglet(ss, 'Biberons', 2, ['Date', 'Heure', 'Quantité (ml)', 'Lait', 'Après une tétée', 'Par', 'Note'], de(lignesB).map(x => x.row));
-    onglet(ss, 'Couches', 3, ['Date', 'Heure', 'Type', 'Par', 'Note'], de(lignesC).map(x => x.row));
+    const aFaire = an === cette || (an === cette - 1 && maintenant.getMonth() === 0 && maintenant.getDate() <= 7);
+    for (const [type, entete, lignes] of TYPES)
+      if (aFaire || !ss.getSheetByName(`${type} ${an}`)) onglet(ss, `${type} ${an}`, entete, lignes(an));
   }
+  // rangement : année la plus récente d'abord ; anciens onglets sans année (versions précédentes) supprimés
+  const ordre = annees.flatMap(an => TYPES.map(([type]) => `${type} ${an}`));
+  ordre.forEach((nom, i) => { const sh = ss.getSheetByName(nom); if (sh) { ss.setActiveSheet(sh); ss.moveActiveSheet(i + 1) } });
+  ss.getSheets().filter(sh => !ordre.includes(sh.getName())).forEach(sh => ss.deleteSheet(sh));
 }
 
-/** Feuille d'une année dans le dossier (hors corbeille). Pour l'année en cours, l'ancienne feuille unique
-    « Tétée – journal » (sans année) est renommée et réutilisée. */
-function trouverFeuille(racine, nom, reprendreAncienne) {
-  for (const n of reprendreAncienne ? [nom, JOURNAL] : [nom]) {
-    const it = racine.getFilesByName(n);
-    while (it.hasNext()) {
-      const f = it.next(); if (f.isTrashed()) continue;
-      if (n !== nom) f.setName(nom);
-      return SpreadsheetApp.openById(f.getId());
-    }
-  }
-  return null;
-}
-function creerFeuille(racine, nom) {
-  const ss = SpreadsheetApp.create(nom);
+/** Le fichier « Tétée – journal » (hors corbeille) ; s'il manque, on reprend la plus récente des feuilles
+    « Tétée – journal 2026 »… d'une version précédente (renommée), sinon on le crée. Les autres vont à la corbeille. */
+function ouvrirJournal(racine) {
+  const vivants = [], it = racine.getFiles();
+  while (it.hasNext()) { const f = it.next(); if (!f.isTrashed() && (f.getName() === JOURNAL || f.getName().indexOf(JOURNAL + ' ') === 0)) vivants.push(f) }
+  const f = vivants.find(x => x.getName() === JOURNAL) || vivants.sort((a, b) => b.getName().localeCompare(a.getName()))[0];
+  vivants.filter(x => x !== f).forEach(x => x.setTrashed(true));   // anciennes feuilles par année : à la corbeille (récupérables)
+  if (f) { if (f.getName() !== JOURNAL) f.setName(JOURNAL); return SpreadsheetApp.openById(f.getId()) }
+  const ss = SpreadsheetApp.create(JOURNAL);
   DriveApp.getFileById(ss.getId()).moveTo(racine);
   return ss;
 }
 
 /** Crée ou vide l'onglet, puis écrit l'en-tête et les lignes. */
-function onglet(ss, nom, position, entete, lignes) {
-  let sh = ss.getSheetByName(nom);
-  if (!sh) {
-    // la feuille créée par Google a un premier onglet vide (« Feuille 1 ») : on le réutilise pour le Journal
-    const premier = ss.getSheets()[0];
-    sh = position === 0 && premier && premier.getLastRow() === 0 && !['Tétées', 'Biberons', 'Couches'].includes(premier.getName())
-      ? premier.setName(nom) : ss.insertSheet(nom, position);
-  }
+function onglet(ss, nom, entete, lignes) {
+  const sh = ss.getSheetByName(nom) || ss.insertSheet(nom);
   sh.clear();
   const data = [entete].concat(lignes);
   sh.getRange(1, 1, data.length, 2).setNumberFormat('@');                 // date et heure : texte, jamais réinterprétées
