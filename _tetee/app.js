@@ -484,8 +484,8 @@ const fmtKg = g => `${(g / 1000).toFixed(3).replace('.', ',')} kg`;
 const vitdToday = () => list().find(e => e.type === 'vitd' && e.start >= dayStart(now()));
 function vitdHTML() {
   const v = vitdToday(), late = !v && new Date().getHours() >= 20;
-  return `<button class="vitd${v ? ' ok' : late ? ' late' : ''}" data-act="vitd">${ic(v ? 'check' : 'pill')}
-    <span>Vitamine D</span><small>${v ? `donnée à ${hm(v.start)}${v.by ? ' par ' + esc(v.by) : ''}` : late ? 'pas encore donnée !' : 'à donner aujourd\'hui'}</small></button>`;
+  return `<button class="vitd${v ? ' ok' : late ? ' late' : ' todo'}" data-act="vitd">${ic(v ? 'check' : 'pill')}
+    <span>Vitamine D</span>${v ? `<small>donnée à ${hm(v.start)}${v.by ? ' par ' + esc(v.by) : ''}</small>` : `<b class="tag-todo">${late ? 'OUBLIÉE ?' : 'À DONNER'}</b>`}</button>`;
 }
 function vitdTap() {
   const v = vitdToday();
