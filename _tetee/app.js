@@ -500,12 +500,13 @@ const fmtKg = g => `${(g / 1000).toFixed(3).replace('.', ',')} kg`;
 const vitdToday = () => list().find(e => e.type === 'vitd' && e.start >= dayStart(now()));
 function vitdHTML() {
   const v = vitdToday(), late = !v && new Date().getHours() >= 20;
-  return `<button class="vitd${v ? ' ok' : late ? ' late' : ' todo'}" data-act="vitd">${ic(v ? 'check' : 'pill')}
-    <span>Vitamine D</span>${v ? `<small>donnée à ${hm(v.start)}${v.by ? ' par ' + esc(v.by) : ''}</small>` : `<b class="tag-todo">${late ? 'OUBLIÉE ?' : 'À DONNER'}</b>`}</button>`;
+  // donnée : simple affichage, plus rien ne se passe au toucher (corriger ou supprimer : depuis l'historique)
+  if (v) return `<div class="vitd ok">${ic('check')}<span>Vitamine D</span><small>donnée à ${hm(v.start)}${v.by ? ' par ' + esc(v.by) : ''}</small></div>`;
+  return `<button class="vitd${late ? ' late' : ' todo'}" data-act="vitd">${ic('pill')}
+    <span>Vitamine D</span><b class="tag-todo">${late ? 'OUBLIÉE ?' : 'À DONNER'}</b></button>`;
 }
 function vitdTap() {
-  const v = vitdToday();
-  if (v) return toast(`Vitamine D déjà donnée aujourd'hui à ${hm(v.start)}`);
+  if (vitdToday()) return;                       // déjà donnée (sécurité : l'autre téléphone a pu la noter entre-temps)
   const t = now(), e = { id: uid(), type: 'vitd', start: t, end: t };
   guard('quick', { done: 'Vitamine D notée' }, () => { put(e); return e.id });
 }
