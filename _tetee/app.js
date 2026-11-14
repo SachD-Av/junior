@@ -89,7 +89,7 @@ document.querySelectorAll('[data-i]').forEach(el => el.innerHTML = ic(el.dataset
 
 /* ---------- état ---------- */
 const S = Object.assign({ theme: 'auto', onehand: true, name: '', fb: null, fam: null, milk: 'artificiel',
-  guard: 'undo', delay: 10, morning: 8, minFeed: 5, longPause: 25, histMode: 'entete',
+  guard: 'undo', delay: 10, morning: 8, minFeed: 5, longPause: 25, histMode: 'entete', gapFrom: 'fin',
   remind: false, remindEvery: 180, remindNight: true, remindNotified: null, remindSnooze: null, remindU: 0, ntfy: false, ntfyTopic: null,
   prot: { start: true, switch: true, stop: true, cancel: true, quick: true } }, LS.get('tt_settings', {}));
 if (!S.themeV2) { S.theme = 'auto'; S.themeV2 = 1; if (!OLD_HOST) LS.set('tt_settings', S) } // l'ancien bouton 🌙 désactivait l'auto pour toujours
@@ -129,7 +129,7 @@ function cleanSettings() {
   one('theme', inL(['auto', 'day', 'night']), 'auto'); one('onehand', isB, true);
   S.name = typeof S.name === 'string' ? S.name.slice(0, 40) : '';
   one('milk', inL(['artificiel', 'maternel']), 'artificiel'); one('guard', inL(['undo', 'double', 'confirm', 'none']), 'undo');
-  one('delay', inL([3, 5, 10, 15]), 10); one('morning', inL([6, 7, 8, 9, 10]), 8); one('minFeed', inL([0, 5, 30, 60]), 5); one('longPause', inL([0, 10, 15, 20, 25, 30]), 25); one('histMode', inL(['entete', 'simple']), 'entete');
+  one('delay', inL([3, 5, 10, 15]), 10); one('morning', inL([6, 7, 8, 9, 10]), 8); one('minFeed', inL([0, 5, 30, 60]), 5); one('longPause', inL([0, 10, 15, 20, 25, 30]), 25); one('histMode', inL(['entete', 'simple']), 'entete'); one('gapFrom', inL(['fin', 'debut']), 'fin');
   one('remind', isB, false); one('remindEvery', v => Number.isInteger(v) && v >= 30 && v <= 720, 180); one('remindNight', isB, true);
   one('remindSnooze', v => v === null || isN(v), null); one('remindU', isN, 0); one('remindNotified', v => v === null || typeof v === 'string', null);
   one('ntfy', isB, false); one('ntfyTopic', v => v === null || /^tetee-[0-9a-f]{24}$/.test(v), null);
@@ -184,6 +184,8 @@ function repasList(L = list()) {
   return out;
 }
 const lastRepas = () => repasList().at(-1);
+/* Point de départ du temps entre repas (réglage) : fin du repas précédent (défaut) ou son début */
+const fromRepas = c => S.gapFrom === 'debut' ? c.ref : c.end;
 const isMeal = e => e.type === 'biberon' || (e.type === 'sein' && e.end);
 
 function put(e) {
@@ -442,7 +444,7 @@ function homeHTML() {
       sn?.segs.length && 'fin sein ' + SEIN[sn.segs.at(-1).s], ml && `biberon ${ml} ml`].filter(Boolean).join(' · ') }
   return `<section class="home idle">
     <button class="card since tap" data-view="history" aria-label="Voir l'historique">
-      <div class="lbl">Fin du dernier repas il y a</div>
+      <div class="lbl">${S.gapFrom === 'debut' ? 'Dernier repas il y a' : 'Fin du dernier repas il y a'}</div>
       <div class="big" data-t="since">${meal ? '' : '—'}</div>
       <div class="sub">${sub}</div>
       ${S.remind && meal ? `<div class="next" data-t="next"></div>` : ''}
@@ -535,7 +537,7 @@ function historyHTML() {
     <button class="btn" data-act="add" data-type="sommeil">+ Sommeil</button>
     <button class="btn" data-act="add" data-type="mesure">+ Mesure</button></div>`;
   if (!L.length) return html + `<p class="sub" style="text-align:center;margin-top:40px">Rien pour l'instant.</p>`;
-  html += `<p class="sub" style="margin:10px 4px 0;font-size:12px">« écart » = temps entre la fin du repas précédent et le début de celui-ci.</p>`;
+  html += `<p class="sub" style="margin:10px 4px 0;font-size:12px">« écart » = temps entre ${S.gapFrom === 'debut' ? 'le début' : 'la fin'} du repas précédent et le début de celui-ci.</p>`;
   const reps = repasList(L), items = L.filter(e => !isMeal(e)).map(e => ({ t: e.start, e }));
   reps.forEach((c, i) => items.push({ t: c.first.start, c, prev: reps[i - 1] }));
   items.sort((a, b) => b.t - a.t);
@@ -554,7 +556,7 @@ function historyHTML() {
       continue;
     }
     // repas : en-tête (heure du repas, écart) puis ses lignes, de la plus récente à la plus ancienne
-    const c = it.c, gap = it.prev ? `écart ${dur(Math.max(0, Math.floor(c.ref / 6e4) - Math.floor(it.prev.end / 6e4)) * 6e4)}` : '';   // fin → début
+    const c = it.c, gap = it.prev ? `écart ${dur(Math.max(0, Math.floor(c.ref / 6e4) - Math.floor(fromRepas(it.prev) / 6e4)) * 6e4)}` : '';
     const lines = [];
     if (c.seins.length) {                             // une ligne : gauche et/ou droit, toutes tétées du repas réunies
       const g = c.seins.reduce((m, e) => m + sideMs(e, 'G'), 0), d = c.seins.reduce((m, e) => m + sideMs(e, 'D'), 0);
@@ -581,7 +583,7 @@ function historyHTML() {
 function summarize(evs, from = -Infinity, to = Infinity) {
   const seins = evs.filter(e => e.type === 'sein' && e.end), bibs = evs.filter(e => e.type === 'biberon'), tirs = evs.filter(e => e.type === 'tirage');
   const meals = repasList(evs), seinRepas = meals.filter(c => c.seins.length);
-  const gaps = meals.slice(1).map((c, i) => Math.max(0, c.ref - meals[i].end));   // fin du repas → début du suivant
+  const gaps = meals.slice(1).map((c, i) => Math.max(0, c.ref - fromRepas(meals[i])));
   const tG = seins.reduce((m, e) => m + sideMs(e, 'G'), 0), tD = seins.reduce((m, e) => m + sideMs(e, 'D'), 0);
   const couches = evs.filter(e => e.type === 'couche');
   const zz = evs.filter(e => e.type === 'sommeil');
@@ -684,13 +686,15 @@ function settingsHTML() {
     </div>
     <h2>Repas</h2>
     <div class="card set">
+      <div class="fld"><span>Temps entre repas, compté depuis</span><div class="seg" id="gapSeg">${[['fin', 'la fin du repas'], ['debut', 'le début du repas']]
+        .map(([v, l]) => `<label><input type="radio" name="gapFrom" value="${v}" ${S.gapFrom === v ? 'checked' : ''}>${l}</label>`).join('')}</div></div>
       <div class="fld"><span>Nouveau repas après une interruption de plus de</span><div class="seg" id="pauseSeg">${[[15, '15 min'], [20, '20 min'], [25, '25 min'], [30, '30 min'], [0, 'jamais']]
         .map(([v, l]) => `<label><input type="radio" name="longPause" value="${v}" ${S.longPause === v ? 'checked' : ''}>${l}</label>`).join('')}</div></div>
     </div>
     <h2>Rappels</h2>
     <div class="card set">
       <label class="toggle"><span>Rappel de la prochaine tétée</span><input type="checkbox" id="remind" ${S.remind ? 'checked' : ''}></label>
-      ${S.remind ? `<label>Intervalle (depuis la fin du dernier repas)<select id="remindEvery">${[90, 120, 150, 180, 210, 240, 300].map(m =>
+      ${S.remind ? `<label>Intervalle (depuis ${S.gapFrom === 'debut' ? 'le début' : 'la fin'} du dernier repas)<select id="remindEvery">${[90, 120, 150, 180, 210, 240, 300].map(m =>
         `<option value="${m}" ${S.remindEvery === m ? 'selected' : ''}>${Math.floor(m / 60)} h ${m % 60 ? m % 60 : ''}</option>`).join('')}</select></label>
       <label class="toggle"><span>Aussi la nuit <small class="sub">(22 h – 7 h)</small></span><input type="checkbox" id="remindNight" ${S.remindNight ? 'checked' : ''}></label>
       <p>Réglages partagés avec l'autre téléphone. Sans ntfy, la notification n'arrive que si l'appli est ouverte ou en arrière-plan récent.
@@ -765,7 +769,7 @@ function settingsHTML() {
 const nightHours = (t = now()) => { const h = new Date(t).getHours(); return h >= 22 || h < 7 };
 function nextMeal() {
   const r = lastRepas(), m = r?.first; if (!S.remind || !m) return null;
-  const ref = r.end, base = ref + S.remindEvery * 6e4, snz = S.remindSnooze && S.remindSnooze > ref ? S.remindSnooze : 0;
+  const ref = fromRepas(r), base = ref + S.remindEvery * 6e4, snz = S.remindSnooze && S.remindSnooze > ref ? S.remindSnooze : 0;
   return { meal: m, at: Math.max(base, snz), key: m.id + ':' + (snz || 0) };
 }
 function saveRemind() {
@@ -783,7 +787,7 @@ function checkReminder() {
   if (!S.remindNight && nightHours()) return;
   if (active()) return;                                   // tétée en cours : pas de rappel
   S.remindNotified = n.key; saveSettings();
-  const rt = lastRepas()?.end ?? n.meal.start, body = `Dernier repas terminé à ${hm(rt)}, il y a ${dur(now() - rt)}.`;
+  const lr = lastRepas(), rt = lr ? fromRepas(lr) : n.meal.start, body = `Dernier repas ${S.gapFrom === 'debut' ? 'commencé' : 'terminé'} à ${hm(rt)}, il y a ${dur(now() - rt)}.`;
   navigator.vibrate?.([300, 150, 300]);
   if (!(NTFY_ACTIF && S.ntfy) && 'Notification' in window && Notification.permission === 'granted')
     navigator.serviceWorker?.ready.then(r => r.showNotification("C'est l'heure de la tétée", { body, icon: 'icon-192.png', badge: 'icon-192.png', tag: 'rappel', renotify: true })).catch(() => {});
@@ -794,7 +798,7 @@ function tick() {
   const t = now(), e = active();
   document.querySelectorAll('[data-t]').forEach(el => {
     const k = el.dataset.t;
-    if (k === 'since') { const r = lastRepas(); if (r) el.textContent = dur(Math.max(0, t - r.end)) }
+    if (k === 'since') { const r = lastRepas(); if (r) el.textContent = dur(Math.max(0, t - fromRepas(r))) }
     else if (k === 'next') { const n = nextMeal(); if (n) { const d = n.at - t;
       el.textContent = d > 0 ? `Prochaine tétée vers ${hm(n.at)} · dans ${dur(d)}` : `Prochaine tétée prévue à ${hm(n.at)} · en retard de ${dur(-d)}`;
       el.classList.toggle('late', d <= 0) } }
@@ -1027,6 +1031,7 @@ document.addEventListener('change', ev => {
   else if (t.name === 'minFeed') { S.minFeed = +t.value; saveSettings() }
   else if (t.name === 'longPause') { S.longPause = +t.value; saveSettings() }
   else if (t.name === 'histMode') { S.histMode = t.value; saveSettings() }
+  else if (t.name === 'gapFrom') { S.gapFrom = t.value; saveSettings(); render(true) }
   else if (t.dataset.prot) { S.prot[t.dataset.prot] = t.checked; saveSettings() }
   else if (t.id === 'remind') {
     S.remind = t.checked; saveRemind();
@@ -1079,7 +1084,7 @@ async function driveScript(mode) {
   try {
     const txt = (await (await fetch('sauvegarde-drive.gs', { cache: 'no-cache' })).text())
       .replace("'__PROJET__'", JSON.stringify(S.fb.projectId)).replace("'__FAMILLE__'", JSON.stringify(S.fam))
-      .replace("'__NTFY__'", JSON.stringify(await ensureTopic()));
+      .replace("'__NTFY__'", JSON.stringify(await ensureTopic())).replace("'__ECART__'", JSON.stringify(S.gapFrom));
     if (mode === 'share' && navigator.share) return await navigator.share({ title: 'Script de sauvegarde Tétée', text: txt });
     await navigator.clipboard.writeText(txt); alert('Script copié ! Collez-le dans un nouveau projet sur script.google.com.');
   } catch (err) { if (err?.name !== 'AbortError') alert('Impossible de copier le script : ' + (err?.message || err)) }
