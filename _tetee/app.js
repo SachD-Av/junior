@@ -89,7 +89,7 @@ document.querySelectorAll('[data-i]').forEach(el => el.innerHTML = ic(el.dataset
 
 /* ---------- état ---------- */
 const S = Object.assign({ theme: 'auto', onehand: true, name: '', fb: null, fam: null, milk: 'artificiel',
-  guard: 'undo', delay: 10, morning: 8, minFeed: 5, longPause: 25,
+  guard: 'undo', delay: 10, morning: 8, minFeed: 5, longPause: 25, histMode: 'entete',
   remind: false, remindEvery: 180, remindNight: true, remindNotified: null, remindSnooze: null, remindU: 0, ntfy: false, ntfyTopic: null,
   prot: { start: true, switch: true, stop: true, cancel: true, quick: true } }, LS.get('tt_settings', {}));
 if (!S.themeV2) { S.theme = 'auto'; S.themeV2 = 1; if (!OLD_HOST) LS.set('tt_settings', S) } // l'ancien bouton 🌙 désactivait l'auto pour toujours
@@ -129,7 +129,7 @@ function cleanSettings() {
   one('theme', inL(['auto', 'day', 'night']), 'auto'); one('onehand', isB, true);
   S.name = typeof S.name === 'string' ? S.name.slice(0, 40) : '';
   one('milk', inL(['artificiel', 'maternel']), 'artificiel'); one('guard', inL(['undo', 'double', 'confirm', 'none']), 'undo');
-  one('delay', inL([3, 5, 10, 15]), 10); one('morning', inL([6, 7, 8, 9, 10]), 8); one('minFeed', inL([0, 5, 30, 60]), 5); one('longPause', inL([0, 10, 15, 20, 25, 30]), 25);
+  one('delay', inL([3, 5, 10, 15]), 10); one('morning', inL([6, 7, 8, 9, 10]), 8); one('minFeed', inL([0, 5, 30, 60]), 5); one('longPause', inL([0, 10, 15, 20, 25, 30]), 25); one('histMode', inL(['entete', 'simple']), 'entete');
   one('remind', isB, false); one('remindEvery', v => Number.isInteger(v) && v >= 30 && v <= 720, 180); one('remindNight', isB, true);
   one('remindSnooze', v => v === null || isN(v), null); one('remindU', isN, 0); one('remindNotified', v => v === null || typeof v === 'string', null);
   one('ntfy', isB, false); one('ntfyTopic', v => v === null || /^tetee-[0-9a-f]{24}$/.test(v), null);
@@ -561,17 +561,19 @@ function historyHTML() {
       const title = [g && `G ${dur(g)}`, d && `D ${dur(d)}`].filter(Boolean).join(' · ') || '0 min';
       const notes = c.seins.map(e => e.note).filter(Boolean).map(esc).join(' · ');
       const extra = [`Total ${dur(g + d)}`, c.ref !== c.first.start && `commencée à ${hm(c.first.start)}`, c.seins.length > 1 && `${c.seins.length} tétées`, notes, by(c.seins) && 'par ' + by(c.seins)].filter(Boolean).join(' · ');
-      lines.push({ t: c.ref, html: row(pick(c.seins), ic('feed'), title, extra, hm(c.ref), '') });
+      lines.push({ t: c.ref, html: g2 => row(pick(c.seins), ic('feed'), title, extra, hm(c.ref), g2) });
     }
     if (c.bibs.length) {                              // une ligne : biberon(s) du repas
       const ml = c.bibs.reduce((m, e) => m + (+e.ml || 0), 0), milks = [...new Set(c.bibs.map(e => e.milk === 'maternel' ? 'Lait maternel' : 'Lait artificiel'))].join(' + ');
       const notes = c.bibs.map(e => e.note).filter(Boolean).map(esc).join(' · ');
       const extra = [milks, c.bibs.length > 1 && `${c.bibs.length} biberons`, notes, by(c.bibs) && 'par ' + by(c.bibs)].filter(Boolean).join(' · ');
       const t = c.seins.length ? c.bibs[0].start : c.ref;
-      lines.push({ t, html: row(pick(c.bibs), ic('bottle'), `${ml} ml`, extra, hm(t), '') });
+      lines.push({ t, html: g2 => row(pick(c.bibs), ic('bottle'), `${ml} ml`, extra, hm(t), g2) });
     }
     lines.sort((x, y) => y.t - x.t);
-    html += `<div class="meal"><div class="meal-h"><span>Repas · ${hm(c.ref)}</span><span>${gap}</span></div>${lines.map(l => l.html).join('')}</div>`;
+    if (S.histMode === 'simple')                      // sans en-tête : l'écart sur la ligne qui ouvre le repas
+      html += `<div class="meal simple">${lines.map((l, i) => l.html(i === lines.length - 1 ? gap : '')).join('')}</div>`;
+    else html += `<div class="meal"><div class="meal-h"><span>Repas · ${hm(c.ref)}</span><span>${gap}</span></div>${lines.map(l => l.html('')).join('')}</div>`;
   }
   return html;
 }
@@ -674,6 +676,11 @@ function settingsHTML() {
         <label>Mode jour jamais avant<select id="morning">${[6, 7, 8, 9, 10].map(h => `<option value="${h}" ${S.morning === h ? 'selected' : ''}>${h} h</option>`).join('')}</select></label>` })() : ''}
       <label class="toggle"><span>Mode une main <small class="sub">(boutons en bas)</small></span><input type="checkbox" id="onehand" ${S.onehand ? 'checked' : ''}></label>
       <label>Votre prénom (affiché dans l'historique)<input id="name" value="${esc(S.name)}" placeholder="ex. Papa"></label>
+    </div>
+    <h2>Historique</h2>
+    <div class="card set">
+      <div class="seg" id="histSeg">${[['entete', 'Avec en-tête de repas'], ['simple', 'Simple']]
+        .map(([v, l]) => `<label><input type="radio" name="histMode" value="${v}" ${S.histMode === v ? 'checked' : ''}>${l}</label>`).join('')}</div>
     </div>
     <h2>Repas</h2>
     <div class="card set">
@@ -1019,6 +1026,7 @@ document.addEventListener('change', ev => {
   else if (t.name === 'delay') { S.delay = +t.value; saveSettings() }
   else if (t.name === 'minFeed') { S.minFeed = +t.value; saveSettings() }
   else if (t.name === 'longPause') { S.longPause = +t.value; saveSettings() }
+  else if (t.name === 'histMode') { S.histMode = t.value; saveSettings() }
   else if (t.dataset.prot) { S.prot[t.dataset.prot] = t.checked; saveSettings() }
   else if (t.id === 'remind') {
     S.remind = t.checked; saveRemind();
