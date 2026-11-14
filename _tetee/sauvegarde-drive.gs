@@ -9,8 +9,9 @@
  *   - Hebdomadaire : une copie par semaine, on garde les 8 dernières
  *   - Mensuel      : une copie par mois, on garde les 24 dernières
  * Les fichiers .json se réimportent dans l'appli (Réglages → Importer).
- * La feuille Google Sheets « Tétée – journal » (même dossier) est la version lisible, refaite chaque nuit :
- * onglets Journal, Tétées, Biberons, Couches — regroupés par repas comme l'historique de l'appli.
+ * Version lisible : une feuille Google Sheets par année, « Tétée – journal 2026 », « Tétée – journal 2027 »…
+ * (même dossier), refaite chaque nuit pour l'année en cours : onglets Journal, Tétées, Biberons, Couches,
+ * regroupés par repas comme l'historique de l'appli.
  */
 
 // Rempli automatiquement par l'appli (Réglages → Sauvegarde Google Drive → Copier le script)
@@ -223,7 +224,7 @@ function journal(events, racine) {
     }
     if (c.bibs.length) {
       const ml = c.bibs.reduce((m, e) => m + (e.ml || 0), 0), lait = [...new Set(c.bibs.map(e => e.milk === 'maternel' ? 'maternel' : 'artificiel'))].join(' + ');
-      lignesJ.push({ t: c.seins.length ? c.bibs[0].start : c.t, row: ['Biberon', `${ml} ml · lait ${lait}` + (c.bibs.length > 1 ? ` (${c.bibs.length} biberons)` : ''), '', c.seins.length || c.ecart == null ? '' : duree(c.ecart), qui(c.bibs), notes(c.bibs)] });
+      lignesJ.push({ t: c.seins.length ? c.bibs[0].start : c.t, an: c.t, row: ['Biberon', `${ml} ml · lait ${lait}` + (c.bibs.length > 1 ? ` (${c.bibs.length} biberons)` : ''), '', c.seins.length || c.ecart == null ? '' : duree(c.ecart), qui(c.bibs), notes(c.bibs)] });
     }
   });
   events.filter(e => e.start && !(e.type === 'biberon' || (e.type === 'sein' && e.end))).forEach(e => {
@@ -231,26 +232,53 @@ function journal(events, racine) {
   });
   lignesJ.sort((a, b) => b.t - a.t);
 
-  const it = racine.getFilesByName(JOURNAL);
-  let ss = null;
-  while (it.hasNext()) { const f = it.next(); if (!f.isTrashed()) { ss = SpreadsheetApp.openById(f.getId()); break } }
-  if (!ss) { ss = SpreadsheetApp.create(JOURNAL); DriveApp.getFileById(ss.getId()).moveTo(racine) }
-  ss.setSpreadsheetTimeZone(tz);
   const recents = l => l.slice().reverse();          // repas : du plus récent au plus ancien
+  const lignesT = recents(repas.filter(c => c.seins.length)).map(c => {
+    const g = min(c.seins.reduce((m, e) => m + cote(e, 'G'), 0)), d = min(c.seins.reduce((m, e) => m + cote(e, 'D'), 0));
+    const der = c.seins.flatMap(e => e.segs || []).sort((a, b) => a.a - b.a).pop();
+    return { t: c.t, row: [j(c.t), h(c.t), g, d, g + d, c.seins.length, c.t !== c.premier.start ? h(c.premier.start) : '', der ? (der.s === 'G' ? 'gauche' : 'droit') : '',
+      c.bibs.reduce((m, e) => m + (e.ml || 0), 0) || '', c.ecart != null ? duree(c.ecart) : '', qui(c.seins), notes(c.seins)] };
+  });
+  const lignesB = recents(repas).flatMap(c => c.bibs.slice().reverse().map(e => ({ t: e.start, an: c.t,
+    row: [j(e.start), h(e.start), e.ml || 0, e.milk === 'maternel' ? 'maternel' : 'artificiel', c.seins.length ? 'oui' : '', e.by || '', e.note || ''] })));
+  const lignesC = events.filter(e => e.type === 'couche').sort((a, b) => b.start - a.start).map(e => ({ t: e.start,
+    row: [j(e.start), h(e.start), ligne(e, h).detail, e.by || '', e.note || ''] }));
 
-  onglet(ss, 'Journal', 0, ['Date', 'Heure', 'Type', 'Détail', 'Durée', 'Écart', 'Par', 'Note'],
-    lignesJ.map(x => [j(x.t), h(x.t), ...x.row]));
-  onglet(ss, 'Tétées', 1, ['Date', 'Heure', 'Gauche (min)', 'Droit (min)', 'Total (min)', 'Tétées', 'Commencée à', 'Dernier sein', 'Biberon (ml)', 'Écart', 'Par', 'Note'],
-    recents(repas.filter(c => c.seins.length)).map(c => {
-      const g = min(c.seins.reduce((m, e) => m + cote(e, 'G'), 0)), d = min(c.seins.reduce((m, e) => m + cote(e, 'D'), 0));
-      const der = c.seins.flatMap(e => e.segs || []).sort((a, b) => a.a - b.a).pop();
-      return [j(c.t), h(c.t), g, d, g + d, c.seins.length, c.t !== c.premier.start ? h(c.premier.start) : '', der ? (der.s === 'G' ? 'gauche' : 'droit') : '',
-        c.bibs.reduce((m, e) => m + (e.ml || 0), 0) || '', c.ecart != null ? duree(c.ecart) : '', qui(c.seins), notes(c.seins)];
-    }));
-  onglet(ss, 'Biberons', 2, ['Date', 'Heure', 'Quantité (ml)', 'Lait', 'Après une tétée', 'Par', 'Note'],
-    recents(repas).flatMap(c => c.bibs.slice().reverse().map(e => [j(e.start), h(e.start), e.ml || 0, e.milk === 'maternel' ? 'maternel' : 'artificiel', c.seins.length ? 'oui' : '', e.by || '', e.note || ''])));
-  onglet(ss, 'Couches', 3, ['Date', 'Heure', 'Type', 'Par', 'Note'],
-    events.filter(e => e.type === 'couche').sort((a, b) => b.start - a.start).map(e => [j(e.start), h(e.start), ligne(e, h).detail, e.by || '', e.note || '']));
+  // une feuille par année : celle en cours chaque nuit ; l'année précédente aussi début janvier (corrections tardives) ;
+  // une année passée sans feuille est créée une fois
+  const annee = t => +Utilities.formatDate(new Date(t), tz, 'yyyy'), maintenant = new Date(), cette = annee(maintenant);
+  const anDe = x => annee(x.an ?? x.t);                 // une ligne de repas suit l'année du repas (même à cheval sur minuit)
+  const annees = [...new Set(lignesJ.map(anDe))].sort();
+  for (const an of annees) {
+    const existe = trouverFeuille(racine, `${JOURNAL} ${an}`, an === cette);
+    if (an !== cette && existe && !(an === cette - 1 && maintenant.getMonth() === 0 && maintenant.getDate() <= 7)) continue;
+    const ss = existe || creerFeuille(racine, `${JOURNAL} ${an}`);
+    ss.setSpreadsheetTimeZone(tz);
+    const de = l => l.filter(x => anDe(x) === an);
+    onglet(ss, 'Journal', 0, ['Date', 'Heure', 'Type', 'Détail', 'Durée', 'Écart', 'Par', 'Note'], de(lignesJ).map(x => [j(x.t), h(x.t), ...x.row]));
+    onglet(ss, 'Tétées', 1, ['Date', 'Heure', 'Gauche (min)', 'Droit (min)', 'Total (min)', 'Tétées', 'Commencée à', 'Dernier sein', 'Biberon (ml)', 'Écart', 'Par', 'Note'], de(lignesT).map(x => x.row));
+    onglet(ss, 'Biberons', 2, ['Date', 'Heure', 'Quantité (ml)', 'Lait', 'Après une tétée', 'Par', 'Note'], de(lignesB).map(x => x.row));
+    onglet(ss, 'Couches', 3, ['Date', 'Heure', 'Type', 'Par', 'Note'], de(lignesC).map(x => x.row));
+  }
+}
+
+/** Feuille d'une année dans le dossier (hors corbeille). Pour l'année en cours, l'ancienne feuille unique
+    « Tétée – journal » (sans année) est renommée et réutilisée. */
+function trouverFeuille(racine, nom, reprendreAncienne) {
+  for (const n of reprendreAncienne ? [nom, JOURNAL] : [nom]) {
+    const it = racine.getFilesByName(n);
+    while (it.hasNext()) {
+      const f = it.next(); if (f.isTrashed()) continue;
+      if (n !== nom) f.setName(nom);
+      return SpreadsheetApp.openById(f.getId());
+    }
+  }
+  return null;
+}
+function creerFeuille(racine, nom) {
+  const ss = SpreadsheetApp.create(nom);
+  DriveApp.getFileById(ss.getId()).moveTo(racine);
+  return ss;
 }
 
 /** Crée ou vide l'onglet, puis écrit l'en-tête et les lignes. */
