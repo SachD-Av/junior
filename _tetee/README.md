@@ -71,7 +71,7 @@ Le script contient le code d'accès au suivi : ne le partagez pas.
 > **Désactivé pour le moment.** Le code est en place mais masqué (`NTFY_ACTIF = false` dans `app.js`,
 > `RAPPELS_ACTIFS = false` dans le script). Les rappels dans l'appli ouverte restent disponibles.
 
-1. **Réglages → Rappels** : activer et choisir l'intervalle (compté depuis le début du dernier repas).
+1. **Réglages → Rappels** : activer et choisir l'intervalle (compté depuis la fin du dernier repas).
 2. Sur chaque téléphone, installer l'appli gratuite **ntfy** (Play Store), puis dans **Réglages → Rappels**,
    toucher **S'abonner dans ntfy** (ou copier le nom du canal et l'ajouter dans ntfy avec « + »).
 3. Une seule fois : recopier le script Google (**Réglages → Sauvegarde automatique Google Drive**),

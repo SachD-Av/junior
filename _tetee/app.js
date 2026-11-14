@@ -442,7 +442,7 @@ function homeHTML() {
       sn?.segs.length && 'fin sein ' + SEIN[sn.segs.at(-1).s], ml && `biberon ${ml} ml`].filter(Boolean).join(' · ') }
   return `<section class="home idle">
     <button class="card since tap" data-view="history" aria-label="Voir l'historique">
-      <div class="lbl">Dernier repas il y a</div>
+      <div class="lbl">Fin du dernier repas il y a</div>
       <div class="big" data-t="since">${meal ? '' : '—'}</div>
       <div class="sub">${sub}</div>
       ${S.remind && meal ? `<div class="next" data-t="next"></div>` : ''}
@@ -535,7 +535,7 @@ function historyHTML() {
     <button class="btn" data-act="add" data-type="sommeil">+ Sommeil</button>
     <button class="btn" data-act="add" data-type="mesure">+ Mesure</button></div>`;
   if (!L.length) return html + `<p class="sub" style="text-align:center;margin-top:40px">Rien pour l'instant.</p>`;
-  html += `<p class="sub" style="margin:10px 4px 0;font-size:12px">« écart » = temps depuis le repas précédent.</p>`;
+  html += `<p class="sub" style="margin:10px 4px 0;font-size:12px">« écart » = temps entre la fin du repas précédent et le début de celui-ci.</p>`;
   const reps = repasList(L), items = L.filter(e => !isMeal(e)).map(e => ({ t: e.start, e }));
   reps.forEach((c, i) => items.push({ t: c.first.start, c, prev: reps[i - 1] }));
   items.sort((a, b) => b.t - a.t);
@@ -554,7 +554,7 @@ function historyHTML() {
       continue;
     }
     // repas : en-tête (heure du repas, écart) puis ses lignes, de la plus récente à la plus ancienne
-    const c = it.c, gap = it.prev ? `écart ${dur((Math.floor(c.ref / 6e4) - Math.floor(it.prev.ref / 6e4)) * 6e4)}` : '';
+    const c = it.c, gap = it.prev ? `écart ${dur(Math.max(0, Math.floor(c.ref / 6e4) - Math.floor(it.prev.end / 6e4)) * 6e4)}` : '';   // fin → début
     const lines = [];
     if (c.seins.length) {                             // une ligne : gauche et/ou droit, toutes tétées du repas réunies
       const g = c.seins.reduce((m, e) => m + sideMs(e, 'G'), 0), d = c.seins.reduce((m, e) => m + sideMs(e, 'D'), 0);
@@ -581,7 +581,7 @@ function historyHTML() {
 function summarize(evs, from = -Infinity, to = Infinity) {
   const seins = evs.filter(e => e.type === 'sein' && e.end), bibs = evs.filter(e => e.type === 'biberon'), tirs = evs.filter(e => e.type === 'tirage');
   const meals = repasList(evs), seinRepas = meals.filter(c => c.seins.length);
-  const gaps = meals.slice(1).map((c, i) => c.ref - meals[i].ref);
+  const gaps = meals.slice(1).map((c, i) => Math.max(0, c.ref - meals[i].end));   // fin du repas → début du suivant
   const tG = seins.reduce((m, e) => m + sideMs(e, 'G'), 0), tD = seins.reduce((m, e) => m + sideMs(e, 'D'), 0);
   const couches = evs.filter(e => e.type === 'couche');
   const zz = evs.filter(e => e.type === 'sommeil');
@@ -690,7 +690,7 @@ function settingsHTML() {
     <h2>Rappels</h2>
     <div class="card set">
       <label class="toggle"><span>Rappel de la prochaine tétée</span><input type="checkbox" id="remind" ${S.remind ? 'checked' : ''}></label>
-      ${S.remind ? `<label>Intervalle (depuis le début du dernier repas)<select id="remindEvery">${[90, 120, 150, 180, 210, 240, 300].map(m =>
+      ${S.remind ? `<label>Intervalle (depuis la fin du dernier repas)<select id="remindEvery">${[90, 120, 150, 180, 210, 240, 300].map(m =>
         `<option value="${m}" ${S.remindEvery === m ? 'selected' : ''}>${Math.floor(m / 60)} h ${m % 60 ? m % 60 : ''}</option>`).join('')}</select></label>
       <label class="toggle"><span>Aussi la nuit <small class="sub">(22 h – 7 h)</small></span><input type="checkbox" id="remindNight" ${S.remindNight ? 'checked' : ''}></label>
       <p>Réglages partagés avec l'autre téléphone. Sans ntfy, la notification n'arrive que si l'appli est ouverte ou en arrière-plan récent.
@@ -757,15 +757,15 @@ function settingsHTML() {
 
 /* rafraîchit seulement les chronos (sans recréer les boutons) */
 /* ---------- rappels ----------
-   Prochaine tétée = début du dernier repas + intervalle choisi. L'appli affiche le compte à rebours
+   Prochaine tétée = fin du dernier repas + intervalle choisi. L'appli affiche le compte à rebours
    et notifie à l'heure (téléphone/appli ouverts : un navigateur ne peut pas programmer une
    notification appli fermée). */
-/* Même règle que le script Google : début du dernier repas + intervalle, repoussé si « Repousser »
+/* Même règle que le script Google : fin du dernier repas + intervalle, repoussé si « Repousser »
    a été touché après ce repas ; la nuit = 22 h – 7 h. Les réglages sont partagés via Firebase. */
 const nightHours = (t = now()) => { const h = new Date(t).getHours(); return h >= 22 || h < 7 };
 function nextMeal() {
   const r = lastRepas(), m = r?.first; if (!S.remind || !m) return null;
-  const ref = r.ref, base = ref + S.remindEvery * 6e4, snz = S.remindSnooze && S.remindSnooze > ref ? S.remindSnooze : 0;
+  const ref = r.end, base = ref + S.remindEvery * 6e4, snz = S.remindSnooze && S.remindSnooze > ref ? S.remindSnooze : 0;
   return { meal: m, at: Math.max(base, snz), key: m.id + ':' + (snz || 0) };
 }
 function saveRemind() {
@@ -783,7 +783,7 @@ function checkReminder() {
   if (!S.remindNight && nightHours()) return;
   if (active()) return;                                   // tétée en cours : pas de rappel
   S.remindNotified = n.key; saveSettings();
-  const rt = lastRepas()?.ref ?? n.meal.start, body = `Dernier repas à ${hm(rt)}, il y a ${dur(now() - rt)}.`;
+  const rt = lastRepas()?.end ?? n.meal.start, body = `Dernier repas terminé à ${hm(rt)}, il y a ${dur(now() - rt)}.`;
   navigator.vibrate?.([300, 150, 300]);
   if (!(NTFY_ACTIF && S.ntfy) && 'Notification' in window && Notification.permission === 'granted')
     navigator.serviceWorker?.ready.then(r => r.showNotification("C'est l'heure de la tétée", { body, icon: 'icon-192.png', badge: 'icon-192.png', tag: 'rappel', renotify: true })).catch(() => {});
@@ -794,7 +794,7 @@ function tick() {
   const t = now(), e = active();
   document.querySelectorAll('[data-t]').forEach(el => {
     const k = el.dataset.t;
-    if (k === 'since') { const r = lastRepas(); if (r) el.textContent = dur(t - r.ref) }
+    if (k === 'since') { const r = lastRepas(); if (r) el.textContent = dur(Math.max(0, t - r.end)) }
     else if (k === 'next') { const n = nextMeal(); if (n) { const d = n.at - t;
       el.textContent = d > 0 ? `Prochaine tétée vers ${hm(n.at)} · dans ${dur(d)}` : `Prochaine tétée prévue à ${hm(n.at)} · en retard de ${dur(-d)}`;
       el.classList.toggle('late', d <= 0) } }
