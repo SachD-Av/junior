@@ -22,7 +22,7 @@ const FAMILLE = '__FAMILLE__';
 const NTFY = '__NTFY__';
 const RAPPELS_ACTIFS = false;      // rappels ntfy prêts mais désactivés pour le moment (mettre true pour les activer)
 const FUSEAU = 'Europe/Paris';     // heures de la nuit, heure affichée et sauvegarde de 3 h, quel que soit le réglage du projet
-const PAUSE_LONGUE = 20;           // min : en dessous, même repas (tétées/biberons rapprochés) ; au-dessus, nouveau repas (comme l'appli)
+const PAUSE_LONGUE = 25;           // min : en dessous, même repas (tétées/biberons rapprochés) ; au-dessus, nouveau repas (comme l'appli)
 
 const DOSSIER = 'Tétée – sauvegardes';
 const GARDER = { Quotidien: 7, Hebdomadaire: 8, Mensuel: 24 };

@@ -89,7 +89,7 @@ document.querySelectorAll('[data-i]').forEach(el => el.innerHTML = ic(el.dataset
 
 /* ---------- état ---------- */
 const S = Object.assign({ theme: 'auto', onehand: true, name: '', fb: null, fam: null, milk: 'artificiel',
-  guard: 'undo', delay: 10, morning: 8, minFeed: 5, longPause: 20,
+  guard: 'undo', delay: 10, morning: 8, minFeed: 5, longPause: 25,
   remind: false, remindEvery: 180, remindNight: true, remindNotified: null, remindSnooze: null, remindU: 0, ntfy: false, ntfyTopic: null,
   prot: { start: true, switch: true, stop: true, cancel: true, quick: true } }, LS.get('tt_settings', {}));
 if (!S.themeV2) { S.theme = 'auto'; S.themeV2 = 1; if (!OLD_HOST) LS.set('tt_settings', S) } // l'ancien bouton 🌙 désactivait l'auto pour toujours
@@ -129,7 +129,7 @@ function cleanSettings() {
   one('theme', inL(['auto', 'day', 'night']), 'auto'); one('onehand', isB, true);
   S.name = typeof S.name === 'string' ? S.name.slice(0, 40) : '';
   one('milk', inL(['artificiel', 'maternel']), 'artificiel'); one('guard', inL(['undo', 'double', 'confirm', 'none']), 'undo');
-  one('delay', inL([3, 5, 10, 15]), 10); one('morning', inL([6, 7, 8, 9, 10]), 8); one('minFeed', inL([0, 5, 30, 60]), 5); one('longPause', inL([0, 10, 15, 20, 30]), 20);
+  one('delay', inL([3, 5, 10, 15]), 10); one('morning', inL([6, 7, 8, 9, 10]), 8); one('minFeed', inL([0, 5, 30, 60]), 5); one('longPause', inL([0, 10, 15, 20, 25, 30]), 25);
   one('remind', isB, false); one('remindEvery', v => Number.isInteger(v) && v >= 30 && v <= 720, 180); one('remindNight', isB, true);
   one('remindSnooze', v => v === null || isN(v), null); one('remindU', isN, 0); one('remindNotified', v => v === null || typeof v === 'string', null);
   one('ntfy', isB, false); one('ntfyTopic', v => v === null || /^tetee-[0-9a-f]{24}$/.test(v), null);
@@ -142,7 +142,7 @@ function cleanSettings() {
   if (!c || !/^[a-z0-9-]{4,40}$/.test(c.projectId) || !FAM_RE.test(S.fam || '')) { S.fb = null; S.fam = null } else S.fb = c;
   saveSettings();                                    // la version nettoyée remplace l'ancienne
 }
-if (!S.mealV2) { if (S.longPause === 15) S.longPause = 20; S.mealV2 = 1 }   // nouveau seuil par défaut : 20 min
+if (!S.mealV3) { if ([15, 20].includes(S.longPause)) S.longPause = 25; S.mealV2 = S.mealV3 = 1 }   // seuil choisi : 25 min
 cleanSettings();
 const events = new Map(LS.get('tt_events', []).map(e => clean(e)).filter(Boolean).map(e => [e.id, e]));
 const saveLocal = () => { if (!OLD_HOST) LS.set('tt_events', [...events.values()]) };
@@ -672,7 +672,7 @@ function settingsHTML() {
     </div>
     <h2>Repas</h2>
     <div class="card set">
-      <div class="fld"><span>Nouveau repas après une interruption de plus de</span><div class="seg" id="pauseSeg">${[[10, '10 min'], [15, '15 min'], [20, '20 min'], [30, '30 min'], [0, 'jamais']]
+      <div class="fld"><span>Nouveau repas après une interruption de plus de</span><div class="seg" id="pauseSeg">${[[15, '15 min'], [20, '20 min'], [25, '25 min'], [30, '30 min'], [0, 'jamais']]
         .map(([v, l]) => `<label><input type="radio" name="longPause" value="${v}" ${S.longPause === v ? 'checked' : ''}>${l}</label>`).join('')}</div></div>
     </div>
     <h2>Rappels</h2>
