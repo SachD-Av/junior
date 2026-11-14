@@ -1219,12 +1219,15 @@ function checkJoinHash() {
 }
 /* Geste / bouton retour : fenêtre ouverte → on la ferme ; autre page → accueil ; accueil → on reste.
    Sans ça, le retour quitte l'appli et affiche une page blanche (Firefox, Chrome).
-   Une entrée « appli » est ajoutée à l'historique au premier toucher (les navigateurs ignorent
-   celles ajoutées sans geste de l'utilisateur), puis remise après chaque retour. */
+   Une entrée « appli » est ajoutée à l'historique dès l'ouverture, au retour au premier plan et au premier
+   toucher (Chrome ignore celles ajoutées avant tout geste), puis remise après chaque retour. */
 function armBack() { if (history.state?.tt !== 'app') history.pushState({ tt: 'app' }, '') }
 function initBack() {
   if (history.state?.tt !== 'app') history.replaceState({ tt: 'base' }, '');
+  armBack();                                // dès l'ouverture (Firefox : sinon retour → page vide d'avant le lancement)
   document.addEventListener('pointerdown', armBack, { capture: true, passive: true });
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') armBack() });
+  window.addEventListener('pageshow', armBack);
   window.addEventListener('popstate', () => {
     const d = $('#dlg');
     if (d.open) d.close();
