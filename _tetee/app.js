@@ -71,6 +71,7 @@ const ICONS = {
   mixed: '<path d="M7 3S3 7.5 3 10.5a4 4 0 0 0 8 0C11 7.5 7 3 7 3z"/><path d="M12.5 21h7.5a2.2 2.2 0 0 0 .3-4.4 2.2 2.2 0 0 0-1.8-3.5A2.6 2.6 0 0 0 16 10.5c.3 1.1-.4 1.8-1.3 2.1a2.2 2.2 0 0 0-1.6 4A2.2 2.2 0 0 0 12.5 21z"/>',
   pump: '<path d="M7 3h10l-3 5h-4z"/><path d="M10 8v2M14 8v2"/><rect x="7" y="10" width="10" height="11" rx="2.5"/><path d="M7 15h3.5M7 18h3.5"/>',
   moon2: '<path d="M20 14.5A8 8 0 1 1 9.5 4a6.2 6.2 0 0 0 10.5 10.5z"/><path d="M15 3h4l-4 4h4"/>',
+  pill: '<path d="M10.5 20.5a5 5 0 0 1-7-7l7-7a5 5 0 0 1 7 7z"/><path d="M8.5 8.5l7 7"/>',
   scale: '<rect x="3" y="4" width="18" height="17" rx="3"/><path d="M8.5 11a3.5 3.5 0 0 1 7 0"/><path d="M12 11l1.5-2"/>',
   trash: '<path d="M3 6h18M8 6V4h8v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6"/>',
   burst: '<path d="M12 2l1.8 4.6L18 4l-1 4.9L22 10l-4.2 2.6L20 17l-4.8-.8L14 21l-2-4-2 4-1.2-4.8L4 17l2.2-4.4L2 10l5-1.1L6 4l4.2 2.6z"/>',
@@ -99,7 +100,7 @@ const saveSettings = () => { if (!OLD_HOST) LS.set('tt_settings', S) };   // rie
 const num = v => { const n = +v; return Number.isFinite(n) ? n : 0 };
 const str = (v, n) => v == null || v === '' ? null : String(v).slice(0, n);
 function clean(e, forcedId) {
-  if (!e || typeof e !== 'object' || !['sein', 'biberon', 'couche', 'tirage', 'sommeil', 'mesure'].includes(e.type)) return null;
+  if (!e || typeof e !== 'object' || !['sein', 'biberon', 'couche', 'tirage', 'sommeil', 'mesure', 'vitd'].includes(e.type)) return null;
   const id = String(forcedId ?? e.id ?? '');
   if (!/^[\w-]{1,40}$/.test(id)) return null;
   const o = { id, type: e.type, start: num(e.start), end: e.end == null ? null : num(e.end),
@@ -310,7 +311,7 @@ function adjustDialog() {
 }
 function forgotDialog() {
   dialog(`<h3>${ic('plus')} Ajouter un oubli</h3>
-    <button class="btn row-btn" value="sein">${ic('feed')}Tétée</button><button class="btn row-btn" value="biberon">${ic('bottle')}Biberon</button><button class="btn row-btn" value="couche">${ic('diaper')}Couche</button><button class="btn row-btn" value="tirage">${ic('pump')}Tirage</button><button class="btn row-btn" value="sommeil">${ic('moon2')}Sommeil</button><button class="btn row-btn" value="mesure">${ic('scale')}Mesure (poids, taille)</button>
+    <button class="btn row-btn" value="sein">${ic('feed')}Tétée</button><button class="btn row-btn" value="biberon">${ic('bottle')}Biberon</button><button class="btn row-btn" value="couche">${ic('diaper')}Couche</button><button class="btn row-btn" value="tirage">${ic('pump')}Tirage</button><button class="btn row-btn" value="sommeil">${ic('moon2')}Sommeil</button><button class="btn row-btn" value="mesure">${ic('scale')}Mesure (poids, taille)</button><button class="btn row-btn" value="vitd">${ic('pill')}Vitamine D</button>
     <menu><button class="btn" value="cancel">Annuler</button></menu>`, v => setTimeout(() => newEntry(v)));
 }
 function lastMesure() { const m = list().find(e => e.type === 'mesure'); return m ? { poids: m.poids, taille: m.taille, tete: m.tete } : {} }
@@ -437,6 +438,7 @@ function homeHTML() {
       <div class="card tile"><span class="lbl">Dernière couche</span><b data-t="sinceCouche">${lastCouche ? '' : '—'}</b>
         <small>${lastCouche ? `${hm(lastCouche.start)} · ${COUCHE[coucheKind(lastCouche)].l.toLowerCase()}` : 'aucune'}</small></div>
     </div>
+    ${vitdHTML()}
     <div class="card today">
       <div class="today-h"><span class="lbl">Aujourd'hui</span>
         <span><b>${today.seins}</b> tétée${today.seins > 1 ? 's' : ''} · <b>${today.bibs}</b> bib. ${today.ml ? `(${today.ml} ml)` : ''} · <b>${today.couches}</b> couche${today.couches > 1 ? 's' : ''}${today.tirs ? ` · <b>${today.tirG + today.tirD}</b> ml tirés` : ''}${today.tSleep ? ` · <b>${dur(today.tSleep)}</b> de sommeil` : ''}</span></div>
@@ -478,11 +480,26 @@ function timeline(L) {
 
 const fmtN = n => String(n).replace('.', ',');
 const fmtKg = g => `${(g / 1000).toFixed(3).replace('.', ',')} kg`;
+/* Vitamine D : 1 dose par jour. Pastille sur l'accueil : à donner / donnée (heure) ; orange après 20 h si oubliée. */
+const vitdToday = () => list().find(e => e.type === 'vitd' && e.start >= dayStart(now()));
+function vitdHTML() {
+  const v = vitdToday(), late = !v && new Date().getHours() >= 20;
+  return `<button class="vitd${v ? ' ok' : late ? ' late' : ''}" data-act="vitd">${ic(v ? 'check' : 'pill')}
+    <span>Vitamine D</span><small>${v ? `donnée à ${hm(v.start)}${v.by ? ' par ' + esc(v.by) : ''}` : late ? 'pas encore donnée !' : 'à donner aujourd\'hui'}</small></button>`;
+}
+function vitdTap() {
+  const v = vitdToday();
+  if (v) return toast(`Vitamine D déjà donnée aujourd'hui à ${hm(v.start)}`);
+  const t = now(), e = { id: uid(), type: 'vitd', start: t, end: t };
+  guard('quick', { done: 'Vitamine D notée' }, () => { put(e); return e.id });
+}
+
 function describe(e) {
   if (e.type === 'sein') {
     const parts = ['G', 'D'].filter(s => e.segs.some(x => x.s === s)).map(s => `${s} ${dur(sideMs(e, s))}`);
     return { ic: ic('feed'), t: e.end ? parts.join(' · ') || '0 min' : 'En cours…', d: e.end ? `Total ${dur(sideMs(e))}` : '' };
   }
+  if (e.type === 'vitd') return { ic: ic('pill'), t: 'Vitamine D', d: '' };
   if (e.type === 'sommeil') return { ic: ic('moon2'), t: e.end == null ? 'Dort…' : `Sommeil ${dur(e.end - e.start)}`, d: e.end == null ? `depuis ${hm(e.start)}` : `${hm(e.start)} → ${hm(e.end)}` };
   if (e.type === 'mesure') return { ic: ic('scale'), t: 'Mesure', d: [e.poids && fmtKg(e.poids), e.taille && `${fmtN(e.taille)} cm`, e.tete && `tête ${fmtN(e.tete)} cm`].filter(Boolean).join(' · ') };
   if (e.type === 'tirage') return { ic: ic('pump'), t: `Tirage ${e.ml} ml`, d: [e.mlG && `G ${e.mlG} ml`, e.mlD && `D ${e.mlD} ml`].filter(Boolean).join(' · ') };
@@ -853,7 +870,7 @@ function editDialog(e, isNew) {
       <div class="seg">${['artificiel', 'maternel'].map(v => `<label><input type="radio" name="milk" value="${v}" ${(e.milk || S.milk) === v ? 'checked' : ''}>Lait ${v}</label>`).join('')}</div>`;
   if (e.type === 'couche') body = `<div class="seg">${Object.entries(COUCHE).map(([k, c]) =>
       `<label><input type="radio" name="kind" value="${k}" ${coucheKind(e) === k ? 'checked' : ''}>${c.l}</label>`).join('')}</div>`;
-  const title = { sein: ic('feed') + ' Tétée', biberon: ic('bottle') + ' Biberon', couche: ic('diaper') + ' Couche', tirage: ic('pump') + ' Tirage', sommeil: ic('moon2') + ' Sommeil', mesure: ic('scale') + ' Mesure' }[e.type];
+  const title = { vitd: ic('pill') + ' Vitamine D', sein: ic('feed') + ' Tétée', biberon: ic('bottle') + ' Biberon', couche: ic('diaper') + ' Couche', tirage: ic('pump') + ' Tirage', sommeil: ic('moon2') + ' Sommeil', mesure: ic('scale') + ' Mesure' }[e.type];
   dialog(`<h3>${title}${isNew ? '' : `<button class="trash" value="del" formnovalidate aria-label="Supprimer">${ic('trash')}<span>Supprimer</span></button>`}</h3>
     <div class="fld"><span>Début</span>${whenHTML('start', e.start)}</div>
     ${body}
@@ -920,6 +937,7 @@ document.addEventListener('click', ev => {
   else if (a === 'bib') bibDialog();
   else if (a === 'tirage') tirageDialog();
   else if (a === 'sleep') sleepToggle();
+  else if (a === 'vitd') vitdTap();
   else if (a === 'mesure') newEntry('mesure');
   else if (a === 'couche') coucheDialog();
   else if (a === 'night') toggleNight();
