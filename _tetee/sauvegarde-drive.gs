@@ -10,7 +10,7 @@
  *   - Mensuel      : une copie par mois, on garde les 24 dernières
  * Les fichiers .json se réimportent dans l'appli (Réglages → Importer).
  * La feuille Google Sheets « Tétée – journal » (même dossier) est la version lisible, refaite chaque nuit :
- * onglets Journal, Tétées, Biberons, Couches.
+ * onglets Journal, Tétées, Biberons, Couches — regroupés par repas comme l'historique de l'appli.
  */
 
 // Rempli automatiquement par l'appli (Réglages → Sauvegarde Google Drive → Copier le script)
@@ -53,8 +53,8 @@ function rappel() {
   if (recents.some(e => e.type === 'sein' && !e.end)) return;           // tétée en cours
   const repas = recents.find(e => e.type === 'biberon' || (e.type === 'sein' && e.end));
   if (!repas) return;
-  // même règle que l'appli : début du dernier repas + intervalle, repoussé par « Repousser »
-  // même règle que l'appli : on remonte les tétées/biberons rapprochés (< PAUSE_LONGUE) qui forment le même repas
+  // même règle que l'appli : on remonte les tétées/biberons rapprochés (< PAUSE_LONGUE) qui forment le même repas,
+  // puis heure du repas + intervalle, repoussée par « Repousser »
   const repasListe = recents.filter(e => e.type === 'biberon' || (e.type === 'sein' && e.end));   // du plus récent au plus ancien
   let premier = repas;
   for (let i = repasListe.indexOf(repas) + 1; i < repasListe.length; i++) {
@@ -102,8 +102,8 @@ function derniers(n) {
 }
 
 function sauvegarder() {
-  const events = lireTout();
-  const json = JSON.stringify(events, null, 1);
+  const events = lireTout().filter(e => !e.del);    // les entrées supprimées ne sont ni sauvegardées ni restaurées
+  const json = JSON.stringify(events);               // compact : ~30 % plus léger (le fichier sert à restaurer, pas à lire)
   const racine = dossier(DriveApp.getRootFolder(), DOSSIER);
   const tz = FUSEAU, d = new Date();
   const jour = Utilities.formatDate(d, tz, 'yyyy-MM-dd');
@@ -190,27 +190,67 @@ function heureRetenue(e) {
 const JOURNAL = 'Tétée – journal';
 const COUCHES = { humide: 'Humide (pipi)', sale: 'Sale (caca)', mixte: 'Mixte (pipi + caca)', explosion: 'Explosion' };
 
-/** Refait la feuille « Tétée – journal » : onglets Journal (tout), Tétées, Biberons, Couches,
-    des plus récentes aux plus anciennes. Date et heure en texte ; minutes et ml en nombres (totaux possibles). */
+/** Repas = tétées terminées et biberons rapprochés (< PAUSE_LONGUE entre la fin de l'un et le début du suivant),
+    exactement comme dans l'appli. Heure du repas = heure retenue de sa première entrée. Du plus ancien au plus récent. */
+function repasDe(events) {
+  const out = [];
+  events.filter(e => e.type === 'biberon' || (e.type === 'sein' && e.end)).sort((a, b) => a.start - b.start).forEach(e => {
+    const fin = e.type === 'sein' ? e.end : e.start, c = out[out.length - 1];
+    if (c && e.start - c.fin < PAUSE_LONGUE * 6e4) { c.entrees.push(e); c.fin = Math.max(c.fin, fin) }
+    else out.push({ entrees: [e], premier: e, t: heureRetenue(e), fin });
+  });
+  out.forEach((c, i) => { c.seins = c.entrees.filter(e => e.type === 'sein'); c.bibs = c.entrees.filter(e => e.type === 'biberon'); c.ecart = i ? c.t - out[i - 1].t : null });
+  return out;
+}
+
+/** Refait la feuille « Tétée – journal », des plus récentes aux plus anciennes, comme l'historique de l'appli :
+    Journal (tout ; par repas une ligne sein et une ligne biberon), Tétées (une ligne par repas), Biberons, Couches.
+    Date et heure en texte ; minutes et ml en nombres (totaux possibles). */
 function journal(events, racine) {
   const tz = FUSEAU, j = t => Utilities.formatDate(new Date(t), tz, 'dd/MM/yyyy'), h = t => Utilities.formatDate(new Date(t), tz, 'HH:mm');
-  const ok = events.filter(e => !e.del && e.start).map(e => ({ e, l: ligne(e, h) })).sort((a, b) => b.l.t - a.l.t);
-  const dh = x => [j(x.l.t), h(x.l.t)], par = x => [x.e.by || '', x.e.note || ''];
+  const min = ms => Math.round(ms / 6e4), cote = (e, s) => (e.segs || []).filter(x => x.s === s).reduce((m, x) => m + ((x.b || e.end || Date.now()) - x.a), 0);
+  const qui = l => [...new Set(l.map(e => e.by).filter(Boolean))].join(', '), notes = l => l.map(e => e.note).filter(Boolean).join(' · ');
+  const repas = repasDe(events);
+
+  // Journal : lignes triées par heure ; chaque repas donne une ligne « Tétée » et/ou une ligne « Biberon »
+  const lignesJ = [];
+  repas.forEach(c => {
+    if (c.seins.length) {
+      const g = min(c.seins.reduce((m, e) => m + cote(e, 'G'), 0)), d = min(c.seins.reduce((m, e) => m + cote(e, 'D'), 0));
+      const det = [g && `G ${g} min`, d && `D ${d} min`].filter(Boolean).join(' · ') || '0 min';
+      const plus = [c.seins.length > 1 && `${c.seins.length} tétées`, c.t !== c.premier.start && `commencée à ${h(c.premier.start)}`].filter(Boolean).join(', ');
+      lignesJ.push({ t: c.t, row: ['Tétée', det + (plus ? ` (${plus})` : ''), duree((g + d) * 6e4), c.ecart != null ? duree(c.ecart) : '', qui(c.seins), notes(c.seins)] });
+    }
+    if (c.bibs.length) {
+      const ml = c.bibs.reduce((m, e) => m + (e.ml || 0), 0), lait = [...new Set(c.bibs.map(e => e.milk === 'maternel' ? 'maternel' : 'artificiel'))].join(' + ');
+      lignesJ.push({ t: c.seins.length ? c.bibs[0].start : c.t, row: ['Biberon', `${ml} ml · lait ${lait}` + (c.bibs.length > 1 ? ` (${c.bibs.length} biberons)` : ''), '', c.seins.length || c.ecart == null ? '' : duree(c.ecart), qui(c.bibs), notes(c.bibs)] });
+    }
+  });
+  events.filter(e => e.start && !(e.type === 'biberon' || (e.type === 'sein' && e.end))).forEach(e => {
+    const l = ligne(e, h); lignesJ.push({ t: e.start, row: [l.type, l.detail, l.duree, '', e.by || '', e.note || ''] });
+  });
+  lignesJ.sort((a, b) => b.t - a.t);
 
   const it = racine.getFilesByName(JOURNAL);
   let ss = null;
   while (it.hasNext()) { const f = it.next(); if (!f.isTrashed()) { ss = SpreadsheetApp.openById(f.getId()); break } }
   if (!ss) { ss = SpreadsheetApp.create(JOURNAL); DriveApp.getFileById(ss.getId()).moveTo(racine) }
   ss.setSpreadsheetTimeZone(tz);
+  const recents = l => l.slice().reverse();          // repas : du plus récent au plus ancien
 
-  onglet(ss, 'Journal', 0, ['Date', 'Heure', 'Type', 'Détail', 'Durée', 'Par', 'Note'],
-    ok.map(x => [...dh(x), x.l.type, x.l.detail, x.l.duree, ...par(x)]));
-  onglet(ss, 'Tétées', 1, ['Date', 'Heure', 'Gauche (min)', 'Droit (min)', 'Total (min)', 'Commencée à', 'Dernier sein', 'Par', 'Note'],
-    ok.filter(x => x.e.type === 'sein').map(x => [...dh(x), x.l.g, x.l.d, x.l.g + x.l.d, x.l.t !== x.e.start ? h(x.e.start) : '', x.l.dernier, ...par(x)]));
-  onglet(ss, 'Biberons', 2, ['Date', 'Heure', 'Quantité (ml)', 'Lait', 'Par', 'Note'],
-    ok.filter(x => x.e.type === 'biberon').map(x => [...dh(x), x.e.ml || 0, x.e.milk === 'maternel' ? 'maternel' : 'artificiel', ...par(x)]));
+  onglet(ss, 'Journal', 0, ['Date', 'Heure', 'Type', 'Détail', 'Durée', 'Écart', 'Par', 'Note'],
+    lignesJ.map(x => [j(x.t), h(x.t), ...x.row]));
+  onglet(ss, 'Tétées', 1, ['Date', 'Heure', 'Gauche (min)', 'Droit (min)', 'Total (min)', 'Tétées', 'Commencée à', 'Dernier sein', 'Biberon (ml)', 'Écart', 'Par', 'Note'],
+    recents(repas.filter(c => c.seins.length)).map(c => {
+      const g = min(c.seins.reduce((m, e) => m + cote(e, 'G'), 0)), d = min(c.seins.reduce((m, e) => m + cote(e, 'D'), 0));
+      const der = c.seins.flatMap(e => e.segs || []).sort((a, b) => a.a - b.a).pop();
+      return [j(c.t), h(c.t), g, d, g + d, c.seins.length, c.t !== c.premier.start ? h(c.premier.start) : '', der ? (der.s === 'G' ? 'gauche' : 'droit') : '',
+        c.bibs.reduce((m, e) => m + (e.ml || 0), 0) || '', c.ecart != null ? duree(c.ecart) : '', qui(c.seins), notes(c.seins)];
+    }));
+  onglet(ss, 'Biberons', 2, ['Date', 'Heure', 'Quantité (ml)', 'Lait', 'Après une tétée', 'Par', 'Note'],
+    recents(repas).flatMap(c => c.bibs.slice().reverse().map(e => [j(e.start), h(e.start), e.ml || 0, e.milk === 'maternel' ? 'maternel' : 'artificiel', c.seins.length ? 'oui' : '', e.by || '', e.note || ''])));
   onglet(ss, 'Couches', 3, ['Date', 'Heure', 'Type', 'Par', 'Note'],
-    ok.filter(x => x.e.type === 'couche').map(x => [...dh(x), x.l.detail, ...par(x)]));
+    events.filter(e => e.type === 'couche').sort((a, b) => b.start - a.start).map(e => [j(e.start), h(e.start), ligne(e, h).detail, e.by || '', e.note || '']));
 }
 
 /** Crée ou vide l'onglet, puis écrit l'en-tête et les lignes. */
@@ -231,29 +271,19 @@ function onglet(ss, nom, position, entete, lignes) {
   sh.autoResizeColumns(1, entete.length);
 }
 
-/** Une entrée → heure retenue, type et détail en clair. */
+/** Une entrée hors repas (couche, tirage, sommeil, vitamine D, mesure, tétée en cours) → type et détail en clair. */
 function ligne(e, h) {
-  const min = ms => Math.round(ms / 6e4), d = m => m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')}`;
   const n = v => String(v).replace('.', ',');
   switch (e.type) {
-    case 'sein': {
-      const segs = Array.isArray(e.segs) ? e.segs : [], fin = e.end || Date.now();
-      const cote = s => segs.filter(x => x.s === s).reduce((m, x) => m + ((x.b || fin) - x.a), 0);
-      const g = min(cote('G')), dr = min(cote('D')), t = heureRetenue(e);
-      const parts = [g && `G ${g} min`, dr && `D ${dr} min`].filter(Boolean).join(' · ') || '0 min';
-      const der = segs.slice().sort((a, b) => a.a - b.a).pop();
-      return { t, type: 'Tétée', detail: parts + (t !== e.start ? ` (commencée à ${h(e.start)})` : '') + (e.end ? '' : ' — en cours'), duree: d(g + dr),
-        g, d: dr, dernier: der ? (der.s === 'G' ? 'gauche' : 'droit') : '' };
-    }
-    case 'biberon': return { t: e.start, type: 'Biberon', detail: `${e.ml || 0} ml · lait ${e.milk === 'maternel' ? 'maternel' : 'artificiel'}`, duree: '' };
-    case 'tirage': return { t: e.start, type: 'Tirage', detail: `${(e.mlG || 0) + (e.mlD || 0)} ml (G ${e.mlG || 0} · D ${e.mlD || 0})`, duree: '' };
+    case 'sein': return { type: 'Tétée', detail: 'en cours', duree: '' };
+    case 'tirage': return { type: 'Tirage', detail: `${(e.mlG || 0) + (e.mlD || 0)} ml (G ${e.mlG || 0} · D ${e.mlD || 0})`, duree: '' };
     case 'couche': {
       const k = COUCHES[e.kind] ? e.kind : e.pipi && e.caca ? 'mixte' : e.caca ? 'sale' : 'humide';
-      return { t: e.start, type: 'Couche', detail: COUCHES[k], duree: '' };
+      return { type: 'Couche', detail: COUCHES[k], duree: '' };
     }
-    case 'sommeil': return { t: e.start, type: 'Sommeil', detail: e.end ? `jusqu'à ${h(e.end)}` : 'dort encore', duree: e.end ? d(min(e.end - e.start)) : '' };
-    case 'vitd': return { t: e.start, type: 'Vitamine D', detail: '1 dose', duree: '' };
-    case 'mesure': return { t: e.start, type: 'Mesure', detail: [e.poids && `${n((e.poids / 1000).toFixed(3))} kg`, e.taille && `${n(e.taille)} cm`, e.tete && `tête ${n(e.tete)} cm`].filter(Boolean).join(' · '), duree: '' };
-    default: return { t: e.start, type: e.type, detail: '', duree: '' };
+    case 'sommeil': return { type: 'Sommeil', detail: e.end ? `jusqu'à ${h(e.end)}` : 'dort encore', duree: e.end ? duree(e.end - e.start) : '' };
+    case 'vitd': return { type: 'Vitamine D', detail: '1 dose', duree: '' };
+    case 'mesure': return { type: 'Mesure', detail: [e.poids && `${n((e.poids / 1000).toFixed(3))} kg`, e.taille && `${n(e.taille)} cm`, e.tete && `tête ${n(e.tete)} cm`].filter(Boolean).join(' · '), duree: '' };
+    default: return { type: e.type, detail: '', duree: '' };
   }
 }
