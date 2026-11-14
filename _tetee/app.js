@@ -1218,21 +1218,18 @@ function checkJoinHash() {
   if (!joinFrom(h)) alert('Lien d\'invitation invalide.');
 }
 /* Geste / bouton retour : fenêtre ouverte → on la ferme ; autre page → accueil ; accueil → on reste.
-   Sans ça, le retour quitte l'appli et affiche une page blanche (Firefox, Chrome).
-   Une entrée « appli » est ajoutée à l'historique dès l'ouverture, au retour au premier plan et au premier
-   toucher (Chrome ignore celles ajoutées avant tout geste), puis remise après chaque retour. */
-function armBack() { if (history.state?.tt !== 'app') history.pushState({ tt: 'app' }, '') }
+   Sans ça, le retour quitte l'appli (page blanche). Firefox et Chrome sautent les entrées d'historique
+   ajoutées sans geste de l'utilisateur : on n'en ajoute donc que pendant un toucher (une à la fois). */
+let backArmed = false;
+function armBack() { if (!backArmed) { history.pushState({ tt: 'app' }, ''); backArmed = true } }
 function initBack() {
   if (history.state?.tt !== 'app') history.replaceState({ tt: 'base' }, '');
-  armBack();                                // dès l'ouverture (Firefox : sinon retour → page vide d'avant le lancement)
   document.addEventListener('pointerdown', armBack, { capture: true, passive: true });
-  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') armBack() });
-  window.addEventListener('pageshow', armBack);
   window.addEventListener('popstate', () => {
+    backArmed = history.state?.tt === 'app';  // l'entrée de protection vient d'être consommée : nouvelle au prochain toucher
     const d = $('#dlg');
     if (d.open) d.close();
     else if (view !== 'home') { view = 'home'; render(true); $('#main').scrollTop = 0 }
-    armBack();                              // prêt pour le retour suivant
   });
 }
 
