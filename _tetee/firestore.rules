@@ -43,7 +43,7 @@ service cloud.firestore {
       return id.matches('^[A-Za-z0-9_-]{1,40}$')
         && d.id == id
         && d.keys().hasOnly(['id', 'type', 'start', 'end', 'segs', 'ml', 'milk', 'pipi', 'caca', 'kind', 'mlG', 'mlD', 'poids', 'taille', 'tete', 'note', 'by', 'u', 'del'])
-        && d.type in ['sein', 'biberon', 'couche', 'tirage', 'sommeil', 'mesure']
+        && d.type in ['sein', 'biberon', 'couche', 'tirage', 'sommeil', 'mesure', 'vitd']
         && d.start is number && d.u is number && d.u <= request.time.toMillis() + 600000
         && optNum(d, 'end') && optBool(d, 'del') && optBool(d, 'pipi') && optBool(d, 'caca')
         && optStr(d, 'note', 500) && optStr(d, 'by', 40)

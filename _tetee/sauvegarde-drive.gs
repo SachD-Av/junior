@@ -245,6 +245,7 @@ function ligne(e, h) {
       return { t: e.start, type: 'Couche', detail: COUCHES[k], duree: '' };
     }
     case 'sommeil': return { t: e.start, type: 'Sommeil', detail: e.end ? `jusqu'à ${h(e.end)}` : 'dort encore', duree: e.end ? d(min(e.end - e.start)) : '' };
+    case 'vitd': return { t: e.start, type: 'Vitamine D', detail: '1 dose', duree: '' };
     case 'mesure': return { t: e.start, type: 'Mesure', detail: [e.poids && `${n((e.poids / 1000).toFixed(3))} kg`, e.taille && `${n(e.taille)} cm`, e.tete && `tête ${n(e.tete)} cm`].filter(Boolean).join(' · '), duree: '' };
     default: return { t: e.start, type: e.type, detail: '', duree: '' };
   }
