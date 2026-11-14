@@ -314,16 +314,22 @@ dialog h3 .trash .i{width:18px;height:18px;color:var(--accent)}
 .move h2{font-size:24px;margin:0}
 .move .code{font-size:17px;font-weight:700;color:var(--accent);word-break:break-all}
 .move .btn{min-height:60px}
-/* vitamine D */
-.vitd{display:flex;align-items:center;gap:10px;width:100%;padding:10px 14px;border-radius:14px;background:var(--card);box-shadow:var(--sh);text-align:left;flex:none}
-.vitd .i{width:22px;height:22px;color:var(--muted)}
+/* vitamine D : bien visible tant qu'elle n'est pas donnée, discrète une fois faite */
+.vitd{display:flex;align-items:center;gap:10px;width:100%;padding:10px 14px;border-radius:14px;text-align:left;flex:none;border:2px solid transparent}
+.vitd .i{width:22px;height:22px}
 .vitd span{font-weight:700;font-size:15px}
-.vitd small{margin-left:auto;font-size:13px;color:var(--muted)}
-.vitd.ok{background:#DCEEE4;color:#1F5C43} .vitd.ok .i,.vitd.ok small{color:#1F5C43}
-.vitd.late{background:#F7E3C6;color:#8A4B0B} .vitd.late .i,.vitd.late small{color:#8A4B0B}
-:root[data-theme="night"] .vitd.ok{background:#14261C;color:#8FC9A8} :root[data-theme="night"] .vitd.ok .i,:root[data-theme="night"] .vitd.ok small{color:#8FC9A8}
-:root[data-theme="night"] .vitd.late{background:#2E1C08;color:#E0A040} :root[data-theme="night"] .vitd.late .i,:root[data-theme="night"] .vitd.late small{color:#E0A040}
-:root[data-theme="night"] .vitd{border:1px solid var(--line)}
+.vitd small{margin-left:auto;font-size:13px}
+.vitd .tag-todo{margin-left:auto;font-size:13px;letter-spacing:.06em;padding:5px 10px;border-radius:99px}
+.vitd.todo{background:#FFE7C2;color:#7A3F00;border-color:#F0A030}
+.vitd.todo .tag-todo{background:#E8890C;color:#fff}
+.vitd.late{background:#FFD9D2;color:#8A1C0B;border-color:#D9442C}
+.vitd.late .tag-todo{background:#C8321A;color:#fff}
+.vitd.ok{background:var(--soft);color:var(--muted)} .vitd.ok .i{color:#3E8A62}
+:root[data-theme="night"] .vitd.todo{background:#2E1C06;color:#F2B860;border-color:#B8701A}
+:root[data-theme="night"] .vitd.todo .tag-todo{background:#B8701A;color:#1A0E02}
+:root[data-theme="night"] .vitd.late{background:#3A0D07;color:#FF8C78;border-color:#C8321A}
+:root[data-theme="night"] .vitd.late .tag-todo{background:#C8321A;color:#FFE4DE}
+:root[data-theme="night"] .vitd.ok{border-color:var(--line)} :root[data-theme="night"] .vitd.ok .i{color:#6FB892}
 </style>
 </head>
 <body>
