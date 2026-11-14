@@ -38,7 +38,7 @@ function installer() {
   if (RAPPELS_ACTIFS && NTFY) {
     ScriptApp.newTrigger('rappel').timeBased().everyMinutes(5).create();
     const c = reglages();
-    envoyer('Rappels de tétée installés', c.on ? `Activés : ${duree(c.every * 6e4)} après le début de chaque repas.` : "Ils s'activent depuis l'appli (Réglages → Rappels).", 3);
+    envoyer('Rappels de tétée installés', c.on ? `Activés : ${duree(c.every * 6e4)} après la fin de chaque repas.` : "Ils s'activent depuis l'appli (Réglages → Rappels).", 3);
   }
   sauvegarder();
 }
@@ -55,14 +55,14 @@ function rappel() {
   const repas = recents.find(e => e.type === 'biberon' || (e.type === 'sein' && e.end));
   if (!repas) return;
   // même règle que l'appli : on remonte les tétées/biberons rapprochés (< PAUSE_LONGUE) qui forment le même repas,
-  // puis heure du repas + intervalle, repoussée par « Repousser »
+  // puis fin du repas + intervalle, repoussée par « Repousser »
   const repasListe = recents.filter(e => e.type === 'biberon' || (e.type === 'sein' && e.end));   // du plus récent au plus ancien
   let premier = repas;
   for (let i = repasListe.indexOf(repas) + 1; i < repasListe.length; i++) {
     const p = repasListe[i], fin = p.type === 'sein' ? p.end : p.start;
     if (premier.start - fin < PAUSE_LONGUE * 6e4) premier = p; else break;
   }
-  const ref = heureRetenue(premier);
+  const ref = repasListe.slice(0, repasListe.indexOf(premier) + 1).reduce((m, p) => Math.max(m, p.type === 'sein' ? p.end : p.start), 0);   // fin du repas
   const snz = c.snooze && c.snooze > ref ? c.snooze : 0;
   const quand = Math.max(ref + c.every * 6e4, snz), maintenant = Date.now(), du = maintenant - ref;
   if (maintenant < quand || maintenant > quand + 12 * 36e5) return;      // pas encore l'heure, ou trop ancien (12 h)
@@ -71,7 +71,7 @@ function rappel() {
   const tz = FUSEAU, h = +Utilities.formatDate(new Date(), tz, 'H');
   if (!c.night && (h >= 22 || h < 7)) return;                            // la nuit : on attend 7 h (comme l'appli)
   const heure = Utilities.formatDate(new Date(ref), tz, 'HH:mm');
-  envoyer("C'est l'heure de la tétée", `Dernier repas à ${heure}, il y a ${duree(du)}.`, 4);
+  envoyer("C'est l'heure de la tétée", `Dernier repas terminé à ${heure}, il y a ${duree(du)}.`, 4);
   props.setProperty('rappel', cle);
 }
 
@@ -200,7 +200,7 @@ function repasDe(events) {
     if (c && e.start - c.fin < PAUSE_LONGUE * 6e4) { c.entrees.push(e); c.fin = Math.max(c.fin, fin) }
     else out.push({ entrees: [e], premier: e, t: heureRetenue(e), fin });
   });
-  out.forEach((c, i) => { c.seins = c.entrees.filter(e => e.type === 'sein'); c.bibs = c.entrees.filter(e => e.type === 'biberon'); c.ecart = i ? c.t - out[i - 1].t : null });
+  out.forEach((c, i) => { c.seins = c.entrees.filter(e => e.type === 'sein'); c.bibs = c.entrees.filter(e => e.type === 'biberon'); c.ecart = i ? Math.max(0, c.t - out[i - 1].fin) : null });   // écart : fin du repas précédent → début
   return out;
 }
 
