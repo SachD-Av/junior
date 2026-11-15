@@ -227,7 +227,10 @@ select{appearance:auto}
 .btn.huge small{color:inherit;opacity:.7;font-size:14px}
 .btn.huge .i{width:44px;height:44px}
 .onehand .btn.huge{min-height:190px}
-.btn.huge.resume.G{background:var(--g);color:#fff} .btn.huge.resume.D{background:var(--d);color:#fff}
+/* Reprendre : même couleur que Pause (pas celle d'un sein), petite pastille pour indiquer le côté */
+.btn.huge small .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:0}
+.dot.G{background:var(--g)} .dot.D{background:var(--d)}
+.btn.huge.resume small{opacity:.9}
 :root[data-theme="night"] .btn.huge{background:#1E0B09;color:#E58C78;border:1px solid #3A1712}
 :root[data-theme="night"] .btn.huge.resume{color:#F0B3A3}
 .adj{display:grid;grid-template-columns:44px 64px 1fr;gap:8px;align-items:center}
