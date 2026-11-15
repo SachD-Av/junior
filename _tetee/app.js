@@ -571,8 +571,7 @@ function historyHTML() {
       const notes = c.bibs.map(e => e.note).filter(Boolean).map(esc).join(' · ');
       const extra = [milks, c.bibs.length > 1 && `${c.bibs.length} biberons`, notes, by(c.bibs) && 'par ' + by(c.bibs)].filter(Boolean).join(' · ');
       const t = c.seins.length ? c.bibs[0].start : c.ref;
-      const mk = new Set(c.bibs.map(e => e.milk === 'maternel' ? 'm' : 'a')), milkCls = mk.size === 1 ? 'milk-' + [...mk][0] : '';
-      lines.push({ t, html: g2 => row(pick(c.bibs), ic('bottle', milkCls), `${ml} ml`, extra, hm(t), g2) });
+      lines.push({ t, html: g2 => row(pick(c.bibs), ic('bottle'), `${ml} ml`, extra, hm(t), g2) });   // icône neutre dans l'historique
     }
     lines.sort((x, y) => y.t - x.t);
     if (S.histMode === 'simple')                      // sans en-tête : l'écart sur la ligne qui ouvre le repas
