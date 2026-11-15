@@ -367,6 +367,12 @@ nav button.on{color:var(--fg)}
 .home.feed .feedbar .btn.primary{background:var(--card);color:var(--fg);border:3px solid var(--fg);box-shadow:none}
 .home.feed .feedbar .btn.primary .i{width:28px;height:28px}
 :root[data-theme="night"] .home.feed .feedbar .btn.primary{background:var(--bg);color:var(--fg);border-color:var(--fg)}
+/* Couleurs (v2) : sein G et D dans les tons de nuit (aussi en journée), Terminer en vert,
+   lait maternel violet, lait artificiel bleu */
+:root{--g:#9C3A2B;--d:#8A5A1E;--tl-g:#9C3A2B;--tl-d:#B07A2A;--bm:#8A5BB0;--ok:#2F7A5C;--ok-fg:#fff}
+:root[data-theme="night"]{--bm:#B48FD6;--ok:#1D3B2A;--ok-fg:#9FD8B8}
+.home.feed .feedbar .btn.primary{background:var(--ok);color:var(--ok-fg);border:0}
+:root[data-theme="night"] .home.feed .feedbar .btn.primary{background:var(--ok);color:var(--ok-fg);border:1px solid #2E5A40}
 </style>
 </head>
 <body>
