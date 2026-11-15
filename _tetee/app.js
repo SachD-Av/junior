@@ -427,7 +427,7 @@ function homeHTML() {
       ${vitdHTML()}
       <div class="grid2 minis">${sideBtn('G')}${sideBtn('D')}</div>
       ${o ? `<button class="btn huge" data-act="pause">${ic('pause')}<span>Pause</span><small>rot, câlin, changement…</small></button>`
-          : `<button class="btn huge resume ${last}" data-act="resume">${ic('play')}<span>Reprendre</span><small>sein ${SEIN[last]}</small></button>`}
+          : `<button class="btn huge resume ${last}" data-act="resume">${ic('play')}<span>Reprendre</span><small><i class="dot ${last}"></i>sein ${SEIN[last]}</small></button>`}
       <div class="grid2 feedbar">
         <button class="btn" data-act="adjust">${ic('pencil')}<small>Corriger</small></button>
         <button class="btn primary${armCls('stop')}" data-act="stop">${ic('check')}<span>Terminer</span></button>
