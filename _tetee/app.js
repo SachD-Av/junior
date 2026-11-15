@@ -479,6 +479,7 @@ function homeHTML() {
 }
 
 /* Frise de la journée (minuit → minuit) : tétées par sein, biberons, couches, et l'heure actuelle */
+let legendOpen = false;   // légende de la frise : affichée seulement après un tap sur la frise
 function timeline(L) {
   const t0 = dayStart(now()), pct = t => Math.max(0, Math.min(100, (t - t0) / 864e5 * 100)).toFixed(2), T = now();
   let marks = '';
@@ -491,9 +492,9 @@ function timeline(L) {
       marks += `<i class="tl-s ${g.s}" style="left:${pct(a)}%;width:max(3px,${(pct(b) - pct(a)).toFixed(2)}%)"></i>`;
     } else if (e.start >= t0) marks += `<i class="tl-${{ biberon: 'b', tirage: 't' }[e.type] || 'c'}${e.type === 'couche' ? ' ' + coucheKind(e) : ''}${e.type === 'biberon' ? (e.milk === 'maternel' ? ' m' : ' a') : ''}" style="left:${pct(e.start)}%"></i>`;
   }
-  return `<div class="tl">${marks}<i class="tl-now" style="left:${pct(T)}%"></i></div>
+  return `<div class="tl" data-act="legend" role="button" aria-label="Afficher la légende">${marks}<i class="tl-now" style="left:${pct(T)}%"></i></div>
     <div class="tl-h"><span>0 h</span><span>6 h</span><span>12 h</span><span>18 h</span><span>24 h</span></div>
-    <div class="tl-k"><span><i class="tl-s G"></i>Gauche</span><span><i class="tl-s D"></i>Droit</span><span><i class="tl-b m"></i>Bib. maternel</span><span><i class="tl-b a"></i>Bib. artificiel</span><span><i class="tl-t"></i>Tirage</span><span><i class="tl-z"></i>Sommeil</span><span><i class="tl-c"></i>Couche</span></div>`;
+    <div class="tl-k${legendOpen ? '' : ' hidden'}"><span><i class="tl-s G"></i>Gauche</span><span><i class="tl-s D"></i>Droit</span><span><i class="tl-b m"></i>Bib. maternel</span><span><i class="tl-b a"></i>Bib. artificiel</span><span><i class="tl-t"></i>Tirage</span><span><i class="tl-z"></i>Sommeil</span><span><i class="tl-c"></i>Couche</span></div>`;
 }
 
 const fmtN = n => String(n).replace('.', ',');
@@ -991,6 +992,7 @@ document.addEventListener('click', ev => {
   else if (a === 'tirage') tirageDialog();
   else if (a === 'sleep') sleepToggle();
   else if (a === 'vitd') vitdTap();
+  else if (a === 'legend') { legendOpen = !legendOpen; render() }
   else if (a === 'pickmeal') {
     const es = b.dataset.ids.split(',').map(id => events.get(id)).filter(Boolean);
     dialog(`<h3>${ic('pencil')} Modifier</h3>${es.map(e => `<button class="btn row-btn" value="${e.id}">${ic(e.type === 'sein' ? 'feed' : 'bottle')}${hm(e.start)} · ${describe(e).t}</button>`).join('')}
