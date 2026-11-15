@@ -363,6 +363,10 @@ nav button.on{color:var(--fg)}
 .seg label.milk-maternel:has(input:checked){background:var(--bm);color:#fff}
 .seg label.milk-artificiel:has(input:checked){background:var(--ba);color:#fff}
 :root[data-theme="night"] .seg label.milk-maternel:has(input:checked),:root[data-theme="night"] .seg label.milk-artificiel:has(input:checked){color:#0E0604}
+/* Terminer ≠ Pause : Pause plein et foncé, Terminer clair avec un contour épais */
+.home.feed .feedbar .btn.primary{background:var(--card);color:var(--fg);border:3px solid var(--fg);box-shadow:none}
+.home.feed .feedbar .btn.primary .i{width:28px;height:28px}
+:root[data-theme="night"] .home.feed .feedbar .btn.primary{background:var(--bg);color:var(--fg);border-color:var(--fg)}
 </style>
 </head>
 <body>
