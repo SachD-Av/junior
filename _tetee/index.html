@@ -338,6 +338,31 @@ dialog h3 .trash .i{width:18px;height:18px;color:var(--accent)}
 .meal-h{display:flex;justify-content:space-between;font-size:12px;font-weight:700;color:var(--muted);padding:2px 4px 4px;text-transform:uppercase;letter-spacing:.04em}
 .meal .row{margin-bottom:4px}
 .meal.simple{padding-top:2px}
+/* ---------- couleurs : réservées à sein G, sein D, biberon lait maternel, biberon lait artificiel ----------
+   Tout le reste est neutre ; seules les alertes (vitamine D, Supprimer) gardent leur couleur. */
+:root{--accent:#3D2B2B;--accent-fg:#FAF7F2;--danger:#B03A2E;--bm:#C99A12;--ba:#3E7CB1;--tl-z:#9C8C86;--tl-t:#6E5E5A}
+:root[data-theme="night"]{--accent:#2E2220;--accent-fg:#E9A595;--danger:#E06A55;--bm:#EADDC0;--ba:#6F9FD0;--tl-z:#4E3E3A;--tl-t:#9A7A70}
+.chip.ok{color:var(--muted)} .chip.err{color:var(--danger)}
+.danger,dialog h3 .trash,dialog h3 .trash .i{color:var(--danger)!important}
+.since .next{color:var(--fg)} .since .next.late{color:var(--danger)}
+.ck.explosion{color:var(--danger)} .tl .tl-c.explosion{background:var(--danger)}
+.move .code{color:var(--fg)}
+.meal{border-left-color:var(--muted)}
+.row .ic,dialog h3 .i{color:var(--muted)}
+.bars .b .fill{background:var(--muted);opacity:.35}
+#toastUndo{background:var(--bg);color:var(--fg)}
+:root[data-theme="night"] #toastUndo{background:#E9A595;color:#1A0A08}
+#toastBar,.dlgbar{background:var(--muted)}
+nav button.on{color:var(--fg)}
+.sleepbar,.grid4 .btn.sleeping{background:var(--fg);color:var(--bg)}
+:root[data-theme="night"] .sleepbar,:root[data-theme="night"] .grid4 .btn.sleeping{background:var(--soft);color:var(--fg);border:1px solid var(--line)}
+:root[data-theme="night"] .btn.primary{border:1px solid #4A3530}
+/* biberons : couleur du lait */
+.i.milk-m{color:var(--bm)} .i.milk-a{color:var(--ba)}
+.tl-b.m{background:var(--bm)} .tl-b.a{background:var(--ba)}
+.seg label.milk-maternel:has(input:checked){background:var(--bm);color:#fff}
+.seg label.milk-artificiel:has(input:checked){background:var(--ba);color:#fff}
+:root[data-theme="night"] .seg label.milk-maternel:has(input:checked),:root[data-theme="night"] .seg label.milk-artificiel:has(input:checked){color:#0E0604}
 </style>
 </head>
 <body>

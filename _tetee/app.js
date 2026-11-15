@@ -489,11 +489,11 @@ function timeline(L) {
     if (e.type === 'sein') for (const g of e.segs) {
       const a = Math.max(g.a, t0), b = g.b ?? T; if (b <= t0) continue;
       marks += `<i class="tl-s ${g.s}" style="left:${pct(a)}%;width:max(3px,${(pct(b) - pct(a)).toFixed(2)}%)"></i>`;
-    } else if (e.start >= t0) marks += `<i class="tl-${{ biberon: 'b', tirage: 't' }[e.type] || 'c'}${e.type === 'couche' ? ' ' + coucheKind(e) : ''}" style="left:${pct(e.start)}%"></i>`;
+    } else if (e.start >= t0) marks += `<i class="tl-${{ biberon: 'b', tirage: 't' }[e.type] || 'c'}${e.type === 'couche' ? ' ' + coucheKind(e) : ''}${e.type === 'biberon' ? (e.milk === 'maternel' ? ' m' : ' a') : ''}" style="left:${pct(e.start)}%"></i>`;
   }
   return `<div class="tl">${marks}<i class="tl-now" style="left:${pct(T)}%"></i></div>
     <div class="tl-h"><span>0 h</span><span>6 h</span><span>12 h</span><span>18 h</span><span>24 h</span></div>
-    <div class="tl-k"><span><i class="tl-s G"></i>Gauche</span><span><i class="tl-s D"></i>Droit</span><span><i class="tl-b"></i>Biberon</span><span><i class="tl-t"></i>Tirage</span><span><i class="tl-z"></i>Sommeil</span><span><i class="tl-c"></i>Couche</span></div>`;
+    <div class="tl-k"><span><i class="tl-s G"></i>Gauche</span><span><i class="tl-s D"></i>Droit</span><span><i class="tl-b m"></i>Bib. maternel</span><span><i class="tl-b a"></i>Bib. artificiel</span><span><i class="tl-t"></i>Tirage</span><span><i class="tl-z"></i>Sommeil</span><span><i class="tl-c"></i>Couche</span></div>`;
 }
 
 const fmtN = n => String(n).replace('.', ',');
@@ -522,7 +522,7 @@ function describe(e) {
   if (e.type === 'sommeil') return { ic: ic('moon2'), t: e.end == null ? 'Dort…' : `Sommeil ${dur(e.end - e.start)}`, d: e.end == null ? `depuis ${hm(e.start)}` : `${hm(e.start)} → ${hm(e.end)}` };
   if (e.type === 'mesure') return { ic: ic('scale'), t: 'Mesure', d: [e.poids && fmtKg(e.poids), e.taille && `${fmtN(e.taille)} cm`, e.tete && `tête ${fmtN(e.tete)} cm`].filter(Boolean).join(' · ') };
   if (e.type === 'tirage') return { ic: ic('pump'), t: `Tirage ${e.ml} ml`, d: [e.mlG && `G ${e.mlG} ml`, e.mlD && `D ${e.mlD} ml`].filter(Boolean).join(' · ') };
-  if (e.type === 'biberon') return { ic: ic('bottle'), t: `${e.ml} ml`, d: e.milk === 'maternel' ? 'Lait maternel' : 'Lait artificiel' };
+  if (e.type === 'biberon') return { ic: ic('bottle', e.milk === 'maternel' ? 'milk-m' : 'milk-a'), t: `${e.ml} ml`, d: e.milk === 'maternel' ? 'Lait maternel' : 'Lait artificiel' };
   const k = COUCHE[coucheKind(e)];
   return { ic: ic(k.ic), t: `Couche ${k.l.toLowerCase()}`, d: k.sub };
 }
@@ -570,7 +570,8 @@ function historyHTML() {
       const notes = c.bibs.map(e => e.note).filter(Boolean).map(esc).join(' · ');
       const extra = [milks, c.bibs.length > 1 && `${c.bibs.length} biberons`, notes, by(c.bibs) && 'par ' + by(c.bibs)].filter(Boolean).join(' · ');
       const t = c.seins.length ? c.bibs[0].start : c.ref;
-      lines.push({ t, html: g2 => row(pick(c.bibs), ic('bottle'), `${ml} ml`, extra, hm(t), g2) });
+      const mk = new Set(c.bibs.map(e => e.milk === 'maternel' ? 'm' : 'a')), milkCls = mk.size === 1 ? 'milk-' + [...mk][0] : '';
+      lines.push({ t, html: g2 => row(pick(c.bibs), ic('bottle', milkCls), `${ml} ml`, extra, hm(t), g2) });
     }
     lines.sort((x, y) => y.t - x.t);
     if (S.histMode === 'simple')                      // sans en-tête : l'écart sur la ligne qui ouvre le repas
@@ -848,7 +849,7 @@ function bibDialog() {
   dialog(`<h3>${ic('bottle')} Biberon</h3>
     <label class="mlv"><input id="mlv" type="number" min="1" max="2000" step="1" inputmode="numeric" placeholder="0" required><span>ml</span></label>
     <input id="mlr" type="range" min="0" max="300" step="1" value="0">
-    <div class="seg">${['artificiel', 'maternel'].map(v => `<label><input type="radio" name="milk" value="${v}" ${S.milk === v ? 'checked' : ''}>Lait ${v}</label>`).join('')}</div>
+    <div class="seg">${['artificiel', 'maternel'].map(v => `<label class="milk-${v}"><input type="radio" name="milk" value="${v}" ${S.milk === v ? 'checked' : ''}>Lait ${v}</label>`).join('')}</div>
     <div class="fld"><span>Heure</span>${whenHTML('start', now())}</div>
     <menu><button class="btn" value="cancel" formnovalidate>Annuler</button><button class="btn primary" value="ok">Enregistrer</button></menu>`,
     (v, f) => {
@@ -919,7 +920,7 @@ function editDialog(e, isNew) {
       <label>Gauche (ml)<input type="number" name="mlG" min="0" step="1" inputmode="numeric" placeholder="0" value="${e.mlG || ''}"></label>
       <label>Droit (ml)<input type="number" name="mlD" min="0" step="1" inputmode="numeric" placeholder="0" value="${e.mlD || ''}"></label></div>`;
   if (e.type === 'biberon') body = `<label>Quantité (ml)<input type="number" name="ml" min="1" step="1" inputmode="numeric" placeholder="0" required value="${e.ml || ''}"></label>
-      <div class="seg">${['artificiel', 'maternel'].map(v => `<label><input type="radio" name="milk" value="${v}" ${(e.milk || S.milk) === v ? 'checked' : ''}>Lait ${v}</label>`).join('')}</div>`;
+      <div class="seg">${['artificiel', 'maternel'].map(v => `<label class="milk-${v}"><input type="radio" name="milk" value="${v}" ${(e.milk || S.milk) === v ? 'checked' : ''}>Lait ${v}</label>`).join('')}</div>`;
   if (e.type === 'couche') body = `<div class="seg">${Object.entries(COUCHE).map(([k, c]) =>
       `<label><input type="radio" name="kind" value="${k}" ${coucheKind(e) === k ? 'checked' : ''}>${c.l}</label>`).join('')}</div>`;
   const title = { vitd: ic('pill') + ' Vitamine D', sein: ic('feed') + ' Tétée', biberon: ic('bottle') + ' Biberon', couche: ic('diaper') + ' Couche', tirage: ic('pump') + ' Tirage', sommeil: ic('moon2') + ' Sommeil', mesure: ic('scale') + ' Mesure' }[e.type];
