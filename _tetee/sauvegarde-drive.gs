@@ -229,22 +229,22 @@ function journal(events, racine) {
   const repas = repasDe(events).map(c => {
     const g = min(c.seins.reduce((m, e) => m + cote(e, 'G'), 0)), d = min(c.seins.reduce((m, e) => m + cote(e, 'D'), 0));
     return Object.assign(c, { g, d, ml: c.bibs.reduce((m, e) => m + (e.ml || 0), 0) });
-  }).reverse();                                          // du plus récent au plus ancien
+  });                                                   // dans l'ordre de l'heure : le repas d'avant est la ligne au-dessus
   const autres = events.filter(e => e.start && !(e.type === 'biberon' || (e.type === 'sein' && e.end)));
 
-  // Repas : une ligne par repas ; « depuis le précédent » se lit avec la ligne juste en dessous
+  // Repas : une ligne par repas ; « depuis le repas d'avant » se lit avec la ligne juste au-dessus
   const lignesR = repas.map(c => ({ t: c.t, row: [h(c.t), h(c.fin), c.g || '', c.d || '', c.ml ? `${c.ml} ml ${lait(c.bibs)}` : '',
     c.ecart != null ? duree(c.ecart) : '', notes(c.entrees)] }));
-  const lignesB = repas.flatMap(c => c.bibs.slice().reverse().map(e => ({ t: e.start, an: c.t,
+  const lignesB = repas.flatMap(c => c.bibs.map(e => ({ t: e.start, an: c.t,
     row: [h(e.start), e.ml || 0, e.milk === 'maternel' ? 'maternel' : 'artificiel', c.seins.length ? 'oui' : '', e.note || ''] })));
-  const lignesC = autres.filter(e => e.type === 'couche').sort((a, b) => b.start - a.start).map(e => ({ t: e.start, e,
+  const lignesC = autres.filter(e => e.type === 'couche').sort((a, b) => a.start - b.start).map(e => ({ t: e.start, e,
     row: [h(e.start), ligne(e, h).detail, e.note || ''] }));
   const lignesJ = repas.flatMap(c => [
     c.seins.length && { t: c.t, row: [h(c.t), 'Tétée', [c.g && `G ${c.g} min`, c.d && `D ${c.d} min`].filter(Boolean).join(' · ') || '0 min', notes(c.seins)] },
     c.bibs.length && { t: c.seins.length ? c.bibs[0].start : c.t, an: c.t, row: [h(c.seins.length ? c.bibs[0].start : c.t), 'Biberon', `${c.ml} ml ${lait(c.bibs)}`, notes(c.bibs)] }
   ].filter(Boolean)).concat(autres.map(e => { const l = ligne(e, h);
     return { t: e.start, row: [h(e.start), l.type, [l.detail, l.duree].filter(Boolean).join(' · '), e.note || ''] } }))
-    .sort((a, b) => b.t - a.t);
+    .sort((a, b) => a.t - b.t);
 
   // titres de jour
   const MOIS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
@@ -278,15 +278,15 @@ function journal(events, racine) {
   ss.setSpreadsheetTimeZone(tz);
   const DEPUIS = `Depuis ${ECART === 'debut' ? 'le début' : 'la fin'} du repas d'avant`;
   const TYPES = [
-    ['Repas', ['Début', 'Fin', 'Gauche (min)', 'Droit (min)', 'Biberon', DEPUIS, 'Note'], lignesR],
-    ['Biberons', ['Heure', 'Quantité (ml)', 'Lait', 'Après une tétée', 'Note'], lignesB],
-    ['Couches', ['Heure', 'Type', 'Note'], lignesC],
-    ['Journal', ['Heure', 'Type', 'Détail', 'Note'], lignesJ]
+    ['Repas', ['Début', 'Fin', 'Gauche (min)', 'Droit (min)', 'Biberon', DEPUIS, 'Note'], lignesR, [70, 70, 80, 80, 150, 150, 220]],
+    ['Biberons', ['Heure', 'Quantité (ml)', 'Lait', 'Après une tétée', 'Note'], lignesB, [70, 100, 110, 100, 220]],
+    ['Couches', ['Heure', 'Type', 'Note'], lignesC, [70, 180, 220]],
+    ['Journal', ['Heure', 'Type', 'Détail', 'Note'], lignesJ, [70, 120, 240, 220]]
   ];
   for (const an of annees) {
     const aFaire = an === cette || (an === cette - 1 && maintenant.getMonth() === 0 && maintenant.getDate() <= 7);
-    for (const [type, entete, lignes] of TYPES)
-      if (aFaire || !ss.getSheetByName(`${type} ${an}`)) onglet(ss, `${type} ${an}`, entete, parJour(type, lignes.filter(x => anDe(x) === an)));
+    for (const [type, entete, lignes, largeurs] of TYPES)
+      if (aFaire || !ss.getSheetByName(`${type} ${an}`)) onglet(ss, `${type} ${an}`, entete, parJour(type, lignes.filter(x => anDe(x) === an)), largeurs);
   }
   // rangement : année la plus récente d'abord ; anciens onglets (versions précédentes) supprimés, sauvegardes cachées gardées
   const ordre = annees.flatMap(an => TYPES.map(([type]) => `${type} ${an}`));
@@ -307,20 +307,26 @@ function ouvrirJournal(racine) {
   return ss;
 }
 
-/** Crée ou vide l'onglet, puis écrit l'en-tête et les lignes ; une ligne { titre } = titre de jour (gras, sur fond). */
-function onglet(ss, nom, entete, lignes) {
+/** Crée ou vide l'onglet, puis écrit l'en-tête et les lignes ; une ligne { titre } = titre de jour (gras, sur fond).
+    Tout est centré (sauf titres de jour et notes, à gauche) ; largeurs fixes, la dernière élargie si un titre ne tient pas. */
+function onglet(ss, nom, entete, lignes, largeurs) {
   const sh = ss.getSheetByName(nom) || ss.insertSheet(nom), n = entete.length;
   sh.clear();
   const sur = v => typeof v === 'string' && /^[=+\-@]/.test(v) ? "'" + v : v;   // une note n'est jamais lue comme une formule
   const data = [entete].concat(lignes.map(l => l.titre ? [l.titre].concat(Array(n - 1).fill('')) : l.map(sur)));
+  const tout = sh.getRange(1, 1, data.length, n);
   sh.getRange(1, 1, data.length, 1).setNumberFormat('@');                 // heures : texte, jamais réinterprétées
-  sh.getRange(1, 1, data.length, n).setValues(data);
-  sh.getRange(1, 1, 1, n).setFontWeight('bold').setBackground('#3D2B2B').setFontColor('#FFFFFF');
+  tout.setValues(data).setHorizontalAlignment('center').setVerticalAlignment('middle').setWrap(false);
+  sh.getRange(1, n, data.length, 1).setHorizontalAlignment('left');      // notes
+  sh.getRange(1, 1, 1, n).setFontWeight('bold').setBackground('#3D2B2B').setFontColor('#FFFFFF').setHorizontalAlignment('center').setWrap(true);
   const titres = []; lignes.forEach((l, i) => { if (l.titre) titres.push(`A${i + 2}:${String.fromCharCode(64 + n)}${i + 2}`) });
-  if (titres.length) sh.getRangeList(titres).setFontWeight('bold').setBackground('#F0E8DC');
+  if (titres.length) sh.getRangeList(titres).setFontWeight('bold').setBackground('#F0E8DC').setHorizontalAlignment('left');
   sh.setFrozenRows(1);
-  sh.autoResizeColumns(2, n - 1);
-  sh.setColumnWidth(1, 70);                                               // les titres de jour débordent sur la ligne
+  // largeurs : le titre de jour le plus long doit tenir sur la ligne (≈ 8 px par caractère en gras)
+  const l = largeurs.slice(), besoin = Math.max(0, ...lignes.filter(x => x.titre).map(x => x.titre.length * 8 + 24));
+  const total = l.reduce((a, b) => a + b, 0); if (besoin > total) l[n - 1] += besoin - total;
+  l.forEach((w, i) => sh.setColumnWidth(i + 1, w));
+  if (sh.getMaxColumns() > n) sh.deleteColumns(n + 1, sh.getMaxColumns() - n);   // pas de colonnes vides à droite
 }
 
 /** Une entrée hors repas (couche, tirage, sommeil, vitamine D, mesure, tétée en cours) → type et détail en clair. */
