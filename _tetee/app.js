@@ -420,7 +420,7 @@ function homeHTML() {
     };
     return `<section class="home feed">
       <div class="card since">
-        <div class="lbl">${o ? 'Sein ' + SEIN[o.s] : 'En pause'}</div>
+        <div class="lbl">${!o ? 'En pause' : new Set(e.segs.map(x => x.s)).size > 1 ? 'Total gauche + droit' : 'Sein ' + SEIN[o.s]}</div>
         <div class="big" data-t="total"></div>
         <div class="sub ${o ? '' : 'paused'}" data-t="pause"></div>
       </div>
