@@ -51,8 +51,10 @@ Le détail de l'audit de sécurité est dans [SECURITE.md](SECURITE.md).
 ## Sauvegarde automatique sur Google Drive
 
 Chaque nuit vers 3 h, un petit script Google (gratuit, dans votre propre compte) copie tout le suivi
-dans le dossier Drive **Tétée – sauvegardes** : 7 copies quotidiennes, 8 hebdomadaires et 24 mensuelles.
-Ça marche même téléphones éteints. Les fichiers se réimportent avec **Réglages → Importer**.
+dans des onglets cachés de la feuille **Tétée – journal** (dossier Drive **Tétée – sauvegardes**) :
+7 copies quotidiennes, 8 hebdomadaires et 24 mensuelles, sans fichiers .json qui encombrent Drive.
+Ça marche même téléphones éteints. Pour restaurer : dans le script, exécuter **restaurer** ; un fichier
+**tetee-restauration.json** apparaît dans le dossier, à réimporter avec **Réglages → Importer**.
 
 À installer une fois, de préférence sur ordinateur :
 1. Dans l'appli : **Réglages → Sauvegarde automatique Google Drive → Copier le script**
