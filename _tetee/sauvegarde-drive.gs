@@ -229,10 +229,10 @@ function journal(events, racine) {
   const repas = repasDe(events).map(c => {
     const g = min(c.seins.reduce((m, e) => m + cote(e, 'G'), 0)), d = min(c.seins.reduce((m, e) => m + cote(e, 'D'), 0));
     return Object.assign(c, { g, d, ml: c.bibs.reduce((m, e) => m + (e.ml || 0), 0) });
-  });                                                   // dans l'ordre de l'heure : le repas d'avant est la ligne au-dessus
+  });                                                   // dans l'ordre de l'heure (jours du plus récent au plus ancien, voir parJour)
   const autres = events.filter(e => e.start && !(e.type === 'biberon' || (e.type === 'sein' && e.end)));
 
-  // Repas : une ligne par repas ; « depuis le repas d'avant » se lit avec la ligne juste au-dessus
+  // Repas : une ligne par repas ; « depuis le repas d'avant » = la ligne au-dessus (1er repas du jour : dernier repas de la veille, plus bas)
   const lignesR = repas.map(c => ({ t: c.t, row: [h(c.t), h(c.fin), c.g || '', c.d || '', c.ml ? `${c.ml} ml ${lait(c.bibs)}` : '',
     c.ecart != null ? duree(c.ecart) : '', notes(c.entrees)] }));
   const lignesB = repas.flatMap(c => c.bibs.map(e => ({ t: e.start, an: c.t,
@@ -259,14 +259,10 @@ function journal(events, racine) {
       return `${pluriel(l.length, 'couche')} · ${pipi} pipi · ${caca} caca` },
     Journal: () => ''
   };
-  const parJour = (type, lignes) => {                    // insère une ligne de titre avant chaque jour
-    const out = []; let k = null;
-    lignes.forEach((x, i) => {
-      const kx = cle(x.an ?? x.t);
-      if (kx !== k) { k = kx; const jour = lignes.filter(y => cle(y.an ?? y.t) === k); out.push({ titre: [nomJour(k), resumes[type](jour)].filter(Boolean).join(' · ') }) }
-      out.push(x.row);
-    });
-    return out;
+  const parJour = (type, lignes) => {                    // jour le plus récent en haut ; dans un jour, heures dans l'ordre
+    const jours = new Map();
+    lignes.forEach(x => { const k = cle(x.an ?? x.t); if (!jours.has(k)) jours.set(k, []); jours.get(k).push(x) });
+    return [...jours.keys()].sort().reverse().flatMap(k => [{ titre: [nomJour(k), resumes[type](jours.get(k))].filter(Boolean).join(' · ') }, ...jours.get(k).map(x => x.row)]);
   };
 
   // un seul fichier, 4 onglets par année : l'année en cours chaque nuit ; l'année précédente aussi la première
