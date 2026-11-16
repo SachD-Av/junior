@@ -250,7 +250,7 @@ function journal(events, racine) {
   const lignesT = recents(repas.filter(c => c.seins.length)).map(c => {
     const g = min(c.seins.reduce((m, e) => m + cote(e, 'G'), 0)), d = min(c.seins.reduce((m, e) => m + cote(e, 'D'), 0));
     const der = c.seins.flatMap(e => e.segs || []).sort((a, b) => a.a - b.a).pop();
-    return { t: c.t, row: [j(c.t), h(c.t), g, d, g + d, c.seins.length, c.t !== c.premier.start ? h(c.premier.start) : '', der ? (der.s === 'G' ? 'gauche' : 'droit') : '',
+    return { t: c.t, row: [j(c.t), h(c.t), g, d, g + d, c.seins.length, der ? (der.s === 'G' ? 'gauche' : 'droit') : '',
       c.bibs.reduce((m, e) => m + (e.ml || 0), 0) || '', c.ecart != null ? duree(c.ecart) : '', notes(c.seins)] };
   });
   const lignesB = recents(repas).flatMap(c => c.bibs.slice().reverse().map(e => ({ t: e.start, an: c.t,
@@ -267,7 +267,7 @@ function journal(events, racine) {
   ss.setSpreadsheetTimeZone(tz);
   const TYPES = [
     ['Journal', ['Date', 'Heure', 'Type', 'Détail', 'Durée', 'Écart', 'Note'], an => lignesJ.filter(x => anDe(x) === an).map(x => [j(x.t), h(x.t), ...x.row])],
-    ['Tétées', ['Date', 'Heure', 'Gauche (min)', 'Droit (min)', 'Total (min)', 'Tétées', 'Commencée à', 'Dernier sein', 'Biberon (ml)', 'Écart', 'Note'], an => lignesT.filter(x => anDe(x) === an).map(x => x.row)],
+    ['Tétées', ['Date', 'Heure', 'Gauche (min)', 'Droit (min)', 'Total (min)', 'Tétées', 'Dernier sein', 'Biberon (ml)', 'Écart', 'Note'], an => lignesT.filter(x => anDe(x) === an).map(x => x.row)],
     ['Biberons', ['Date', 'Heure', 'Quantité (ml)', 'Lait', 'Après une tétée', 'Note'], an => lignesB.filter(x => anDe(x) === an).map(x => x.row)],
     ['Couches', ['Date', 'Heure', 'Type', 'Note'], an => lignesC.filter(x => anDe(x) === an).map(x => x.row)]
   ];
