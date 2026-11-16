@@ -11,7 +11,7 @@
  * Pour restaurer : exécuter « restaurer » → un fichier « tetee-restauration.json » apparaît dans le dossier,
  * à réimporter dans l'appli (Réglages → Importer), puis à supprimer.
  * Version lisible : la même feuille, avec 4 onglets par année
- * (Journal 2026, Tétées 2026, Biberons 2026, Couches 2026, puis 2025…), refaits chaque nuit pour l'année en cours,
+ * (Repas 2026, Biberons 2026, Couches 2026, Journal 2026, puis 2025…, une ligne de titre par jour), refaits chaque nuit pour l'année en cours,
  * regroupés par repas comme l'historique de l'appli.
  */
 
@@ -218,46 +218,56 @@ function repasDe(events) {
   return out;
 }
 
-/** Refait la feuille « Tétée – journal », des plus récentes aux plus anciennes, comme l'historique de l'appli :
-    Journal (tout ; par repas une ligne sein et une ligne biberon), Tétées (une ligne par repas), Biberons, Couches.
-    Date et heure en texte ; minutes et ml en nombres (totaux possibles). */
+/** Refait la feuille « Tétée – journal », lisible d'un coup d'œil : par année, 4 onglets
+    (Repas, Biberons, Couches, Journal), du plus récent au plus ancien, avec une ligne de titre par jour
+    (ex. « Dimanche 16 novembre · 8 repas · sein 2 h 10 · biberon 180 ml »). */
 function journal(events, racine) {
-  const tz = FUSEAU, j = t => Utilities.formatDate(new Date(t), tz, 'dd/MM/yyyy'), h = t => Utilities.formatDate(new Date(t), tz, 'HH:mm');
+  const tz = FUSEAU, h = t => Utilities.formatDate(new Date(t), tz, 'HH:mm'), cle = t => Utilities.formatDate(new Date(t), tz, 'yyyy-MM-dd');
   const min = ms => Math.round(ms / 6e4), cote = (e, s) => (e.segs || []).filter(x => x.s === s).reduce((m, x) => m + ((x.b || e.end || Date.now()) - x.a), 0);
   const notes = l => l.map(e => e.note).filter(Boolean).join(' · ');
-  const hp = c => j(c.prec) === j(c.t) ? h(c.prec) : Utilities.formatDate(new Date(c.prec), tz, 'dd/MM HH:mm');   // repère du temps entre repas (date si la veille)
-  const repas = repasDe(events);
-
-  // Journal : lignes triées par heure ; chaque repas donne une ligne « Tétée » et/ou une ligne « Biberon »
-  const lignesJ = [];
-  repas.forEach(c => {
-    if (c.seins.length) {
-      const g = min(c.seins.reduce((m, e) => m + cote(e, 'G'), 0)), d = min(c.seins.reduce((m, e) => m + cote(e, 'D'), 0));
-      const det = [g && `G ${g} min`, d && `D ${d} min`].filter(Boolean).join(' · ') || '0 min';
-      const plus = [c.seins.length > 1 && `${c.seins.length} tétées`, c.t !== c.premier.start && `commencée à ${h(c.premier.start)}`].filter(Boolean).join(', ');
-      lignesJ.push({ t: c.t, row: ['Tétée', det + (plus ? ` (${plus})` : ''), duree((g + d) * 6e4), c.ecart != null ? hp(c) : '', c.ecart != null ? duree(c.ecart) : '', notes(c.seins)] });
-    }
-    if (c.bibs.length) {
-      const ml = c.bibs.reduce((m, e) => m + (e.ml || 0), 0), lait = [...new Set(c.bibs.map(e => e.milk === 'maternel' ? 'maternel' : 'artificiel'))].join(' + ');
-      lignesJ.push({ t: c.seins.length ? c.bibs[0].start : c.t, an: c.t, row: ['Biberon', `${ml} ml · lait ${lait}` + (c.bibs.length > 1 ? ` (${c.bibs.length} biberons)` : ''), '', c.seins.length || c.ecart == null ? '' : hp(c), c.seins.length || c.ecart == null ? '' : duree(c.ecart), notes(c.bibs)] });
-    }
-  });
-  events.filter(e => e.start && !(e.type === 'biberon' || (e.type === 'sein' && e.end))).forEach(e => {
-    const l = ligne(e, h); lignesJ.push({ t: e.start, row: [l.type, l.detail, l.duree, '', '', e.note || ''] });
-  });
-  lignesJ.sort((a, b) => b.t - a.t);
-
-  const recents = l => l.slice().reverse();          // repas : du plus récent au plus ancien
-  const lignesT = recents(repas.filter(c => c.seins.length)).map(c => {
+  const lait = l => [...new Set(l.map(e => e.milk === 'maternel' ? 'maternel' : 'artificiel'))].join(' + ');
+  const repas = repasDe(events).map(c => {
     const g = min(c.seins.reduce((m, e) => m + cote(e, 'G'), 0)), d = min(c.seins.reduce((m, e) => m + cote(e, 'D'), 0));
-    const der = c.seins.flatMap(e => e.segs || []).sort((a, b) => a.a - b.a).pop();
-    return { t: c.t, row: [j(c.t), h(c.t), h(c.fin), g, d, g + d, c.seins.length, der ? (der.s === 'G' ? 'gauche' : 'droit') : '',
-      c.bibs.reduce((m, e) => m + (e.ml || 0), 0) || '', c.ecart != null ? hp(c) : '', c.ecart != null ? duree(c.ecart) : '', notes(c.seins)] };
-  });
-  const lignesB = recents(repas).flatMap(c => c.bibs.slice().reverse().map(e => ({ t: e.start, an: c.t,
-    row: [j(e.start), h(e.start), e.ml || 0, e.milk === 'maternel' ? 'maternel' : 'artificiel', c.seins.length ? 'oui' : '', e.note || ''] })));
-  const lignesC = events.filter(e => e.type === 'couche').sort((a, b) => b.start - a.start).map(e => ({ t: e.start,
-    row: [j(e.start), h(e.start), ligne(e, h).detail, e.note || ''] }));
+    return Object.assign(c, { g, d, ml: c.bibs.reduce((m, e) => m + (e.ml || 0), 0) });
+  }).reverse();                                          // du plus récent au plus ancien
+  const autres = events.filter(e => e.start && !(e.type === 'biberon' || (e.type === 'sein' && e.end)));
+
+  // Repas : une ligne par repas ; « depuis le précédent » se lit avec la ligne juste en dessous
+  const lignesR = repas.map(c => ({ t: c.t, row: [h(c.t), h(c.fin), c.g || '', c.d || '', c.ml ? `${c.ml} ml ${lait(c.bibs)}` : '',
+    c.ecart != null ? duree(c.ecart) : '', notes(c.entrees)] }));
+  const lignesB = repas.flatMap(c => c.bibs.slice().reverse().map(e => ({ t: e.start, an: c.t,
+    row: [h(e.start), e.ml || 0, e.milk === 'maternel' ? 'maternel' : 'artificiel', c.seins.length ? 'oui' : '', e.note || ''] })));
+  const lignesC = autres.filter(e => e.type === 'couche').sort((a, b) => b.start - a.start).map(e => ({ t: e.start, e,
+    row: [h(e.start), ligne(e, h).detail, e.note || ''] }));
+  const lignesJ = repas.flatMap(c => [
+    c.seins.length && { t: c.t, row: [h(c.t), 'Tétée', [c.g && `G ${c.g} min`, c.d && `D ${c.d} min`].filter(Boolean).join(' · ') || '0 min', notes(c.seins)] },
+    c.bibs.length && { t: c.seins.length ? c.bibs[0].start : c.t, an: c.t, row: [h(c.seins.length ? c.bibs[0].start : c.t), 'Biberon', `${c.ml} ml ${lait(c.bibs)}`, notes(c.bibs)] }
+  ].filter(Boolean)).concat(autres.map(e => { const l = ligne(e, h);
+    return { t: e.start, row: [h(e.start), l.type, [l.detail, l.duree].filter(Boolean).join(' · '), e.note || ''] } }))
+    .sort((a, b) => b.t - a.t);
+
+  // titres de jour
+  const MOIS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+  const JOURS = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
+  const nomJour = k => { const [y, m, d] = k.split('-').map(Number); return `${JOURS[new Date(Date.UTC(y, m - 1, d)).getUTCDay()]} ${d} ${MOIS[m - 1]}` };
+  const pluriel = (n, mot) => `${n} ${mot}${n > 1 ? 's' : ''}`;
+  const resumes = {
+    Repas: l => { const r = l.map(x => repas.find(c => c.t === x.t)), sein = r.reduce((m, c) => m + c.g + c.d, 0), ml = r.reduce((m, c) => m + c.ml, 0);
+      return [`${r.length} repas`, sein && `sein ${duree(sein * 6e4)}`, ml && `biberon ${ml} ml`].filter(Boolean).join(' · ') },
+    Biberons: l => `${pluriel(l.length, 'biberon')} · ${l.reduce((m, x) => m + x.row[1], 0)} ml`,
+    Couches: l => { const k = l.map(x => ligne(x.e, h).detail), pipi = k.filter(x => /pipi|Explosion/.test(x)).length, caca = k.filter(x => /caca|Explosion/.test(x)).length;
+      return `${pluriel(l.length, 'couche')} · ${pipi} pipi · ${caca} caca` },
+    Journal: () => ''
+  };
+  const parJour = (type, lignes) => {                    // insère une ligne de titre avant chaque jour
+    const out = []; let k = null;
+    lignes.forEach((x, i) => {
+      const kx = cle(x.an ?? x.t);
+      if (kx !== k) { k = kx; const jour = lignes.filter(y => cle(y.an ?? y.t) === k); out.push({ titre: [nomJour(k), resumes[type](jour)].filter(Boolean).join(' · ') }) }
+      out.push(x.row);
+    });
+    return out;
+  };
 
   // un seul fichier, 4 onglets par année : l'année en cours chaque nuit ; l'année précédente aussi la première
   // semaine de janvier (corrections tardives) ; les onglets d'une année passée qui manquent sont créés une fois
@@ -266,19 +276,19 @@ function journal(events, racine) {
   const annees = [...new Set(lignesJ.map(anDe).concat(cette))].sort((a, b) => b - a);   // la plus récente d'abord
   const ss = ouvrirJournal(racine);
   ss.setSpreadsheetTimeZone(tz);
-  const REF = `${ECART === 'debut' ? 'Début' : 'Fin'} du repas précédent`, ECART_TITRE = `Temps depuis ${ECART === 'debut' ? 'le début' : 'la fin'} du repas précédent`;
+  const DEPUIS = `Depuis ${ECART === 'debut' ? 'le début' : 'la fin'} du repas d'avant`;
   const TYPES = [
-    ['Journal', ['Date', 'Heure', 'Type', 'Détail', 'Durée', REF, ECART_TITRE, 'Note'], an => lignesJ.filter(x => anDe(x) === an).map(x => [j(x.t), h(x.t), ...x.row])],
-    ['Tétées', ['Date', 'Début', 'Fin (biberon compris)', 'Gauche (min)', 'Droit (min)', 'Total (min)', 'Tétées', 'Dernier sein', 'Biberon (ml)', REF, ECART_TITRE, 'Note'], an => lignesT.filter(x => anDe(x) === an).map(x => x.row)],
-    ['Biberons', ['Date', 'Heure', 'Quantité (ml)', 'Lait', 'Après une tétée', 'Note'], an => lignesB.filter(x => anDe(x) === an).map(x => x.row)],
-    ['Couches', ['Date', 'Heure', 'Type', 'Note'], an => lignesC.filter(x => anDe(x) === an).map(x => x.row)]
+    ['Repas', ['Début', 'Fin', 'Gauche (min)', 'Droit (min)', 'Biberon', DEPUIS, 'Note'], lignesR],
+    ['Biberons', ['Heure', 'Quantité (ml)', 'Lait', 'Après une tétée', 'Note'], lignesB],
+    ['Couches', ['Heure', 'Type', 'Note'], lignesC],
+    ['Journal', ['Heure', 'Type', 'Détail', 'Note'], lignesJ]
   ];
   for (const an of annees) {
     const aFaire = an === cette || (an === cette - 1 && maintenant.getMonth() === 0 && maintenant.getDate() <= 7);
     for (const [type, entete, lignes] of TYPES)
-      if (aFaire || !ss.getSheetByName(`${type} ${an}`)) onglet(ss, `${type} ${an}`, entete, lignes(an));
+      if (aFaire || !ss.getSheetByName(`${type} ${an}`)) onglet(ss, `${type} ${an}`, entete, parJour(type, lignes.filter(x => anDe(x) === an)));
   }
-  // rangement : année la plus récente d'abord ; anciens onglets sans année (versions précédentes) supprimés
+  // rangement : année la plus récente d'abord ; anciens onglets (versions précédentes) supprimés, sauvegardes cachées gardées
   const ordre = annees.flatMap(an => TYPES.map(([type]) => `${type} ${an}`));
   ordre.forEach((nom, i) => { const sh = ss.getSheetByName(nom); if (sh) { ss.setActiveSheet(sh); ss.moveActiveSheet(i + 1) } });
   ss.getSheets().filter(sh => !ordre.includes(sh.getName()) && sh.getName().indexOf(SAUV) !== 0).forEach(sh => ss.deleteSheet(sh));
@@ -297,16 +307,20 @@ function ouvrirJournal(racine) {
   return ss;
 }
 
-/** Crée ou vide l'onglet, puis écrit l'en-tête et les lignes. */
+/** Crée ou vide l'onglet, puis écrit l'en-tête et les lignes ; une ligne { titre } = titre de jour (gras, sur fond). */
 function onglet(ss, nom, entete, lignes) {
-  const sh = ss.getSheetByName(nom) || ss.insertSheet(nom);
+  const sh = ss.getSheetByName(nom) || ss.insertSheet(nom), n = entete.length;
   sh.clear();
-  const data = [entete].concat(lignes);
-  sh.getRange(1, 1, data.length, 2).setNumberFormat('@');                 // date et heure : texte, jamais réinterprétées
-  sh.getRange(1, 1, data.length, entete.length).setValues(data);
-  sh.getRange(1, 1, 1, entete.length).setFontWeight('bold').setBackground('#F0E8DC');
+  const sur = v => typeof v === 'string' && /^[=+\-@]/.test(v) ? "'" + v : v;   // une note n'est jamais lue comme une formule
+  const data = [entete].concat(lignes.map(l => l.titre ? [l.titre].concat(Array(n - 1).fill('')) : l.map(sur)));
+  sh.getRange(1, 1, data.length, 1).setNumberFormat('@');                 // heures : texte, jamais réinterprétées
+  sh.getRange(1, 1, data.length, n).setValues(data);
+  sh.getRange(1, 1, 1, n).setFontWeight('bold').setBackground('#3D2B2B').setFontColor('#FFFFFF');
+  const titres = []; lignes.forEach((l, i) => { if (l.titre) titres.push(`A${i + 2}:${String.fromCharCode(64 + n)}${i + 2}`) });
+  if (titres.length) sh.getRangeList(titres).setFontWeight('bold').setBackground('#F0E8DC');
   sh.setFrozenRows(1);
-  sh.autoResizeColumns(1, entete.length);
+  sh.autoResizeColumns(2, n - 1);
+  sh.setColumnWidth(1, 70);                                               // les titres de jour débordent sur la ligne
 }
 
 /** Une entrée hors repas (couche, tirage, sommeil, vitamine D, mesure, tétée en cours) → type et détail en clair. */
