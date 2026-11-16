@@ -212,7 +212,7 @@ function repasDe(events) {
 function journal(events, racine) {
   const tz = FUSEAU, j = t => Utilities.formatDate(new Date(t), tz, 'dd/MM/yyyy'), h = t => Utilities.formatDate(new Date(t), tz, 'HH:mm');
   const min = ms => Math.round(ms / 6e4), cote = (e, s) => (e.segs || []).filter(x => x.s === s).reduce((m, x) => m + ((x.b || e.end || Date.now()) - x.a), 0);
-  const qui = l => [...new Set(l.map(e => e.by).filter(Boolean))].join(', '), notes = l => l.map(e => e.note).filter(Boolean).join(' · ');
+  const notes = l => l.map(e => e.note).filter(Boolean).join(' · ');
   const repas = repasDe(events);
 
   // Journal : lignes triées par heure ; chaque repas donne une ligne « Tétée » et/ou une ligne « Biberon »
@@ -222,15 +222,15 @@ function journal(events, racine) {
       const g = min(c.seins.reduce((m, e) => m + cote(e, 'G'), 0)), d = min(c.seins.reduce((m, e) => m + cote(e, 'D'), 0));
       const det = [g && `G ${g} min`, d && `D ${d} min`].filter(Boolean).join(' · ') || '0 min';
       const plus = [c.seins.length > 1 && `${c.seins.length} tétées`, c.t !== c.premier.start && `commencée à ${h(c.premier.start)}`].filter(Boolean).join(', ');
-      lignesJ.push({ t: c.t, row: ['Tétée', det + (plus ? ` (${plus})` : ''), duree((g + d) * 6e4), c.ecart != null ? duree(c.ecart) : '', qui(c.seins), notes(c.seins)] });
+      lignesJ.push({ t: c.t, row: ['Tétée', det + (plus ? ` (${plus})` : ''), duree((g + d) * 6e4), c.ecart != null ? duree(c.ecart) : '', notes(c.seins)] });
     }
     if (c.bibs.length) {
       const ml = c.bibs.reduce((m, e) => m + (e.ml || 0), 0), lait = [...new Set(c.bibs.map(e => e.milk === 'maternel' ? 'maternel' : 'artificiel'))].join(' + ');
-      lignesJ.push({ t: c.seins.length ? c.bibs[0].start : c.t, an: c.t, row: ['Biberon', `${ml} ml · lait ${lait}` + (c.bibs.length > 1 ? ` (${c.bibs.length} biberons)` : ''), '', c.seins.length || c.ecart == null ? '' : duree(c.ecart), qui(c.bibs), notes(c.bibs)] });
+      lignesJ.push({ t: c.seins.length ? c.bibs[0].start : c.t, an: c.t, row: ['Biberon', `${ml} ml · lait ${lait}` + (c.bibs.length > 1 ? ` (${c.bibs.length} biberons)` : ''), '', c.seins.length || c.ecart == null ? '' : duree(c.ecart), notes(c.bibs)] });
     }
   });
   events.filter(e => e.start && !(e.type === 'biberon' || (e.type === 'sein' && e.end))).forEach(e => {
-    const l = ligne(e, h); lignesJ.push({ t: e.start, row: [l.type, l.detail, l.duree, '', e.by || '', e.note || ''] });
+    const l = ligne(e, h); lignesJ.push({ t: e.start, row: [l.type, l.detail, l.duree, '', e.note || ''] });
   });
   lignesJ.sort((a, b) => b.t - a.t);
 
@@ -239,12 +239,12 @@ function journal(events, racine) {
     const g = min(c.seins.reduce((m, e) => m + cote(e, 'G'), 0)), d = min(c.seins.reduce((m, e) => m + cote(e, 'D'), 0));
     const der = c.seins.flatMap(e => e.segs || []).sort((a, b) => a.a - b.a).pop();
     return { t: c.t, row: [j(c.t), h(c.t), g, d, g + d, c.seins.length, c.t !== c.premier.start ? h(c.premier.start) : '', der ? (der.s === 'G' ? 'gauche' : 'droit') : '',
-      c.bibs.reduce((m, e) => m + (e.ml || 0), 0) || '', c.ecart != null ? duree(c.ecart) : '', qui(c.seins), notes(c.seins)] };
+      c.bibs.reduce((m, e) => m + (e.ml || 0), 0) || '', c.ecart != null ? duree(c.ecart) : '', notes(c.seins)] };
   });
   const lignesB = recents(repas).flatMap(c => c.bibs.slice().reverse().map(e => ({ t: e.start, an: c.t,
-    row: [j(e.start), h(e.start), e.ml || 0, e.milk === 'maternel' ? 'maternel' : 'artificiel', c.seins.length ? 'oui' : '', e.by || '', e.note || ''] })));
+    row: [j(e.start), h(e.start), e.ml || 0, e.milk === 'maternel' ? 'maternel' : 'artificiel', c.seins.length ? 'oui' : '', e.note || ''] })));
   const lignesC = events.filter(e => e.type === 'couche').sort((a, b) => b.start - a.start).map(e => ({ t: e.start,
-    row: [j(e.start), h(e.start), ligne(e, h).detail, e.by || '', e.note || ''] }));
+    row: [j(e.start), h(e.start), ligne(e, h).detail, e.note || ''] }));
 
   // un seul fichier, 4 onglets par année : l'année en cours chaque nuit ; l'année précédente aussi la première
   // semaine de janvier (corrections tardives) ; les onglets d'une année passée qui manquent sont créés une fois
@@ -254,10 +254,10 @@ function journal(events, racine) {
   const ss = ouvrirJournal(racine);
   ss.setSpreadsheetTimeZone(tz);
   const TYPES = [
-    ['Journal', ['Date', 'Heure', 'Type', 'Détail', 'Durée', 'Écart', 'Par', 'Note'], an => lignesJ.filter(x => anDe(x) === an).map(x => [j(x.t), h(x.t), ...x.row])],
-    ['Tétées', ['Date', 'Heure', 'Gauche (min)', 'Droit (min)', 'Total (min)', 'Tétées', 'Commencée à', 'Dernier sein', 'Biberon (ml)', 'Écart', 'Par', 'Note'], an => lignesT.filter(x => anDe(x) === an).map(x => x.row)],
-    ['Biberons', ['Date', 'Heure', 'Quantité (ml)', 'Lait', 'Après une tétée', 'Par', 'Note'], an => lignesB.filter(x => anDe(x) === an).map(x => x.row)],
-    ['Couches', ['Date', 'Heure', 'Type', 'Par', 'Note'], an => lignesC.filter(x => anDe(x) === an).map(x => x.row)]
+    ['Journal', ['Date', 'Heure', 'Type', 'Détail', 'Durée', 'Écart', 'Note'], an => lignesJ.filter(x => anDe(x) === an).map(x => [j(x.t), h(x.t), ...x.row])],
+    ['Tétées', ['Date', 'Heure', 'Gauche (min)', 'Droit (min)', 'Total (min)', 'Tétées', 'Commencée à', 'Dernier sein', 'Biberon (ml)', 'Écart', 'Note'], an => lignesT.filter(x => anDe(x) === an).map(x => x.row)],
+    ['Biberons', ['Date', 'Heure', 'Quantité (ml)', 'Lait', 'Après une tétée', 'Note'], an => lignesB.filter(x => anDe(x) === an).map(x => x.row)],
+    ['Couches', ['Date', 'Heure', 'Type', 'Note'], an => lignesC.filter(x => anDe(x) === an).map(x => x.row)]
   ];
   for (const an of annees) {
     const aFaire = an === cette || (an === cette - 1 && maintenant.getMonth() === 0 && maintenant.getDate() <= 7);
