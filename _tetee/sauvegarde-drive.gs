@@ -265,9 +265,10 @@ function journal(events, racine) {
   const annees = [...new Set(lignesJ.map(anDe).concat(cette))].sort((a, b) => b - a);   // la plus récente d'abord
   const ss = ouvrirJournal(racine);
   ss.setSpreadsheetTimeZone(tz);
+  const ECART_TITRE = `Temps depuis ${ECART === 'debut' ? 'le début' : 'la fin'} du repas précédent`;
   const TYPES = [
-    ['Journal', ['Date', 'Heure', 'Type', 'Détail', 'Durée', 'Écart', 'Note'], an => lignesJ.filter(x => anDe(x) === an).map(x => [j(x.t), h(x.t), ...x.row])],
-    ['Tétées', ['Date', 'Heure', 'Gauche (min)', 'Droit (min)', 'Total (min)', 'Tétées', 'Dernier sein', 'Biberon (ml)', 'Écart', 'Note'], an => lignesT.filter(x => anDe(x) === an).map(x => x.row)],
+    ['Journal', ['Date', 'Heure', 'Type', 'Détail', 'Durée', ECART_TITRE, 'Note'], an => lignesJ.filter(x => anDe(x) === an).map(x => [j(x.t), h(x.t), ...x.row])],
+    ['Tétées', ['Date', 'Heure', 'Gauche (min)', 'Droit (min)', 'Total (min)', 'Tétées', 'Dernier sein', 'Biberon (ml)', ECART_TITRE, 'Note'], an => lignesT.filter(x => anDe(x) === an).map(x => x.row)],
     ['Biberons', ['Date', 'Heure', 'Quantité (ml)', 'Lait', 'Après une tétée', 'Note'], an => lignesB.filter(x => anDe(x) === an).map(x => x.row)],
     ['Couches', ['Date', 'Heure', 'Type', 'Note'], an => lignesC.filter(x => anDe(x) === an).map(x => x.row)]
   ];
