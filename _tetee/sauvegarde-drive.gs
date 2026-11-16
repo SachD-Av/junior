@@ -214,7 +214,7 @@ function repasDe(events) {
     if (c && e.start - c.fin < PAUSE_LONGUE * 6e4) { c.entrees.push(e); c.fin = Math.max(c.fin, fin) }
     else out.push({ entrees: [e], premier: e, t: heureRetenue(e), fin });
   });
-  out.forEach((c, i) => { c.seins = c.entrees.filter(e => e.type === 'sein'); c.bibs = c.entrees.filter(e => e.type === 'biberon'); c.ecart = i ? Math.max(0, c.t - (ECART === 'debut' ? out[i - 1].t : out[i - 1].fin)) : null });   // écart : depuis la fin (ou le début) du repas précédent
+  out.forEach((c, i) => { c.seins = c.entrees.filter(e => e.type === 'sein'); c.bibs = c.entrees.filter(e => e.type === 'biberon'); c.prec = i ? (ECART === 'debut' ? out[i - 1].t : out[i - 1].fin) : null; c.ecart = i ? Math.max(0, c.t - c.prec) : null });   // écart : depuis la fin (ou le début) du repas précédent
   return out;
 }
 
@@ -225,6 +225,7 @@ function journal(events, racine) {
   const tz = FUSEAU, j = t => Utilities.formatDate(new Date(t), tz, 'dd/MM/yyyy'), h = t => Utilities.formatDate(new Date(t), tz, 'HH:mm');
   const min = ms => Math.round(ms / 6e4), cote = (e, s) => (e.segs || []).filter(x => x.s === s).reduce((m, x) => m + ((x.b || e.end || Date.now()) - x.a), 0);
   const notes = l => l.map(e => e.note).filter(Boolean).join(' · ');
+  const hp = c => j(c.prec) === j(c.t) ? h(c.prec) : Utilities.formatDate(new Date(c.prec), tz, 'dd/MM HH:mm');   // repère du temps entre repas (date si la veille)
   const repas = repasDe(events);
 
   // Journal : lignes triées par heure ; chaque repas donne une ligne « Tétée » et/ou une ligne « Biberon »
@@ -234,15 +235,15 @@ function journal(events, racine) {
       const g = min(c.seins.reduce((m, e) => m + cote(e, 'G'), 0)), d = min(c.seins.reduce((m, e) => m + cote(e, 'D'), 0));
       const det = [g && `G ${g} min`, d && `D ${d} min`].filter(Boolean).join(' · ') || '0 min';
       const plus = [c.seins.length > 1 && `${c.seins.length} tétées`, c.t !== c.premier.start && `commencée à ${h(c.premier.start)}`].filter(Boolean).join(', ');
-      lignesJ.push({ t: c.t, row: ['Tétée', det + (plus ? ` (${plus})` : ''), duree((g + d) * 6e4), c.ecart != null ? duree(c.ecart) : '', notes(c.seins)] });
+      lignesJ.push({ t: c.t, row: ['Tétée', det + (plus ? ` (${plus})` : ''), duree((g + d) * 6e4), c.ecart != null ? hp(c) : '', c.ecart != null ? duree(c.ecart) : '', notes(c.seins)] });
     }
     if (c.bibs.length) {
       const ml = c.bibs.reduce((m, e) => m + (e.ml || 0), 0), lait = [...new Set(c.bibs.map(e => e.milk === 'maternel' ? 'maternel' : 'artificiel'))].join(' + ');
-      lignesJ.push({ t: c.seins.length ? c.bibs[0].start : c.t, an: c.t, row: ['Biberon', `${ml} ml · lait ${lait}` + (c.bibs.length > 1 ? ` (${c.bibs.length} biberons)` : ''), '', c.seins.length || c.ecart == null ? '' : duree(c.ecart), notes(c.bibs)] });
+      lignesJ.push({ t: c.seins.length ? c.bibs[0].start : c.t, an: c.t, row: ['Biberon', `${ml} ml · lait ${lait}` + (c.bibs.length > 1 ? ` (${c.bibs.length} biberons)` : ''), '', c.seins.length || c.ecart == null ? '' : hp(c), c.seins.length || c.ecart == null ? '' : duree(c.ecart), notes(c.bibs)] });
     }
   });
   events.filter(e => e.start && !(e.type === 'biberon' || (e.type === 'sein' && e.end))).forEach(e => {
-    const l = ligne(e, h); lignesJ.push({ t: e.start, row: [l.type, l.detail, l.duree, '', e.note || ''] });
+    const l = ligne(e, h); lignesJ.push({ t: e.start, row: [l.type, l.detail, l.duree, '', '', e.note || ''] });
   });
   lignesJ.sort((a, b) => b.t - a.t);
 
@@ -250,8 +251,8 @@ function journal(events, racine) {
   const lignesT = recents(repas.filter(c => c.seins.length)).map(c => {
     const g = min(c.seins.reduce((m, e) => m + cote(e, 'G'), 0)), d = min(c.seins.reduce((m, e) => m + cote(e, 'D'), 0));
     const der = c.seins.flatMap(e => e.segs || []).sort((a, b) => a.a - b.a).pop();
-    return { t: c.t, row: [j(c.t), h(c.t), g, d, g + d, c.seins.length, der ? (der.s === 'G' ? 'gauche' : 'droit') : '',
-      c.bibs.reduce((m, e) => m + (e.ml || 0), 0) || '', c.ecart != null ? duree(c.ecart) : '', notes(c.seins)] };
+    return { t: c.t, row: [j(c.t), h(c.t), h(c.fin), g, d, g + d, c.seins.length, der ? (der.s === 'G' ? 'gauche' : 'droit') : '',
+      c.bibs.reduce((m, e) => m + (e.ml || 0), 0) || '', c.ecart != null ? hp(c) : '', c.ecart != null ? duree(c.ecart) : '', notes(c.seins)] };
   });
   const lignesB = recents(repas).flatMap(c => c.bibs.slice().reverse().map(e => ({ t: e.start, an: c.t,
     row: [j(e.start), h(e.start), e.ml || 0, e.milk === 'maternel' ? 'maternel' : 'artificiel', c.seins.length ? 'oui' : '', e.note || ''] })));
@@ -265,10 +266,10 @@ function journal(events, racine) {
   const annees = [...new Set(lignesJ.map(anDe).concat(cette))].sort((a, b) => b - a);   // la plus récente d'abord
   const ss = ouvrirJournal(racine);
   ss.setSpreadsheetTimeZone(tz);
-  const ECART_TITRE = `Temps depuis ${ECART === 'debut' ? 'le début' : 'la fin'} du repas précédent`;
+  const REF = `${ECART === 'debut' ? 'Début' : 'Fin'} du repas précédent`, ECART_TITRE = `Temps depuis ${ECART === 'debut' ? 'le début' : 'la fin'} du repas précédent`;
   const TYPES = [
-    ['Journal', ['Date', 'Heure', 'Type', 'Détail', 'Durée', ECART_TITRE, 'Note'], an => lignesJ.filter(x => anDe(x) === an).map(x => [j(x.t), h(x.t), ...x.row])],
-    ['Tétées', ['Date', 'Heure', 'Gauche (min)', 'Droit (min)', 'Total (min)', 'Tétées', 'Dernier sein', 'Biberon (ml)', ECART_TITRE, 'Note'], an => lignesT.filter(x => anDe(x) === an).map(x => x.row)],
+    ['Journal', ['Date', 'Heure', 'Type', 'Détail', 'Durée', REF, ECART_TITRE, 'Note'], an => lignesJ.filter(x => anDe(x) === an).map(x => [j(x.t), h(x.t), ...x.row])],
+    ['Tétées', ['Date', 'Début', 'Fin (biberon compris)', 'Gauche (min)', 'Droit (min)', 'Total (min)', 'Tétées', 'Dernier sein', 'Biberon (ml)', REF, ECART_TITRE, 'Note'], an => lignesT.filter(x => anDe(x) === an).map(x => x.row)],
     ['Biberons', ['Date', 'Heure', 'Quantité (ml)', 'Lait', 'Après une tétée', 'Note'], an => lignesB.filter(x => anDe(x) === an).map(x => x.row)],
     ['Couches', ['Date', 'Heure', 'Type', 'Note'], an => lignesC.filter(x => anDe(x) === an).map(x => x.row)]
   ];
