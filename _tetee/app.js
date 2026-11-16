@@ -504,7 +504,7 @@ const vitdToday = () => list().find(e => e.type === 'vitd' && e.start >= dayStar
 function vitdHTML() {
   const v = vitdToday(), late = !v && new Date().getHours() >= 20;
   // donnée : simple affichage, plus rien ne se passe au toucher (corriger ou supprimer : depuis l'historique)
-  if (v) return `<div class="vitd ok">${ic('check')}<span>Vitamine D</span><small>donnée à ${hm(v.start)}${v.by ? ' par ' + esc(v.by) : ''}</small></div>`;
+  if (v) return `<div class="vitd ok">${ic('check')}<span>Vitamine D</span><small>donnée à ${hm(v.start)}</small></div>`;
   return `<button class="vitd${late ? ' late' : ' todo'}" data-act="vitd">${ic('pill')}
     <span>Vitamine D</span><b class="tag-todo">${late ? 'OUBLIÉE ?' : 'À DONNER'}</b></button>`;
 }
@@ -546,13 +546,12 @@ function historyHTML() {
       <span class="tx"><div>${title}</div>${extra ? `<div>${extra}</div>` : ''}</span>
       <span class="tm">${time}<small>${gap || ''}</small></span></button>`;
   const pick = list => list.length === 1 ? `data-act="edit" data-id="${list[0].id}"` : `data-act="pickmeal" data-ids="${list.map(e => e.id).join(',')}"`;
-  const by = list => [...new Set(list.map(e => e.by).filter(Boolean))].map(esc).join(', ');
   let day = null;
   for (const it of items.slice(0, 400)) {
     const dn = dayName(it.t);
     if (dn !== day) { day = dn; html += `<div class="day">${dn}</div>` }
     if (it.e) {                                       // couche, tirage, sommeil, mesure, vitamine D, tétée en cours
-      const e = it.e, x = describe(e), extra = [x.d, e.note && esc(e.note), e.by && 'par ' + esc(e.by)].filter(Boolean).join(' · ');
+      const e = it.e, x = describe(e), extra = [x.d, e.note && esc(e.note)].filter(Boolean).join(' · ');
       html += row(`data-act="edit" data-id="${e.id}"`, x.ic, x.t, extra, hm(e.start), '');
       continue;
     }
@@ -563,13 +562,13 @@ function historyHTML() {
       const g = c.seins.reduce((m, e) => m + sideMs(e, 'G'), 0), d = c.seins.reduce((m, e) => m + sideMs(e, 'D'), 0);
       const title = [g && `G ${dur(g)}`, d && `D ${dur(d)}`].filter(Boolean).join(' · ') || '0 min';
       const notes = c.seins.map(e => e.note).filter(Boolean).map(esc).join(' · ');
-      const extra = [`Total ${dur(g + d)}`, c.ref !== c.first.start && `commencée à ${hm(c.first.start)}`, c.seins.length > 1 && `${c.seins.length} tétées`, notes, by(c.seins) && 'par ' + by(c.seins)].filter(Boolean).join(' · ');
+      const extra = [`Total ${dur(g + d)}`, c.ref !== c.first.start && `commencée à ${hm(c.first.start)}`, c.seins.length > 1 && `${c.seins.length} tétées`, notes].filter(Boolean).join(' · ');
       lines.push({ t: c.ref, html: g2 => row(pick(c.seins), ic('feed'), title, extra, hm(c.ref), g2) });
     }
     if (c.bibs.length) {                              // une ligne : biberon(s) du repas
       const ml = c.bibs.reduce((m, e) => m + (+e.ml || 0), 0), milks = [...new Set(c.bibs.map(e => e.milk === 'maternel' ? 'Lait maternel' : 'Lait artificiel'))].join(' + ');
       const notes = c.bibs.map(e => e.note).filter(Boolean).map(esc).join(' · ');
-      const extra = [milks, c.bibs.length > 1 && `${c.bibs.length} biberons`, notes, by(c.bibs) && 'par ' + by(c.bibs)].filter(Boolean).join(' · ');
+      const extra = [milks, c.bibs.length > 1 && `${c.bibs.length} biberons`, notes].filter(Boolean).join(' · ');
       const t = c.seins.length ? c.bibs[0].start : c.ref;
       lines.push({ t, html: g2 => row(pick(c.bibs), ic('bottle'), `${ml} ml`, extra, hm(t), g2) });   // icône neutre dans l'historique
     }
