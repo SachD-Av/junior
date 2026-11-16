@@ -3,13 +3,14 @@
  * + rappels de tétée par notification (appli ntfy), même téléphones en veille.
  *
  * À coller dans https://script.google.com (Nouveau projet), puis exécuter « installer » une fois.
- * Chaque nuit vers 3 h, le script copie toutes les données dans le dossier Drive
- * « Tétée – sauvegardes » :
+ * Chaque nuit vers 3 h, le script copie toutes les données dans des onglets CACHÉS de la feuille
+ * « Tétée – journal » (dossier Drive « Tétée – sauvegardes ») : aucun fichier .json n'encombre Drive.
  *   - Quotidien    : une copie par jour, on garde les 7 dernières
  *   - Hebdomadaire : une copie par semaine, on garde les 8 dernières
  *   - Mensuel      : une copie par mois, on garde les 24 dernières
- * Les fichiers .json se réimportent dans l'appli (Réglages → Importer).
- * Version lisible : la feuille Google Sheets « Tétée – journal » (même dossier), avec 4 onglets par année
+ * Pour restaurer : exécuter « restaurer » → un fichier « tetee-restauration.json » apparaît dans le dossier,
+ * à réimporter dans l'appli (Réglages → Importer), puis à supprimer.
+ * Version lisible : la même feuille, avec 4 onglets par année
  * (Journal 2026, Tétées 2026, Biberons 2026, Couches 2026, puis 2025…), refaits chaque nuit pour l'année en cours,
  * regroupés par repas comme l'historique de l'appli.
  */
@@ -28,6 +29,8 @@ const PAUSE_LONGUE = 25;           // min : en dessous, même repas (tétées/bi
 
 const DOSSIER = 'Tétée – sauvegardes';
 const GARDER = { Quotidien: 7, Hebdomadaire: 8, Mensuel: 24 };
+const SAUV = 'Sauvegarde · ';         // onglets cachés « Sauvegarde · Quotidien · 2026-11-16 »
+const RESTAURER = '';                 // vide = la plus récente ; sinon un nom d'onglet, ex. 'Sauvegarde · Mensuel · 2026-10'
 const BASE = 'https://firestore.googleapis.com/v1';
 
 /** À exécuter une seule fois : crée la sauvegarde de chaque nuit et la vérification des rappels toutes les 5 min. */
@@ -109,14 +112,16 @@ function sauvegarder() {
   const json = JSON.stringify(events);               // compact : ~30 % plus léger (le fichier sert à restaurer, pas à lire)
   const racine = dossier(DriveApp.getRootFolder(), DOSSIER);
   const tz = FUSEAU, d = new Date();
-  const jour = Utilities.formatDate(d, tz, 'yyyy-MM-dd');
+  const jour = Utilities.formatDate(d, tz, 'yyyy-MM-dd'), ss = ouvrirJournal(racine);
 
-  ecrire(dossier(racine, 'Quotidien'), `tetee-${jour}.json`, json);
-  const hebdo = dossier(racine, 'Hebdomadaire');
-  if (plusRecent(hebdo) < d.getTime() - 6.5 * 864e5) ecrire(hebdo, `tetee-semaine-${jour}.json`, json);
-  const mois = dossier(racine, 'Mensuel'), nomMois = `tetee-${Utilities.formatDate(d, tz, 'yyyy-MM')}.json`;
-  if (!existe(mois, nomMois)) ecrire(mois, nomMois, json);
+  copie(ss, 'Quotidien', jour, json);
+  const hebdo = sauvegardes(ss, 'Hebdomadaire')[0];
+  if (!hebdo || new Date(dateDe(hebdo) + 'T12:00:00') < d.getTime() - 6.5 * 864e5) copie(ss, 'Hebdomadaire', jour, json);
+  const mois = Utilities.formatDate(d, tz, 'yyyy-MM');
+  if (!ss.getSheetByName(`${SAUV}Mensuel · ${mois}`)) copie(ss, 'Mensuel', mois, json);
   journal(events, racine);
+  // anciennes versions : dossiers de fichiers .json → corbeille (récupérables 30 jours)
+  ['Quotidien', 'Hebdomadaire', 'Mensuel'].forEach(n => { const it = racine.getFoldersByName(n); while (it.hasNext()) it.next().setTrashed(true) });
   console.log(`${events.length} entrées sauvegardées`);
 }
 
@@ -158,27 +163,34 @@ function dossier(parent, nom) {
   const it = parent.getFoldersByName(nom);
   return it.hasNext() ? it.next() : parent.createFolder(nom);
 }
-function ecrire(dos, nom, contenu) {
-  const it = dos.getFilesByName(nom);
+/* Sauvegardes dans des onglets cachés de la feuille : le JSON découpé en morceaux (une cellule ≤ 50 000 caractères) */
+function sauvegardes(ss, type) {           // noms d'onglets d'un type (ou de tous), du plus récent au plus ancien
+  return ss.getSheets().map(sh => sh.getName()).filter(n => n.indexOf(SAUV + (type ? type + ' · ' : '')) === 0)
+    .sort((a, b) => dateDe(b).localeCompare(dateDe(a)));
+}
+function dateDe(nom) { return nom.split(' · ').pop() }
+function copie(ss, type, date, json) {
+  const nom = `${SAUV}${type} · ${date}`, sh = ss.getSheetByName(nom) || ss.insertSheet(nom, ss.getSheets().length);
+  sh.clear();
+  const morceaux = [];
+  for (let i = 0; i < json.length; i += 40000) morceaux.push([json.slice(i, i + 40000)]);
+  if (!morceaux.length) morceaux.push(['[]']);
+  sh.getRange(1, 1, morceaux.length, 1).setNumberFormat('@').setValues(morceaux);   // texte : jamais de formule
+  if (!sh.isSheetHidden()) sh.hideSheet();
+  sauvegardes(ss, type).slice(GARDER[type]).forEach(n => ss.deleteSheet(ss.getSheetByName(n)));   // on garde les N plus récentes
+}
+/** À exécuter à la main : remet une sauvegarde en fichier « tetee-restauration.json » dans le dossier, à importer dans l'appli. */
+function restaurer() {
+  const racine = dossier(DriveApp.getRootFolder(), DOSSIER), ss = ouvrirJournal(racine);
+  const toutes = sauvegardes(ss), nom = RESTAURER || toutes[0];
+  const sh = nom && ss.getSheetByName(nom);
+  if (!sh) throw new Error('Sauvegarde introuvable. Disponibles : ' + toutes.join(', '));
+  const json = sh.getRange(1, 1, sh.getLastRow(), 1).getValues().map(r => String(r[0])).join('');
+  const n = JSON.parse(json).length;            // vérifie que la copie est complète
+  const it = racine.getFilesByName('tetee-restauration.json');
   while (it.hasNext()) it.next().setTrashed(true);
-  dos.createFile(nom, contenu, 'application/json');
-  // rotation : on garde les N plus récents
-  const fichiers = [];
-  const all = dos.getFiles();
-  while (all.hasNext()) { const f = all.next(); if (!f.isTrashed()) fichiers.push(f) }   // sans la corbeille
-  fichiers.sort((a, b) => b.getDateCreated() - a.getDateCreated());
-  fichiers.slice(GARDER[dos.getName()] || 1000).forEach(f => f.setTrashed(true));
-}
-function plusRecent(dos) {
-  let max = 0;
-  const it = dos.getFiles();
-  while (it.hasNext()) { const f = it.next(); if (!f.isTrashed()) max = Math.max(max, f.getDateCreated().getTime()) }
-  return max;
-}
-function existe(dos, nom) {
-  const it = dos.getFilesByName(nom);
-  while (it.hasNext()) if (!it.next().isTrashed()) return true;
-  return false;
+  racine.createFile('tetee-restauration.json', json, 'application/json');
+  console.log(`${nom} : ${n} entrées → fichier « tetee-restauration.json » dans « ${DOSSIER} ». À importer dans l'appli puis à supprimer.`);
 }
 /** Heure retenue d'un repas : la reprise après la dernière longue pause d'une tétée, sinon son début. */
 function heureRetenue(e) {
@@ -267,7 +279,7 @@ function journal(events, racine) {
   // rangement : année la plus récente d'abord ; anciens onglets sans année (versions précédentes) supprimés
   const ordre = annees.flatMap(an => TYPES.map(([type]) => `${type} ${an}`));
   ordre.forEach((nom, i) => { const sh = ss.getSheetByName(nom); if (sh) { ss.setActiveSheet(sh); ss.moveActiveSheet(i + 1) } });
-  ss.getSheets().filter(sh => !ordre.includes(sh.getName())).forEach(sh => ss.deleteSheet(sh));
+  ss.getSheets().filter(sh => !ordre.includes(sh.getName()) && sh.getName().indexOf(SAUV) !== 0).forEach(sh => ss.deleteSheet(sh));
 }
 
 /** Le fichier « Tétée – journal » (hors corbeille) ; s'il manque, on reprend la plus récente des feuilles

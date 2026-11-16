@@ -743,7 +743,7 @@ function settingsHTML() {
     </div>
     ${S.fam ? `<h2>Sauvegarde automatique Google Drive</h2>
     <div class="card set">
-      <p>Une copie chaque jour, chaque semaine et chaque mois dans votre Google Drive, faite par Google la nuit, même téléphones éteints. Gratuit, à installer une fois (de préférence sur ordinateur) :</p>
+      <p>Une copie chaque jour, chaque semaine et chaque mois, rangée dans des onglets cachés de la feuille « Tétée – journal » de votre Google Drive (pas de fichiers qui encombrent Drive). Faite par Google la nuit, même téléphones éteints. Gratuit, à installer une fois (de préférence sur ordinateur) :</p>
       <p>1. Copiez le script (il contient déjà votre code famille).<br>
          2. Ouvrez <b>script.google.com</b> → <b>Nouveau projet</b> → effacez tout → collez.<br>
          3. Enregistrez, choisissez la fonction <b>installer</b> → <b>Exécuter</b> → autorisez l'accès.</p>
