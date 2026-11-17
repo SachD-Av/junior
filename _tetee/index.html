@@ -380,7 +380,11 @@ nav button.on{color:var(--fg)}
 :root{--d:#1F5F73;--tl-d:#2A7A91;--ba:#1FA7A0}
 :root[data-theme="night"]{--d:#173C48;--tl-d:#4FA3BC;--ba:#5FD0C8}
 :root[data-theme="night"] .side.D,:root[data-theme="night"] .side.D small{color:#A8D4E0}
-.tl-k.hidden{display:none}
+/* légende : bulle par-dessus, sous la frise, au toucher (ne décale rien, visible même sur petit écran) */
+.tl-w{position:relative}
+.tl-w .tl-k{display:none!important}
+.tl-w .tl-k.open{display:flex!important;position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:5;margin:0;padding:10px 12px;
+  background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,.18)}
 .tl{cursor:pointer}
 </style>
 </head>
