@@ -440,7 +440,7 @@ function homeHTML() {
   const t0 = dayStart(now()), today = summarize(L.filter(x => x.start >= t0));
   let sub = '—';
   if (rp) { const sn = rp.seins.at(-1), ml = rp.bibs.reduce((m, e) => m + (+e.ml || 0), 0);
-    sub = [hm(meal.start), refNote(meal), rp.seins.length && dur(rp.seins.reduce((m, e) => m + sideMs(e), 0)),
+    sub = [rp.end > meal.start ? `${hm(meal.start)} → ${hm(rp.end)}` : hm(meal.start), refNote(meal), rp.seins.length && dur(rp.seins.reduce((m, e) => m + sideMs(e), 0)),
       sn?.segs.length && 'fin sein ' + SEIN[sn.segs.at(-1).s], ml && `biberon ${ml} ml`].filter(Boolean).join(' · ') }
   return `<section class="home idle">
     <button class="card since tap" data-view="history" aria-label="Voir l'historique">
@@ -575,7 +575,7 @@ function historyHTML() {
     lines.sort((x, y) => y.t - x.t);
     if (S.histMode === 'simple')                      // sans en-tête : l'écart sur la ligne qui ouvre le repas
       html += `<div class="meal simple">${lines.map((l, i) => l.html(i === lines.length - 1 ? gap : '')).join('')}</div>`;
-    else html += `<div class="meal"><div class="meal-h"><span>Repas · ${hm(c.ref)}</span><span>${gap}</span></div>${lines.map(l => l.html('')).join('')}</div>`;
+    else html += `<div class="meal"><div class="meal-h"><span>Repas · ${c.end > c.ref ? `${hm(c.ref)} → ${hm(c.end)}` : hm(c.ref)}</span><span>${gap}</span></div>${lines.map(l => l.html('')).join('')}</div>`;
   }
   return html;
 }
