@@ -337,7 +337,7 @@ function newEntry(type) {
   editDialog(type === 'sein' ? { id: uid(), type, start: t - 15 * 6e4, end: t, segs: [] }
     : type === 'sommeil' ? { id: uid(), type, start: t - 60 * 6e4, end: t }
     : type === 'mesure' ? { id: uid(), type, start: t, end: t, ...lastMesure() }
-    : { id: uid(), type, start: t, end: t, ml: 0, mlG: 0, mlD: 0, milk: S.milk, kind: 'humide' }, true);
+    : { id: uid(), type, start: t, end: t, ml: 0, mlG: 0, mlD: 0, milk: lastMilk(), kind: 'humide' }, true);
 }
 function sleepToggle() {
   const z = sleeping(), t = now(), undo = S.guard !== 'none' && S.prot.quick;
@@ -843,12 +843,17 @@ function dialog(html, onClose, setup) {
   if (document.activeElement?.matches?.('input, textarea, select')) document.activeElement.blur();
 }
 
+/** Lait proposé par défaut : celui du dernier biberon noté (sur l'un ou l'autre téléphone), sinon le dernier choisi ici. */
+function lastMilk() {
+  const b = list().filter(e => e.type === 'biberon').reduce((m, e) => !m || e.start > m.start ? e : m, null);
+  return b ? (b.milk === 'maternel' ? 'maternel' : 'artificiel') : S.milk;
+}
 function bibDialog() {
-  let ml = 0;
+  let ml = 0; const milk = lastMilk();
   dialog(`<h3>${ic('bottle')} Biberon</h3>
     <label class="mlv"><input id="mlv" type="number" min="1" max="2000" step="1" inputmode="numeric" placeholder="0" required><span>ml</span></label>
     <input id="mlr" type="range" min="0" max="300" step="1" value="0">
-    <div class="seg">${['artificiel', 'maternel'].map(v => `<label class="milk-${v}"><input type="radio" name="milk" value="${v}" ${S.milk === v ? 'checked' : ''}>Lait ${v}</label>`).join('')}</div>
+    <div class="seg">${['artificiel', 'maternel'].map(v => `<label class="milk-${v}"><input type="radio" name="milk" value="${v}" ${milk === v ? 'checked' : ''}>Lait ${v}</label>`).join('')}</div>
     <div class="fld"><span>Heure</span>${whenHTML('start', now())}</div>
     <menu><button class="btn" value="cancel" formnovalidate>Annuler</button><button class="btn primary" value="ok">Enregistrer</button></menu>`,
     (v, f) => {
