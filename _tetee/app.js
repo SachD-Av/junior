@@ -492,9 +492,9 @@ function timeline(L) {
       marks += `<i class="tl-s ${g.s}" style="left:${pct(a)}%;width:max(3px,${(pct(b) - pct(a)).toFixed(2)}%)"></i>`;
     } else if (e.start >= t0) marks += `<i class="tl-${{ biberon: 'b', tirage: 't' }[e.type] || 'c'}${e.type === 'couche' ? ' ' + coucheKind(e) : ''}${e.type === 'biberon' ? (e.milk === 'maternel' ? ' m' : ' a') : ''}" style="left:${pct(e.start)}%"></i>`;
   }
-  return `<div class="tl" data-act="legend" role="button" aria-label="Afficher la légende">${marks}<i class="tl-now" style="left:${pct(T)}%"></i></div>
+  return `<div class="tl-w"><div class="tl" data-act="legend" role="button" aria-label="Afficher la légende">${marks}<i class="tl-now" style="left:${pct(T)}%"></i></div>
     <div class="tl-h"><span>0 h</span><span>6 h</span><span>12 h</span><span>18 h</span><span>24 h</span></div>
-    <div class="tl-k${legendOpen ? '' : ' hidden'}"><span><i class="tl-s G"></i>Gauche</span><span><i class="tl-s D"></i>Droit</span><span><i class="tl-b m"></i>Bib. maternel</span><span><i class="tl-b a"></i>Bib. artificiel</span><span><i class="tl-t"></i>Tirage</span><span><i class="tl-z"></i>Sommeil</span><span><i class="tl-c"></i>Couche</span></div>`;
+    <div class="tl-k${legendOpen ? ' open' : ''}" data-act="legend"><span><i class="tl-s G"></i>Gauche</span><span><i class="tl-s D"></i>Droit</span><span><i class="tl-b m"></i>Bib. maternel</span><span><i class="tl-b a"></i>Bib. artificiel</span><span><i class="tl-t"></i>Tirage</span><span><i class="tl-z"></i>Sommeil</span><span><i class="tl-c"></i>Couche</span></div></div>`;
 }
 
 const fmtN = n => String(n).replace('.', ',');
