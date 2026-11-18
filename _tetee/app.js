@@ -582,19 +582,20 @@ function historyHTML() {
       const title = [g && `G ${dur(g)}`, d && `D ${dur(d)}`].filter(Boolean).join(' · ') || '0 min';
       const notes = c.seins.map(e => e.note).filter(Boolean).map(esc).join(' · ');
       const extra = [`Total ${dur(g + d)}`, c.ref !== c.first.start && `commencée à ${hm(c.first.start)}`, c.seins.length > 1 && `${c.seins.length} tétées`, notes].filter(Boolean).join(' · ');
-      lines.push({ t: c.ref, html: g2 => row(pick(c.seins), ic('feed'), title, extra, hm(c.ref), g2) });
+      lines.push({ t: c.ref, html: (g2, tm = hm(c.ref)) => row(pick(c.seins), ic('feed'), title, extra, tm, g2) });
     }
     if (c.bibs.length) {                              // une ligne : biberon(s) du repas
       const ml = c.bibs.reduce((m, e) => m + (+e.ml || 0), 0), milks = [...new Set(c.bibs.map(e => e.milk === 'maternel' ? 'Lait maternel' : 'Lait artificiel'))].join(' + ');
       const notes = c.bibs.map(e => e.note).filter(Boolean).map(esc).join(' · ');
       const extra = [milks, c.bibs.length > 1 && `${c.bibs.length} biberons`, notes].filter(Boolean).join(' · ');
       const t = c.seins.length ? c.bibs[0].start : c.ref;
-      lines.push({ t, html: g2 => row(pick(c.bibs), ic('bottle'), `${ml} ml`, extra, hm(t), g2) });   // icône neutre dans l'historique
+      lines.push({ t, html: (g2, tm = hm(t)) => row(pick(c.bibs), ic('bottle'), `${ml} ml`, extra, tm, g2) });   // icône neutre dans l'historique
     }
     lines.sort((x, y) => y.t - x.t);
-    if (S.histMode === 'simple' || lines.length === 1)  // sans en-tête (réglage, ou repas d'une seule ligne : l'en-tête répéterait l'heure) : l'écart sur la ligne qui ouvre le repas
+    const span = c.end > c.ref ? `${hm(c.ref)} → ${hm(c.end)}` : hm(c.ref);   // début → fin du repas
+    if (S.histMode === 'simple')                      // réglage « simple » : chaque ligne avec son heure, l'écart sur celle qui ouvre le repas
       html += `<div class="meal simple">${lines.map((l, i) => l.html(i === lines.length - 1 ? gap : '')).join('')}</div>`;
-    else html += `<div class="meal"><div class="meal-h"><span>Repas · ${c.end > c.ref ? `${hm(c.ref)} → ${hm(c.end)}` : hm(c.ref)}</span><span>${gap}</span></div>${lines.map(l => l.html('')).join('')}</div>`;
+    else html += `<div class="meal"><div class="meal-h"><span><b>${span}</b></span><span>${gap}</span></div>${lines.map(l => l.html('', '')).join('')}</div>`;   // heures une seule fois : début → fin et écart dans l'en-tête
   }
   return html;
 }
