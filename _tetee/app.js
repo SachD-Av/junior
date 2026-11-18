@@ -570,36 +570,32 @@ function historyHTML() {
     const dn = dayName(it.t);
     if (dn !== day) { day = dn; html += `<div class="day">${dn}</div>` }
     if (it.e) {                                       // couche, tirage, sommeil, mesure, vitamine D, tétée en cours
-      const e = it.e, x = describe(e), act = `data-act="edit" data-id="${e.id}"`;
-      if (S.histMode === 'simple') { html += row(act, x.ic, x.t, [x.d, e.note && esc(e.note)].filter(Boolean).join(' · '), hm(e.start), ''); continue }
-      // comme les repas : heure(s) en gras à gauche au-dessus, la carte sans heure
-      const zz = e.type === 'sommeil', span = zz && e.end ? `${hm(e.start)} → ${hm(e.end)}` : zz ? `depuis ${hm(e.start)}` : hm(e.start);
-      const extra = [!zz && x.d, e.note && esc(e.note)].filter(Boolean).join(' · ');
-      html += `<div class="meal evt"><div class="meal-h"><span><b>${span}</b></span><span></span></div>${row(act, x.ic, x.t, extra, '', '')}</div>`;
+      const e = it.e, x = describe(e), zz = e.type === 'sommeil' && e.end;
+      // une carte ; à droite toujours l'heure (début → fin pour un sommeil)
+      html += row(`data-act="edit" data-id="${e.id}"`, x.ic, x.t, [!zz && x.d, e.note && esc(e.note)].filter(Boolean).join(' · '),
+        zz && S.histMode !== 'simple' ? `${hm(e.start)} → ${hm(e.end)}` : hm(e.start), '');
       continue;
     }
-    // repas : en-tête (heure du repas, écart) puis ses lignes, de la plus récente à la plus ancienne
     const c = it.c, gap = it.prev ? `écart ${dur(Math.max(0, Math.floor(c.ref / 6e4) - Math.floor(fromRepas(it.prev) / 6e4)) * 6e4)}` : '';
-    const lines = [];
-    if (c.seins.length) {                             // une ligne : gauche et/ou droit, toutes tétées du repas réunies
-      const g = c.seins.reduce((m, e) => m + sideMs(e, 'G'), 0), d = c.seins.reduce((m, e) => m + sideMs(e, 'D'), 0);
-      const title = [g && `G ${dur(g)}`, d && `D ${dur(d)}`].filter(Boolean).join(' · ') || '0 min';
-      const notes = c.seins.map(e => e.note).filter(Boolean).map(esc).join(' · ');
-      const extra = [`Total ${dur(g + d)}`, c.ref !== c.first.start && `commencée à ${hm(c.first.start)}`, c.seins.length > 1 && `${c.seins.length} tétées`, notes].filter(Boolean).join(' · ');
-      lines.push({ t: c.ref, html: (g2, tm = hm(c.ref)) => row(pick(c.seins), ic('feed'), title, extra, tm, g2) });
-    }
-    if (c.bibs.length) {                              // une ligne : biberon(s) du repas
-      const ml = c.bibs.reduce((m, e) => m + (+e.ml || 0), 0), milks = [...new Set(c.bibs.map(e => e.milk === 'maternel' ? 'Lait maternel' : 'Lait artificiel'))].join(' + ');
-      const notes = c.bibs.map(e => e.note).filter(Boolean).map(esc).join(' · ');
-      const extra = [milks, c.bibs.length > 1 && `${c.bibs.length} biberons`, notes].filter(Boolean).join(' · ');
-      const t = c.seins.length ? c.bibs[0].start : c.ref;
-      lines.push({ t, html: (g2, tm = hm(t)) => row(pick(c.bibs), ic('bottle'), `${ml} ml`, extra, tm, g2) });   // icône neutre dans l'historique
-    }
-    lines.sort((x, y) => y.t - x.t);
-    const span = c.end > c.ref ? `${hm(c.ref)} → ${hm(c.end)}` : hm(c.ref);   // début → fin du repas
-    if (S.histMode === 'simple')                      // réglage « simple » : chaque ligne avec son heure, l'écart sur celle qui ouvre le repas
+    const g = c.seins.reduce((m, e) => m + sideMs(e, 'G'), 0), d = c.seins.reduce((m, e) => m + sideMs(e, 'D'), 0);
+    const seinT = c.seins.length ? [g && `G ${dur(g)}`, d && `D ${dur(d)}`].filter(Boolean).join(' · ') || '0 min' : '';
+    const ml = c.bibs.reduce((m, e) => m + (+e.ml || 0), 0), milks = [...new Set(c.bibs.map(e => e.milk === 'maternel' ? 'lait maternel' : 'lait artificiel'))].join(' + ');
+    const notes = l => l.map(e => e.note).filter(Boolean).map(esc).join(' · ');
+    const seinX = [`Total ${dur(g + d)}`, c.ref !== c.first.start && `commencée à ${hm(c.first.start)}`, c.seins.length > 1 && `${c.seins.length} tétées`, notes(c.seins)];
+    const bibX = [milks && milks[0].toUpperCase() + milks.slice(1), c.bibs.length > 1 && `${c.bibs.length} biberons`, notes(c.bibs)];
+    if (S.histMode === 'simple') {                    // réglage « détail » : tétée et biberon sur deux cartes, chacune avec son heure ; l'écart sur celle qui ouvre le repas
+      const lines = [];
+      if (c.seins.length) lines.push({ t: c.ref, html: g2 => row(pick(c.seins), ic('feed'), seinT, seinX.filter(Boolean).join(' · '), hm(c.ref), g2) });
+      if (c.bibs.length) { const t = c.seins.length ? c.bibs[0].start : c.ref; lines.push({ t, html: g2 => row(pick(c.bibs), ic('bottle'), `${ml} ml`, bibX.filter(Boolean).join(' · '), hm(t), g2) }) }
+      lines.sort((x, y) => y.t - x.t);
       html += `<div class="meal simple">${lines.map((l, i) => l.html(i === lines.length - 1 ? gap : '')).join('')}</div>`;
-    else html += `<div class="meal"><div class="meal-h"><span><b>${span}</b></span><span>${gap}</span></div>${lines.map(l => l.html('', '')).join('')}</div>`;   // heures une seule fois : début → fin et écart dans l'en-tête
+      continue;
+    }
+    // un repas = une carte : ce qu'il y a eu à gauche ; à droite début → fin, et l'écart dessous
+    const nb = t => t.replace(/ (min|ml|h)\b/g, '\u00a0$1').replace(/(G|D|\+) /g, '$1\u00a0');   // jamais « 30 / ml » coupé
+    const title = nb([seinT, ml && (seinT ? `+ ${ml} ml` : `${ml} ml`)].filter(Boolean).join(' '));
+    const extra = [...(c.seins.length ? seinX : []), ...(c.bibs.length ? bibX : [])].filter(Boolean).join(' · ');
+    html += row(pick(c.entries), ic(c.seins.length ? 'feed' : 'bottle'), title, extra, c.end > c.ref ? `${hm(c.ref)} → ${hm(c.end)}` : hm(c.ref), gap);
   }
   return html;
 }
@@ -701,11 +697,11 @@ function settingsHTML() {
         return `<p>Aujourd'hui : jour à partir de ${hm(b.day)}, nuit à partir de ${hm(b.night)}.${S.force && now() < S.force.until ? ` Mode ${S.force.night ? 'nuit' : 'jour'} forcé jusqu'à ${hm(S.force.until)}.` : ''}</p>
         <label>Mode jour jamais avant<select id="morning">${[6, 7, 8, 9, 10].map(h => `<option value="${h}" ${S.morning === h ? 'selected' : ''}>${h} h</option>`).join('')}</select></label>` })() : ''}
       <label class="toggle"><span>Mode une main <small class="sub">(boutons en bas)</small></span><input type="checkbox" id="onehand" ${S.onehand ? 'checked' : ''}></label>
-      <label>Votre prénom (affiché dans l'historique)<input id="name" value="${esc(S.name)}" placeholder="ex. Papa"></label>
+      <label>Votre prénom (enregistré avec chaque entrée)<input id="name" value="${esc(S.name)}" placeholder="ex. Papa"></label>
     </div>
     <h2>Historique</h2>
     <div class="card set">
-      <div class="seg" id="histSeg">${[['entete', 'Avec en-tête de repas'], ['simple', 'Simple']]
+      <div class="seg" id="histSeg">${[['entete', 'Un repas = une carte'], ['simple', 'Tétée et biberon séparés']]
         .map(([v, l]) => `<label><input type="radio" name="histMode" value="${v}" ${S.histMode === v ? 'checked' : ''}>${l}</label>`).join('')}</div>
     </div>
     <h2>Repas</h2>
