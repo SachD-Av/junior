@@ -570,8 +570,12 @@ function historyHTML() {
     const dn = dayName(it.t);
     if (dn !== day) { day = dn; html += `<div class="day">${dn}</div>` }
     if (it.e) {                                       // couche, tirage, sommeil, mesure, vitamine D, tétée en cours
-      const e = it.e, x = describe(e), extra = [x.d, e.note && esc(e.note)].filter(Boolean).join(' · ');
-      html += row(`data-act="edit" data-id="${e.id}"`, x.ic, x.t, extra, hm(e.start), '');
+      const e = it.e, x = describe(e), act = `data-act="edit" data-id="${e.id}"`;
+      if (S.histMode === 'simple') { html += row(act, x.ic, x.t, [x.d, e.note && esc(e.note)].filter(Boolean).join(' · '), hm(e.start), ''); continue }
+      // comme les repas : heure(s) en gras à gauche au-dessus, la carte sans heure
+      const zz = e.type === 'sommeil', span = zz && e.end ? `${hm(e.start)} → ${hm(e.end)}` : zz ? `depuis ${hm(e.start)}` : hm(e.start);
+      const extra = [!zz && x.d, e.note && esc(e.note)].filter(Boolean).join(' · ');
+      html += `<div class="meal evt"><div class="meal-h"><span><b>${span}</b></span><span></span></div>${row(act, x.ic, x.t, extra, '', '')}</div>`;
       continue;
     }
     // repas : en-tête (heure du repas, écart) puis ses lignes, de la plus récente à la plus ancienne
