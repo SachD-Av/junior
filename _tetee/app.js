@@ -579,6 +579,8 @@ function historyHTML() {
     const c = it.c, gap = it.prev ? `écart ${dur(Math.max(0, Math.floor(c.ref / 6e4) - Math.floor(fromRepas(it.prev) / 6e4)) * 6e4)}` : '';
     const g = c.seins.reduce((m, e) => m + sideMs(e, 'G'), 0), d = c.seins.reduce((m, e) => m + sideMs(e, 'D'), 0);
     const seinT = c.seins.length ? [g && `G ${dur(g)}`, d && `D ${dur(d)}`].filter(Boolean).join(' · ') || '0 min' : '';
+    const mn = ms => ms < 36e5 ? String(Math.round(ms / 6e4)) : dur(ms);   // « G 27 · D 20 min » : court, tient sur une ligne
+    const seinC = g && d ? (g < 36e5 && d < 36e5 ? `G ${mn(g)} · D ${mn(d)} min` : seinT) : seinT;
     const ml = c.bibs.reduce((m, e) => m + (+e.ml || 0), 0), milks = [...new Set(c.bibs.map(e => e.milk === 'maternel' ? 'lait maternel' : 'lait artificiel'))].join(' + ');
     const notes = l => l.map(e => e.note).filter(Boolean).map(esc).join(' · ');
     const seinX = [`Total ${dur(g + d)}`, c.ref !== c.first.start && `commencée à ${hm(c.first.start)}`, c.seins.length > 1 && `${c.seins.length} tétées`, notes(c.seins)];
@@ -592,8 +594,9 @@ function historyHTML() {
       continue;
     }
     // un repas = une carte : ce qu'il y a eu à gauche ; à droite début → fin, et l'écart dessous
-    const nb = t => t.replace(/ (min|ml|h)\b/g, '\u00a0$1').replace(/(G|D|\+) /g, '$1\u00a0');   // jamais « 30 / ml » coupé
-    const title = nb([seinT, ml && (seinT ? `+ ${ml} ml` : `${ml} ml`)].filter(Boolean).join(' '));
+    const nb = t => t.replace(/ (min|ml|h)\b/g, '\u00a0$1').replace(/(G|D|\+|biberon) /g, '$1\u00a0');   // jamais « 30 / ml » coupé
+    const L1 = t => `<span class="l1">${t}</span>`;
+    const title = seinT && ml ? `${L1(nb(seinC))}${L1(nb(`+ biberon ${ml} ml`))}` : L1(nb(seinC || `${ml} ml`));   // tétée + biberon : deux lignes propres
     const extra = [...(c.seins.length ? seinX : []), ...(c.bibs.length ? bibX : [])].filter(Boolean).join(' · ');
     html += row(pick(c.entries), ic(c.seins.length ? 'feed' : 'bottle'), title, extra, c.end > c.ref ? `${hm(c.ref)} → ${hm(c.end)}` : hm(c.ref), gap);
   }
