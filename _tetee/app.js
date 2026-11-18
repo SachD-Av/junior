@@ -188,11 +188,11 @@ const lastRepas = () => repasList().at(-1);
 const fromRepas = c => S.gapFrom === 'debut' ? c.ref : c.end;
 const isMeal = e => e.type === 'biberon' || (e.type === 'sein' && e.end);
 
-/* Nouveau record de biberon (plus grand que tous les précédents) : petite animation */
+/* Nouveau record de biberon (plus de 10 % au-dessus du plus gros noté) : petite animation */
 function bibRecord(e) {
   if (e.type !== 'biberon' || events.has(e.id) || !(+e.ml > 0)) return 0;
   const max = list().filter(x => x.type === 'biberon').reduce((m, x) => Math.max(m, +x.ml || 0), 0);
-  return max > 0 && +e.ml > max ? +e.ml : 0;
+  return max > 0 && +e.ml > max * 1.1 ? +e.ml : 0;   // record d'au moins 10 % (sinon trop souvent)
 }
 function celebrate(ml) {
   document.querySelector('.fete')?.remove();
