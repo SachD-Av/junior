@@ -592,7 +592,7 @@ function historyHTML() {
       lines.push({ t, html: g2 => row(pick(c.bibs), ic('bottle'), `${ml} ml`, extra, hm(t), g2) });   // icône neutre dans l'historique
     }
     lines.sort((x, y) => y.t - x.t);
-    if (S.histMode === 'simple')                      // sans en-tête : l'écart sur la ligne qui ouvre le repas
+    if (S.histMode === 'simple' || lines.length === 1)  // sans en-tête (réglage, ou repas d'une seule ligne : l'en-tête répéterait l'heure) : l'écart sur la ligne qui ouvre le repas
       html += `<div class="meal simple">${lines.map((l, i) => l.html(i === lines.length - 1 ? gap : '')).join('')}</div>`;
     else html += `<div class="meal"><div class="meal-h"><span>Repas · ${c.end > c.ref ? `${hm(c.ref)} → ${hm(c.end)}` : hm(c.ref)}</span><span>${gap}</span></div>${lines.map(l => l.html('')).join('')}</div>`;
   }
