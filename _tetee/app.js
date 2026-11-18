@@ -573,7 +573,7 @@ function historyHTML() {
       const e = it.e, x = describe(e), zz = e.type === 'sommeil' && e.end;
       // une carte ; à droite toujours l'heure (début → fin pour un sommeil)
       html += row(`data-act="edit" data-id="${e.id}"`, x.ic, x.t, [!zz && x.d, e.note && esc(e.note)].filter(Boolean).join(' · '),
-        zz && S.histMode !== 'simple' ? `${hm(e.start)} → ${hm(e.end)}` : hm(e.start), '');
+        zz ? `${hm(e.start)} → ${hm(e.end)}` : hm(e.start), '');
       continue;
     }
     const c = it.c, gap = it.prev ? `écart ${dur(Math.max(0, Math.floor(c.ref / 6e4) - Math.floor(fromRepas(it.prev) / 6e4)) * 6e4)}` : '';
@@ -585,20 +585,16 @@ function historyHTML() {
     const notes = l => l.map(e => e.note).filter(Boolean).map(esc).join(' · ');
     const seinX = [`Total ${dur(g + d)}`, c.ref !== c.first.start && `commencée à ${hm(c.first.start)}`, c.seins.length > 1 && `${c.seins.length} tétées`, notes(c.seins)];
     const bibX = [milks && milks[0].toUpperCase() + milks.slice(1), c.bibs.length > 1 && `${c.bibs.length} biberons`, notes(c.bibs)];
-    if (S.histMode === 'simple') {                    // réglage « détail » : tétée et biberon sur deux cartes, chacune avec son heure ; l'écart sur celle qui ouvre le repas
-      const lines = [];
-      if (c.seins.length) lines.push({ t: c.ref, html: g2 => row(pick(c.seins), ic('feed'), seinT, seinX.filter(Boolean).join(' · '), hm(c.ref), g2) });
-      if (c.bibs.length) { const t = c.seins.length ? c.bibs[0].start : c.ref; lines.push({ t, html: g2 => row(pick(c.bibs), ic('bottle'), `${ml} ml`, bibX.filter(Boolean).join(' · '), hm(t), g2) }) }
-      lines.sort((x, y) => y.t - x.t);
-      html += `<div class="meal simple">${lines.map((l, i) => l.html(i === lines.length - 1 ? gap : '')).join('')}</div>`;
-      continue;
-    }
-    // un repas = une carte : ce qu'il y a eu à gauche ; à droite début → fin, et l'écart dessous
-    const nb = t => t.replace(/ (min|ml|h)\b/g, '\u00a0$1').replace(/(G|D|\+|biberon) /g, '$1\u00a0');   // jamais « 30 / ml » coupé
-    const L1 = t => `<span class="l1">${t}</span>`;
-    const title = seinT && ml ? `${L1(nb(seinC))}${L1(nb(`+ biberon ${ml} ml`))}` : L1(nb(seinC || `${ml} ml`));   // tétée + biberon : deux lignes propres
-    const extra = [...(c.seins.length ? seinX : []), ...(c.bibs.length ? bibX : [])].filter(Boolean).join(' · ');
-    html += row(pick(c.entries), ic(c.seins.length ? 'feed' : 'bottle'), title, extra, c.end > c.ref ? `${hm(c.ref)} → ${hm(c.end)}` : hm(c.ref), gap);
+    // un repas = une carte tétée (G/D, début → fin) et/ou une carte biberon (son heure), réunies par le trait à gauche ;
+    // l'écart sur la carte qui ouvre le repas (en bas : liste du plus récent au plus ancien)
+    const nb = t => t.replace(/ (min|ml|h)\b/g, ' $1').replace(/(G|D) /g, '$1 ');   // jamais « 30 / ml » coupé
+    const lines = [];
+    if (c.seins.length) { const fin = Math.max(...c.seins.map(e => e.end));
+      lines.push({ t: c.ref, html: g2 => row(pick(c.seins), ic('feed'), nb(seinC), seinX.filter(Boolean).join(' · '), fin > c.ref ? `${hm(c.ref)} → ${hm(fin)}` : hm(c.ref), g2) }) }
+    if (c.bibs.length) { const a = c.bibs[0].start, b = c.bibs.at(-1).start, t = c.seins.length ? a : c.ref;
+      lines.push({ t, html: g2 => row(pick(c.bibs), ic('bottle'), nb(`${ml} ml`), bibX.filter(Boolean).join(' · '), b > t ? `${hm(t)} → ${hm(b)}` : hm(t), g2) }) }
+    lines.sort((x, y) => y.t - x.t);
+    html += `<div class="meal simple">${lines.map((l, i) => l.html(i === lines.length - 1 ? gap : '')).join('')}</div>`;
   }
   return html;
 }
@@ -701,11 +697,6 @@ function settingsHTML() {
         <label>Mode jour jamais avant<select id="morning">${[6, 7, 8, 9, 10].map(h => `<option value="${h}" ${S.morning === h ? 'selected' : ''}>${h} h</option>`).join('')}</select></label>` })() : ''}
       <label class="toggle"><span>Mode une main <small class="sub">(boutons en bas)</small></span><input type="checkbox" id="onehand" ${S.onehand ? 'checked' : ''}></label>
       <label>Votre prénom (enregistré avec chaque entrée)<input id="name" value="${esc(S.name)}" placeholder="ex. Papa"></label>
-    </div>
-    <h2>Historique</h2>
-    <div class="card set">
-      <div class="seg" id="histSeg">${[['entete', 'Un repas = une carte'], ['simple', 'Tétée et biberon séparés']]
-        .map(([v, l]) => `<label><input type="radio" name="histMode" value="${v}" ${S.histMode === v ? 'checked' : ''}>${l}</label>`).join('')}</div>
     </div>
     <h2>Repas</h2>
     <div class="card set">
