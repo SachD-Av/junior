@@ -188,7 +188,25 @@ const lastRepas = () => repasList().at(-1);
 const fromRepas = c => S.gapFrom === 'debut' ? c.ref : c.end;
 const isMeal = e => e.type === 'biberon' || (e.type === 'sein' && e.end);
 
+/* Nouveau record de biberon (plus grand que tous les précédents) : petite animation */
+function bibRecord(e) {
+  if (e.type !== 'biberon' || events.has(e.id) || !(+e.ml > 0)) return 0;
+  const max = list().filter(x => x.type === 'biberon').reduce((m, x) => Math.max(m, +x.ml || 0), 0);
+  return max > 0 && +e.ml > max ? +e.ml : 0;
+}
+function celebrate(ml) {
+  document.querySelector('.fete')?.remove();
+  const d = document.createElement('div'); d.className = 'fete'; d.setAttribute('aria-live', 'polite');
+  const bits = ['🍼', '✨', '⭐', '💛', '✨', '🍼', '⭐', '✨', '💛', '⭐', '✨', '🍼'];
+  d.innerHTML = bits.map((b, i) => `<i style="--x:${Math.round((i / (bits.length - 1) - .5) * 280 + (Math.random() * 30 - 15))}px;--r:${Math.round(Math.random() * 80 - 40)}deg;--d:${(i % 4) * 70}ms">${b}</i>`).join('')
+    + `<b>Record ! <span>${ml} ml</span><small>le plus gros biberon</small></b>`;
+  document.body.append(d);
+  navigator.vibrate?.([30, 60, 30]);
+  setTimeout(() => d.remove(), 2600);
+}
+
 function put(e) {
+  const rec = bibRecord(e);
   e.u = Math.max(now(), (events.get(e.id)?.u || 0) + 1);   // toujours plus récent que la version connue (horloges décalées)
   if (!e.by && S.name) e.by = S.name;
   e = clean(e); if (!e) return;
@@ -196,6 +214,7 @@ function put(e) {
   saveLocal();
   cloud?.write(e);
   render();
+  if (rec) celebrate(rec);
 }
 
 /* ---------- actions tétée ---------- */
