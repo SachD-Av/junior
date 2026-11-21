@@ -609,6 +609,7 @@ function summarize(evs, from = -Infinity, to = Infinity) {
   return {
     seins: seinRepas.length, bibs: bibs.length, meals: meals.length, tG, tD, tSein: tG + tD,
     ml: bibs.reduce((m, e) => m + (+e.ml || 0), 0),
+    vitd: new Set(evs.filter(e => e.type === 'vitd').map(e => dayStart(e.start))).size,   // jours avec vitamine D donnée
     naps: zz.length, tSleep: zz.reduce((m, e) => m + sleepMs(e, from, to), 0),
     tirs: tirs.length, tirG: tirs.reduce((m, e) => m + (e.mlG || 0), 0), tirD: tirs.reduce((m, e) => m + (e.mlD || 0), 0),
     gap: gaps.length ? gaps.reduce((a, b) => a + b, 0) / gaps.length : 0,
@@ -618,20 +619,25 @@ function summarize(evs, from = -Infinity, to = Infinity) {
   };
 }
 const kpi = (v, l) => `<div class="kpi"><b>${v}</b><span>${l}</span></div>`;
+/* tuiles par 3 : la dernière s'élargit pour ne pas laisser de trou */
+const fill = tiles => { const t = tiles.filter(Boolean), k = t.length % 3;
+  if (k) t[t.length - 1] = t.at(-1).replace('<div class="kpi">', `<div class="kpi" style="grid-column:span ${4 - k}">`);
+  return t.join('') };
 function block(title, s, perDay = 1, compact = false) {
   const r = v => perDay > 1 ? Math.round(v / perDay * 10) / 10 : v;
   const tot = s.tG + s.tD || 1;
   return `${title ? `<h2>${title}</h2>` : ''}<div class="card${compact ? ' compact' : ''}">
-    <div class="kpis">
-      ${kpi(r(s.meals), 'repas' + (perDay > 1 ? ' / jour' : ''))}
-      ${kpi(s.gap ? dur(s.gap) : '—', 'entre 2 repas (moy.)')}
-      ${kpi(r(s.seins), 'tétées' + (perDay > 1 ? ' / jour' : ''))}
-      ${kpi(s.avgSein ? dur(s.avgSein) : '—', 'durée moy. tétée')}
-      ${kpi(dur(s.tSein / perDay), 'au sein' + (perDay > 1 ? ' / jour' : ''))}
-      ${kpi(Math.round(s.ml / perDay) + ' ml', `biberons (${r(s.bibs)})` + (perDay > 1 ? ' / jour' : ''))}
-      ${s.tirs ? kpi(Math.round((s.tirG + s.tirD) / perDay) + ' ml', `tirés (${r(s.tirs)})` + (perDay > 1 ? ' / jour' : '') + ` · G ${Math.round(s.tirG / perDay)} / D ${Math.round(s.tirD / perDay)}`) : ''}
-      ${kpi(r(s.couches), 'couches' + (perDay > 1 ? ' / jour' : ''))}
-      ${s.naps ? kpi(dur(s.tSleep / perDay), `sommeil (${r(s.naps)} dodo${s.naps > 1 ? 's' : ''})` + (perDay > 1 ? ' / jour' : '')) : ''}
+    <div class="kpis">${fill([
+      kpi(r(s.meals), 'repas' + (perDay > 1 ? ' / jour' : '')),
+      kpi(s.gap ? dur(s.gap) : '—', 'entre 2 repas (moy.)'),
+      kpi(r(s.seins), 'tétées' + (perDay > 1 ? ' / jour' : '')),
+      kpi(s.avgSein ? dur(s.avgSein) : '—', 'durée moy. tétée'),
+      kpi(dur(s.tSein / perDay), 'au sein' + (perDay > 1 ? ' / jour' : '')),
+      kpi(Math.round(s.ml / perDay) + ' ml', `biberons (${r(s.bibs)})` + (perDay > 1 ? ' / jour' : '')),
+      s.tirs && kpi(Math.round((s.tirG + s.tirD) / perDay) + ' ml', `tirés (${r(s.tirs)})` + (perDay > 1 ? ' / jour' : '') + ` · G ${Math.round(s.tirG / perDay)} / D ${Math.round(s.tirD / perDay)}`),
+      kpi(r(s.couches), 'couches' + (perDay > 1 ? ' / jour' : '')),
+      s.naps && kpi(dur(s.tSleep / perDay), `sommeil (${r(s.naps)} dodo${s.naps > 1 ? 's' : ''})` + (perDay > 1 ? ' / jour' : '')),
+      kpi(perDay > 1 ? `${s.vitd}/${perDay}` : s.vitd ? 'donnée' : 'non', perDay > 1 ? 'jours vitamine D' : 'vitamine D')])}
       <div class="kpi"><span>Détail des couches</span><div class="kinds">${Object.entries(COUCHE).map(([k, c]) => `<span>${c.l} <b>${r(s.byKind[k])}</b></span>`).join('')}</div></div>
     </div>
     ${s.tSein ? `<div class="split"><i style="width:${s.tG / tot * 100}%;background:var(--g)"></i><i style="flex:1;background:var(--d)"></i></div>
@@ -654,8 +660,7 @@ function statsHTML() {
     : block(null, week, 7, true) + `<div class="card bars">${days.map(d => `<div class="b">
         <span>${new Date(d.a).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' })}</span>
         <div class="track"><div class="fill" style="width:${d.s.meals / max * 100}%"></div>
-        <span class="val">${d.s.meals} repas · ${dur(d.s.tSein)}${d.s.ml ? ' · bib. ' + d.s.ml + ' ml' : ''}${d.s.tSleep ? ' · dodo ' + dur(d.s.tSleep) : ''}</span></div>
-        ${d.s.tirs ? `<small class="tir">tiré ${d.s.tirG + d.s.tirD} ml · G ${d.s.tirG} · D ${d.s.tirD}</small>` : ''}</div>`).join('')}</div>`;
+        <span class="val">${d.s.meals} repas · ${dur(d.s.tSein)}${d.s.ml ? ' · bib. ' + d.s.ml : ''}${d.s.tirs ? ' · tiré ' + (d.s.tirG + d.s.tirD) : ''}${d.s.tSleep ? ' · dodo ' + dur(d.s.tSleep) : ''}</span></div></div>`).join('')}<p class="sub" style="margin:6px 0 0;font-size:11px">bib. = biberons, tiré = lait tiré, en ml</p></div>`;
   return head + `<div class="stats-pane">${pane}</div>`;
 }
 
