@@ -650,7 +650,7 @@ function weekHTML(w, days) {
   const tot = w.tG + w.tD || 1, split = w.tSein ? `<div class="split"><i style="width:${w.tG / tot * 100}%;background:var(--g)"></i><i style="flex:1;background:var(--d)"></i></div>
       <div class="sub" style="display:flex;justify-content:space-between"><span>Gauche ${dur(w.tG)}${w.tirs ? `<small class="gd-tir">tiré ${w.tirG} ml</small>` : ''}</span><span style="text-align:right">Droit ${dur(w.tD)}${w.tirs ? `<small class="gd-tir">tiré ${w.tirD} ml</small>` : ''}</span></div>` : '';
   return `<div class="card compact"><div class="kpis">${tiles.join('')}</div>${split}</div>
-    <div class="card"><table class="wk"><thead><tr><th></th>${['Rep.', 'Sein', 'Bib.', 'Tiré'].map(h => `<th><span>${h}</span></th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div>`;
+    <div class="card"><table class="wk"><thead><tr><th></th>${['Repas', 'Sein', 'Biberon', 'Tiré'].map(h => `<th><span>${h}</span></th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 /* Tableau 7 jours : chaque colonne prend juste sa place, puis l'espace libre est réparti à parts égales
    de chaque côté de chaque trait vertical (même écart texte / trait partout). */
