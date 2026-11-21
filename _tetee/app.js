@@ -647,7 +647,8 @@ function weekHTML(w, days) {
     kpi(ml(w.ml / 7), 'biberon / jour'), kpi(ml((w.tirG + w.tirD) / 7), 'tiré / jour'), kpi(fmtN(Math.round(w.couches / 7 * 10) / 10), 'couches / jour')];
   const rows = days.map(d => `<tr><th>${new Date(d.a).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' })}</th>
     ${[d.s.meals || '—', d.s.tSein ? dur(d.s.tSein) : '—', ml(d.s.ml), ml(d.s.tirG + d.s.tirD)].map(v => `<td${v === '—' ? ' class="none"' : ''}>${v}</td>`).join('')}</tr>`).join('');
-  const tot = w.tG + w.tD || 1, split = w.tSein ? `<div class="split"><i style="width:${w.tG / tot * 100}%;background:var(--g)"></i><i style="flex:1;background:var(--d)"></i></div>
+  const tot = w.tG + w.tD || 1, pg = Math.round(w.tG / tot * 100), pc = p => p >= 12 ? `${p} %` : '';   // % écrit dans la barre (sauf si la part est trop fine)
+  const split = w.tSein ? `<div class="split pct"><i style="width:${w.tG / tot * 100}%;background:var(--g)">${pc(pg)}</i><i style="flex:1;background:var(--d)">${pc(100 - pg)}</i></div>
       <div class="sub" style="display:flex;justify-content:space-between"><span>Gauche ${dur(w.tG)}${w.tirs ? `<small class="gd-tir">tiré ${w.tirG} ml</small>` : ''}</span><span style="text-align:right">Droit ${dur(w.tD)}${w.tirs ? `<small class="gd-tir">tiré ${w.tirD} ml</small>` : ''}</span></div>` : '';
   return `<div class="card compact"><div class="kpis">${tiles.join('')}</div>${split}</div>
     <div class="card"><table class="wk"><thead><tr><th></th>${['Repas', 'Sein', 'Biberon', 'Tiré'].map(h => `<th><span>${h}</span></th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div>`;
