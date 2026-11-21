@@ -620,10 +620,12 @@ function summarize(evs, from = -Infinity, to = Infinity) {
 }
 /* Barre gauche / droite (temps au sein), % écrit dedans, temps et lait tiré de chaque côté dessous — même partout */
 function splitGD(s) {
-  if (!s.tSein) return '';
-  const tot = s.tG + s.tD || 1, pg = Math.round(s.tG / tot * 100), pc = p => p >= 12 ? `${p} %` : '';   // % masqué si la part est trop fine
-  return `<div class="sub" style="margin-top:10px;font-size:12px">Temps au sein : gauche / droite</div><div class="split pct" style="margin-top:4px"><i style="width:${s.tG / tot * 100}%;background:var(--g)">${pc(pg)}</i><i style="flex:1;background:var(--d)">${pc(100 - pg)}</i></div>
-      <div class="sub" style="display:flex;justify-content:space-between"><span>Gauche ${dur(s.tG)}${s.tirs ? `<small class="gd-tir">tiré ${s.tirG} ml</small>` : ''}</span><span style="text-align:right">Droit ${dur(s.tD)}${s.tirs ? `<small class="gd-tir">tiré ${s.tirD} ml</small>` : ''}</span></div>`;
+  // une barre : titre, % dedans (masqué si la part est trop fine), valeurs dessous
+  const bar = (titre, g, d, fmt) => { const tot = g + d || 1, pg = Math.round(g / tot * 100), pc = p => p >= 12 ? `${p} %` : '';
+    return `<div class="sub" style="margin-top:10px;font-size:12px">${titre}</div>
+      <div class="split pct" style="margin-top:4px"><i style="width:${g / tot * 100}%;background:var(--g)">${pc(pg)}</i><i style="flex:1;background:var(--d)">${pc(100 - pg)}</i></div>
+      <div class="sub" style="display:flex;justify-content:space-between"><span>Gauche ${fmt(g)}</span><span>Droit ${fmt(d)}</span></div>` };
+  return (s.tSein ? bar('Temps au sein', s.tG, s.tD, dur) : '') + (s.tirs && s.tirG + s.tirD ? bar('Lait tiré', s.tirG, s.tirD, v => `${v} ml`) : '');
 }
 const kpi = (v, l) => `<div class="kpi"><b>${v}</b><span>${l}</span></div>`;
 function block(title, s, perDay = 1, compact = false) {
