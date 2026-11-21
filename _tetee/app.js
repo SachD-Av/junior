@@ -620,11 +620,13 @@ function summarize(evs, from = -Infinity, to = Infinity) {
 }
 /* Barre gauche / droite (temps au sein), % écrit dedans, temps et lait tiré de chaque côté dessous — même partout */
 function splitGD(s) {
-  // une barre : titre, % dedans (masqué si la part est trop fine), valeurs dessous
-  const bar = (titre, g, d, fmt) => { const tot = g + d || 1, pg = Math.round(g / tot * 100), pc = p => p >= 12 ? `${p} %` : '';
+  // une barre fine : titre, et dans chaque part « G · 40 % · 10h57 » ; part trop fine pour l'écrire : écrit dessous
+  const bar = (titre, g, d, fmt) => { const tot = g + d || 1, pg = Math.round(g / tot * 100);
+    const parts = [['G', g, pg, 'var(--g)'], ['D', d, 100 - pg, 'var(--d)']], fits = p => p >= 38;   // en dessous, le texte ne tient pas dans la part
+    const out = parts.filter(([, , p]) => !fits(p)).map(([l, v, p]) => `${l} · ${p} % · ${fmt(v)}`);
     return `<div class="sub" style="margin-top:10px;font-size:12px">${titre}</div>
-      <div class="split pct" style="margin-top:4px"><i style="width:${g / tot * 100}%;background:var(--g)">${pc(pg)}</i><i style="flex:1;background:var(--d)">${pc(100 - pg)}</i></div>
-      <div class="sub" style="display:flex;justify-content:space-between"><span>Gauche ${fmt(g)}</span><span>Droit ${fmt(d)}</span></div>` };
+      <div class="split pct" style="margin-top:4px">${parts.map(([l, v, p, c], j) => `<i style="${j ? 'flex:1' : `width:${g / tot * 100}%`};background:${c}">${fits(p) ? `${l} · ${p} % · ${fmt(v)}` : ''}</i>`).join('')}</div>
+      ${out.length ? `<div class="sub" style="font-size:12px">${out.join('   ')}</div>` : ''}` };
   return (s.tSein ? bar('Temps au sein', s.tG, s.tD, dur) : '') + (s.tirs && s.tirG + s.tirD ? bar('Lait tiré', s.tirG, s.tirD, v => `${v} ml`) : '');
 }
 const kpi = (v, l) => `<div class="kpi"><b>${v}</b><span>${l}</span></div>`;
