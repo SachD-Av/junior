@@ -656,11 +656,13 @@ function weekHTML(w, days) {
    de chaque côté de chaque trait vertical (même écart texte / trait partout). */
 function fitWeek() {
   const t = document.querySelector('.wk'); if (!t) return;
-  t.style.setProperty('--p', '6px'); t.style.width = 'auto';
-  const free = t.parentElement.clientWidth - parseFloat(getComputedStyle(t.parentElement).paddingLeft) * 2 - t.offsetWidth;
+  t.style.setProperty('--p', '6px'); t.style.width = 'auto'; t.style.fontSize = '';
+  const room = () => t.parentElement.clientWidth - parseFloat(getComputedStyle(t.parentElement).paddingLeft) * 2 - t.offsetWidth;
+  let free = room();
+  for (let f = parseFloat(getComputedStyle(t).fontSize); free < 0 && f > 9; free = room()) t.style.fontSize = `${f -= 0.5}px`;   // gros chiffres (plus de 1 L…) : on réduit juste ce qu'il faut
   const cols = t.rows[0]?.cells.length || 1;
   t.style.width = '';
-  t.style.setProperty('--p', `${Math.max(2, 6 + free / (2 * cols))}px`);
+  t.style.setProperty('--p', `${Math.max(2, 6 + Math.max(0, free) / (2 * cols))}px`);
 }
 addEventListener('resize', fitWeek);
 function statsHTML() {
