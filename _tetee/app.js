@@ -15,7 +15,7 @@ const now = () => Date.now();
 const pad = n => String(n).padStart(2, '0');
 const clock = ms => { const s = Math.max(0, Math.floor(ms / 1000)), h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60;
   return h ? `${h}:${pad(m)}:${pad(s % 60)}` : `${m}:${pad(s % 60)}` };
-const dur = ms => { const m = Math.round(ms / 60000); return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${pad(m % 60)}` };
+const dur = ms => { const m = Math.round(ms / 60000); return m < 60 ? `${m} min` : `${Math.floor(m / 60)}h${pad(m % 60)}` };   // « 3h40 » serré, partout
 const hm = t => new Date(t).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 const dayStart = t => { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime() };
 const dayName = t => { const d0 = dayStart(now()), d = dayStart(t);
@@ -646,9 +646,9 @@ function weekHTML(w, days) {
     kpi(fmtN(Math.round(w.meals / 7 * 10) / 10), 'repas / jour'), kpi(w.gap ? dur(w.gap) : '—', 'entre 2 repas'), kpi(dur(w.tSein / 7), 'au sein / jour'),
     kpi(ml(w.ml / 7), 'biberon / jour'), kpi(ml((w.tirG + w.tirD) / 7), 'tiré / jour'), kpi(fmtN(Math.round(w.couches / 7 * 10) / 10), 'couches / jour')];
   const rows = days.map(d => `<tr><th>${new Date(d.a).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' })}</th>
-    ${[d.s.meals || '—', d.s.tSein ? dur(d.s.tSein).replace(' h ', 'h') : '—', ml(d.s.ml), d.s.tirs ? `${d.s.tirG} / ${d.s.tirD} ml` : '—'].map(v => `<td${v === '—' ? ' class="none"' : ''}>${v}</td>`).join('')}</tr>`).join('');
+    ${[d.s.meals || '—', d.s.tSein ? dur(d.s.tSein) : '—', ml(d.s.ml), d.s.tirs ? `${d.s.tirG} / ${d.s.tirD} ml` : '—'].map(v => `<td${v === '—' ? ' class="none"' : ''}>${v}</td>`).join('')}</tr>`).join('');
   const tot = w.tG + w.tD || 1, split = w.tSein ? `<div class="split"><i style="width:${w.tG / tot * 100}%;background:var(--g)"></i><i style="flex:1;background:var(--d)"></i></div>
-      <div class="sub" style="display:flex;justify-content:space-between"><span>Gauche ${dur(w.tG)}</span><span>Droit ${dur(w.tD)}</span></div>` : '';
+      <div class="sub" style="display:flex;justify-content:space-between"><span>Gauche ${dur(w.tG)}${w.tirs ? `<small class="gd-tir">tiré ${w.tirG} ml</small>` : ''}</span><span style="text-align:right">Droit ${dur(w.tD)}${w.tirs ? `<small class="gd-tir">tiré ${w.tirD} ml</small>` : ''}</span></div>` : '';
   return `<div class="card compact"><div class="kpis">${tiles.join('')}</div>${split}</div>
     <div class="card"><table class="wk"><thead><tr><th></th>${['Rep.', 'Sein', 'Bib.', 'Tiré G / D'].map(h => `<th><span>${h}</span></th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div>`;
 }
@@ -732,7 +732,7 @@ function settingsHTML() {
     <div class="card set">
       <label class="toggle"><span>Rappel de la prochaine tétée</span><input type="checkbox" id="remind" ${S.remind ? 'checked' : ''}></label>
       ${S.remind ? `<label>Intervalle (depuis ${S.gapFrom === 'debut' ? 'le début' : 'la fin'} du dernier repas)<select id="remindEvery">${[90, 120, 150, 180, 210, 240, 300].map(m =>
-        `<option value="${m}" ${S.remindEvery === m ? 'selected' : ''}>${Math.floor(m / 60)} h ${m % 60 ? m % 60 : ''}</option>`).join('')}</select></label>
+        `<option value="${m}" ${S.remindEvery === m ? 'selected' : ''}>${Math.floor(m / 60)}h${m % 60 ? pad(m % 60) : ''}</option>`).join('')}</select></label>
       <label class="toggle"><span>Aussi la nuit <small class="sub">(22 h – 7 h)</small></span><input type="checkbox" id="remindNight" ${S.remindNight ? 'checked' : ''}></label>
       <p>Réglages partagés avec l'autre téléphone. Sans ntfy, la notification n'arrive que si l'appli est ouverte ou en arrière-plan récent.
         ${'Notification' in window && Notification.permission !== 'granted' && !S.ntfy ? '<br><b>Les notifications ne sont pas autorisées</b> : touchez à nouveau l\'interrupteur pour les autoriser.' : ''}</p>
