@@ -423,6 +423,7 @@ function render(force) {
   const m = $('#main');
   m.className = 'v-' + view;
   m.innerHTML = view === 'home' ? homeHTML() : view === 'history' ? historyHTML() : view === 'stats' ? statsHTML() : settingsHTML();
+  fitWeek();
   tick();
   wake(!!active());
 }
@@ -649,8 +650,19 @@ function weekHTML(w, days) {
   const tot = w.tG + w.tD || 1, split = w.tSein ? `<div class="split"><i style="width:${w.tG / tot * 100}%;background:var(--g)"></i><i style="flex:1;background:var(--d)"></i></div>
       <div class="sub" style="display:flex;justify-content:space-between"><span>Gauche ${dur(w.tG)}</span><span>Droit ${dur(w.tD)}</span></div>` : '';
   return `<div class="card compact"><div class="kpis">${tiles.join('')}</div>${split}</div>
-    <div class="card"><table class="wk"><thead><tr><th></th><th>Repas</th><th>Sein</th><th>Bib.</th><th>Tiré G / D</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+    <div class="card"><table class="wk"><thead><tr><th></th>${['Repas', 'Sein', 'Bib.', 'Tiré G / D'].map(h => `<th><span>${h}</span></th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div>`;
 }
+/* Tableau 7 jours : chaque colonne prend juste sa place, puis l'espace libre est réparti à parts égales
+   de chaque côté de chaque trait vertical (même écart texte / trait partout). */
+function fitWeek() {
+  const t = document.querySelector('.wk'); if (!t) return;
+  t.style.setProperty('--p', '6px'); t.style.width = 'auto';
+  const free = t.parentElement.clientWidth - parseFloat(getComputedStyle(t.parentElement).paddingLeft) * 2 - t.offsetWidth;
+  const cols = t.rows[0]?.cells.length || 1;
+  t.style.width = '';
+  t.style.setProperty('--p', `${Math.max(2, 6 + free / (2 * cols))}px`);
+}
+addEventListener('resize', fitWeek);
 function statsHTML() {
   const L = list(), t = now(), t0 = dayStart(t);
   const days = [];
