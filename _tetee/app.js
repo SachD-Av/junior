@@ -654,7 +654,8 @@ function statsHTML() {
     : block(null, week, 7, true) + `<div class="card bars">${days.map(d => `<div class="b">
         <span>${new Date(d.a).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' })}</span>
         <div class="track"><div class="fill" style="width:${d.s.meals / max * 100}%"></div>
-        <span class="val">${d.s.meals} repas · ${dur(d.s.tSein)}${d.s.ml ? ' · ' + d.s.ml + ' ml' : ''}${d.s.tSleep ? ' · dodo ' + dur(d.s.tSleep) : ''}</span></div></div>`).join('')}</div>`;
+        <span class="val">${d.s.meals} repas · ${dur(d.s.tSein)}${d.s.ml ? ' · bib. ' + d.s.ml + ' ml' : ''}${d.s.tSleep ? ' · dodo ' + dur(d.s.tSleep) : ''}</span></div>
+        ${d.s.tirs ? `<small class="tir">tiré ${d.s.tirG + d.s.tirD} ml · G ${d.s.tirG} · D ${d.s.tirD}</small>` : ''}</div>`).join('')}</div>`;
   return head + `<div class="stats-pane">${pane}</div>`;
 }
 
