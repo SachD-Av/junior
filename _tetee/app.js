@@ -647,7 +647,7 @@ function weekHTML(w, days) {
   const rows = days.map(d => `<tr><th>${new Date(d.a).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' })}</th>
     <td>${d.s.meals || '—'}</td><td>${d.s.tSein ? dur(d.s.tSein) : '—'}</td><td>${ml(d.s.ml)}</td><td>${d.s.tirs ? `${d.s.tirG} / ${d.s.tirD} ml` : '—'}</td></tr>`).join('');
   const tot = w.tG + w.tD || 1, split = w.tSein ? `<div class="split"><i style="width:${w.tG / tot * 100}%;background:var(--g)"></i><i style="flex:1;background:var(--d)"></i></div>
-      <div class="sub" style="display:flex;justify-content:space-between"><span>Gauche ${dur(w.tG)} (${Math.round(w.tG / tot * 100)} %)</span><span>Droit ${dur(w.tD)} (${100 - Math.round(w.tG / tot * 100)} %)</span></div>` : '';
+      <div class="sub" style="display:flex;justify-content:space-between"><span>Gauche ${dur(w.tG)}</span><span>Droit ${dur(w.tD)}</span></div>` : '';
   return `<div class="card compact"><div class="kpis">${tiles.join('')}</div>${split}</div>
     <div class="card"><table class="wk"><thead><tr><th></th><th>repas</th><th>sein</th><th>bib.</th><th>tiré G / D</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
