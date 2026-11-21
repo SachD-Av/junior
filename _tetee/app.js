@@ -638,24 +638,30 @@ function block(title, s, perDay = 1, compact = false) {
       <div class="sub" style="display:flex;justify-content:space-between"><span>G ${dur(s.tG)} (${Math.round(s.tG / tot * 100)}%)</span><span>D ${dur(s.tD)}</span></div>` : ''}
   </div>`;
 }
+/* 7 jours : 6 tuiles (moyennes par jour) et un petit tableau jour par jour, mêmes colonnes */
+function weekHTML(w, days) {
+  const ml = v => v ? `${Math.round(v)} ml` : '—';
+  const tiles = [
+    kpi(fmtN(Math.round(w.meals / 7 * 10) / 10), 'repas / jour'), kpi(w.gap ? dur(w.gap) : '—', 'entre 2 repas'), kpi(dur(w.tSein / 7), 'au sein / jour'),
+    kpi(ml(w.ml / 7), 'biberon / jour'), kpi(ml((w.tirG + w.tirD) / 7), 'tiré / jour'), kpi(fmtN(Math.round(w.couches / 7 * 10) / 10), 'couches / jour')];
+  const rows = days.map(d => `<tr><th>${new Date(d.a).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' })}</th>
+    <td>${d.s.meals || '—'}</td><td>${d.s.tSein ? dur(d.s.tSein) : '—'}</td><td>${ml(d.s.ml)}</td><td>${ml(d.s.tirG + d.s.tirD)}</td></tr>`).join('');
+  return `<div class="card compact"><div class="kpis">${tiles.join('')}</div></div>
+    <div class="card"><table class="wk"><thead><tr><th></th><th>repas</th><th>sein</th><th>bib.</th><th>tiré</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
 function statsHTML() {
   const L = list(), t = now(), t0 = dayStart(t);
   const days = [];
   const dayAt = i => { const d = new Date(t0); d.setDate(d.getDate() - i); return d.getTime() };   // jours réels, même au changement d'heure
   for (let i = 0; i < 7; i++) { const a = dayAt(i), b = dayAt(i - 1); days.push({ a, s: summarize(L.filter(e => e.start >= a && e.start < b), a, b) }) }
   const week = summarize(L.filter(e => e.start >= dayAt(6)), dayAt(6), t);
-  const max = Math.max(1, ...days.map(d => d.s.meals));
   const tabs = [['today', "Aujourd'hui"], ['24h', '24 h'], ['week', '7 jours'], ['growth', 'Croissance']];
   const tab = tabs.some(x => x[0] === S.statTab) ? S.statTab : 'today';
   const head = `<div class="tabs">${tabs.map(([k, l]) => `<button class="${k === tab ? 'on' : ''}" data-act="stattab" data-tab="${k}">${l}</button>`).join('')}</div>`;
   const pane = tab === 'today' ? block(null, days[0].s)
     : tab === '24h' ? block(null, summarize(L.filter(e => e.start >= t - 864e5), t - 864e5, t))
     : tab === 'growth' ? growthHTML(L, true)
-    : block(null, week, 7, true) + `<div class="card bars">${days.map(d => `<div class="b">
-        <span>${new Date(d.a).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' })}</span>
-        <div class="track"><div class="fill" style="width:${d.s.meals / max * 100}%"></div>
-        <span class="val">${d.s.meals} repas · ${dur(d.s.tSein)}${d.s.ml ? ' · bib. ' + d.s.ml + ' ml' : ''}${d.s.tSleep ? ' · dodo ' + dur(d.s.tSleep) : ''}</span></div>
-        ${d.s.tirs ? `<small class="tir">tiré ${d.s.tirG + d.s.tirD} ml · G ${d.s.tirG} · D ${d.s.tirD}</small>` : ''}</div>`).join('')}</div>`;
+    : weekHTML(week, days);
   return head + `<div class="stats-pane">${pane}</div>`;
 }
 
