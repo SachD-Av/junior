@@ -618,10 +618,16 @@ function summarize(evs, from = -Infinity, to = Infinity) {
     byKind: Object.fromEntries(Object.keys(COUCHE).map(k => [k, couches.filter(e => coucheKind(e) === k).length]))
   };
 }
+/* Barre gauche / droite (temps au sein), % écrit dedans, temps et lait tiré de chaque côté dessous — même partout */
+function splitGD(s) {
+  if (!s.tSein) return '';
+  const tot = s.tG + s.tD || 1, pg = Math.round(s.tG / tot * 100), pc = p => p >= 12 ? `${p} %` : '';   // % masqué si la part est trop fine
+  return `<div class="split pct"><i style="width:${s.tG / tot * 100}%;background:var(--g)">${pc(pg)}</i><i style="flex:1;background:var(--d)">${pc(100 - pg)}</i></div>
+      <div class="sub" style="display:flex;justify-content:space-between"><span>Gauche ${dur(s.tG)}${s.tirs ? `<small class="gd-tir">tiré ${s.tirG} ml</small>` : ''}</span><span style="text-align:right">Droit ${dur(s.tD)}${s.tirs ? `<small class="gd-tir">tiré ${s.tirD} ml</small>` : ''}</span></div>`;
+}
 const kpi = (v, l) => `<div class="kpi"><b>${v}</b><span>${l}</span></div>`;
 function block(title, s, perDay = 1, compact = false) {
   const r = v => perDay > 1 ? Math.round(v / perDay * 10) / 10 : v;
-  const tot = s.tG + s.tD || 1;
   return `${title ? `<h2>${title}</h2>` : ''}<div class="card${compact ? ' compact' : ''}">
     <div class="kpis">
       ${kpi(r(s.meals), 'repas' + (perDay > 1 ? ' / jour' : ''))}
@@ -635,8 +641,7 @@ function block(title, s, perDay = 1, compact = false) {
       ${s.naps ? kpi(dur(s.tSleep / perDay), `sommeil (${r(s.naps)} dodo${s.naps > 1 ? 's' : ''})` + (perDay > 1 ? ' / jour' : '')) : ''}
       <div class="kpi"><span>Détail des couches</span><div class="kinds">${Object.entries(COUCHE).map(([k, c]) => `<span>${c.l} <b>${r(s.byKind[k])}</b></span>`).join('')}</div></div>
     </div>
-    ${s.tSein ? `<div class="split"><i style="width:${s.tG / tot * 100}%;background:var(--g)"></i><i style="flex:1;background:var(--d)"></i></div>
-      <div class="sub" style="display:flex;justify-content:space-between"><span>G ${dur(s.tG)} (${Math.round(s.tG / tot * 100)}%)</span><span>D ${dur(s.tD)}</span></div>` : ''}
+    ${splitGD(s)}
   </div>`;
 }
 /* 7 jours : 6 tuiles (moyennes par jour) et un petit tableau jour par jour, mêmes colonnes */
@@ -647,9 +652,7 @@ function weekHTML(w, days) {
     kpi(ml(w.ml / 7), 'biberon / jour'), kpi(ml((w.tirG + w.tirD) / 7), 'tiré / jour'), kpi(fmtN(Math.round(w.couches / 7 * 10) / 10), 'couches / jour')];
   const rows = days.map(d => `<tr><th>${new Date(d.a).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' })}</th>
     ${[d.s.meals || '—', d.s.tSein ? dur(d.s.tSein) : '—', ml(d.s.ml), ml(d.s.tirG + d.s.tirD)].map(v => `<td${v === '—' ? ' class="none"' : ''}>${v}</td>`).join('')}</tr>`).join('');
-  const tot = w.tG + w.tD || 1, pg = Math.round(w.tG / tot * 100), pc = p => p >= 12 ? `${p} %` : '';   // % écrit dans la barre (sauf si la part est trop fine)
-  const split = w.tSein ? `<div class="split pct"><i style="width:${w.tG / tot * 100}%;background:var(--g)">${pc(pg)}</i><i style="flex:1;background:var(--d)">${pc(100 - pg)}</i></div>
-      <div class="sub" style="display:flex;justify-content:space-between"><span>Gauche ${dur(w.tG)}${w.tirs ? `<small class="gd-tir">tiré ${w.tirG} ml</small>` : ''}</span><span style="text-align:right">Droit ${dur(w.tD)}${w.tirs ? `<small class="gd-tir">tiré ${w.tirD} ml</small>` : ''}</span></div>` : '';
+  const split = splitGD(w);
   return `<div class="card compact"><div class="kpis">${tiles.join('')}</div>${split}</div>
     <div class="card"><table class="wk"><thead><tr><th></th>${['Repas', 'Sein', 'Biberon', 'Tiré'].map(h => `<th><span>${h}</span></th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div>`;
 }
