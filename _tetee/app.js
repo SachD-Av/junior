@@ -645,11 +645,11 @@ function weekHTML(w, days) {
     kpi(fmtN(Math.round(w.meals / 7 * 10) / 10), 'repas / jour'), kpi(w.gap ? dur(w.gap) : '—', 'entre 2 repas'), kpi(dur(w.tSein / 7), 'au sein / jour'),
     kpi(ml(w.ml / 7), 'biberon / jour'), kpi(ml((w.tirG + w.tirD) / 7), 'tiré / jour'), kpi(fmtN(Math.round(w.couches / 7 * 10) / 10), 'couches / jour')];
   const rows = days.map(d => `<tr><th>${new Date(d.a).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' })}</th>
-    <td>${d.s.meals || '—'}</td><td>${d.s.tSein ? dur(d.s.tSein) : '—'}</td><td>${ml(d.s.ml)}</td><td>${d.s.tirs ? `${d.s.tirG} / ${d.s.tirD} ml` : '—'}</td></tr>`).join('');
+    ${[d.s.meals || '—', d.s.tSein ? dur(d.s.tSein) : '—', ml(d.s.ml), d.s.tirs ? `${d.s.tirG} / ${d.s.tirD} ml` : '—'].map(v => `<td${v === '—' ? ' class="none"' : ''}>${v}</td>`).join('')}</tr>`).join('');
   const tot = w.tG + w.tD || 1, split = w.tSein ? `<div class="split"><i style="width:${w.tG / tot * 100}%;background:var(--g)"></i><i style="flex:1;background:var(--d)"></i></div>
       <div class="sub" style="display:flex;justify-content:space-between"><span>Gauche ${dur(w.tG)}</span><span>Droit ${dur(w.tD)}</span></div>` : '';
   return `<div class="card compact"><div class="kpis">${tiles.join('')}</div>${split}</div>
-    <div class="card"><table class="wk"><thead><tr><th></th><th>repas</th><th>sein</th><th>bib.</th><th>tiré G / D</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+    <div class="card"><table class="wk"><thead><tr><th></th><th>Repas</th><th>Sein</th><th>Bib.</th><th>Tiré G / D</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 function statsHTML() {
   const L = list(), t = now(), t0 = dayStart(t);
