@@ -622,7 +622,7 @@ function summarize(evs, from = -Infinity, to = Infinity) {
 function splitGD(s) {
   if (!s.tSein) return '';
   const tot = s.tG + s.tD || 1, pg = Math.round(s.tG / tot * 100), pc = p => p >= 12 ? `${p} %` : '';   // % masqué si la part est trop fine
-  return `<div class="split pct"><i style="width:${s.tG / tot * 100}%;background:var(--g)">${pc(pg)}</i><i style="flex:1;background:var(--d)">${pc(100 - pg)}</i></div>
+  return `<div class="sub" style="margin-top:10px;font-size:12px">Temps au sein : gauche / droite</div><div class="split pct" style="margin-top:4px"><i style="width:${s.tG / tot * 100}%;background:var(--g)">${pc(pg)}</i><i style="flex:1;background:var(--d)">${pc(100 - pg)}</i></div>
       <div class="sub" style="display:flex;justify-content:space-between"><span>Gauche ${dur(s.tG)}${s.tirs ? `<small class="gd-tir">tiré ${s.tirG} ml</small>` : ''}</span><span style="text-align:right">Droit ${dur(s.tD)}${s.tirs ? `<small class="gd-tir">tiré ${s.tirD} ml</small>` : ''}</span></div>`;
 }
 const kpi = (v, l) => `<div class="kpi"><b>${v}</b><span>${l}</span></div>`;
