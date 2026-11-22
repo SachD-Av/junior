@@ -460,8 +460,10 @@ function homeHTML() {
   const t0 = dayStart(now()), today = summarize(L.filter(x => x.start >= t0));
   let sub = '—';
   if (rp) { const sn = rp.seins.at(-1), ml = rp.bibs.reduce((m, e) => m + (+e.ml || 0), 0);
-    sub = [rp.end > meal.start ? `${hm(meal.start)} → ${hm(rp.end)}` : hm(meal.start), refNote(meal), rp.seins.length && dur(rp.seins.reduce((m, e) => m + sideMs(e), 0)),
-      sn?.segs.length && 'fin sein ' + SEIN[sn.segs.at(-1).s], ml && `biberon ${ml} ml`].filter(Boolean).join(' · ') }
+    // deux lignes courtes : les heures, puis le détail ; jamais coupé au milieu d'un élément (« 25 / ml »)
+    const nb = t => `<span style="white-space:nowrap">${t}</span>`;
+    sub = `${[rp.end > meal.start ? `${hm(meal.start)} → ${hm(rp.end)}` : hm(meal.start), refNote(meal)].filter(Boolean).map(nb).join(' · ')}<br>`
+      + [rp.seins.length && `sein ${dur(rp.seins.reduce((m, e) => m + sideMs(e), 0))}`, sn?.segs.length && `fin ${SIDE[sn.segs.at(-1).s].toLowerCase()}`, ml && `biberon ${ml} ml`].filter(Boolean).map(nb).join(' · ') }
   return `<section class="home idle">
     <button class="card since tap" data-view="history" aria-label="Voir l'historique">
       <div class="lbl">${S.gapFrom === 'debut' ? 'Dernier repas il y a' : 'Fin du dernier repas il y a'}</div>
