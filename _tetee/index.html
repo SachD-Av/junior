@@ -137,9 +137,11 @@ a.btn{text-decoration:none;color:inherit}
 .since .next{margin-top:8px;font-size:14px;font-weight:600;color:var(--d)}
 .since .next.late{color:var(--accent)}
 .mini-tiles{gap:12px}
-.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.grid3.mini-tiles .tile{padding:10px;min-width:0} .grid3 .tile .lbl{font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.grid3 .tile b{font-size:16px;white-space:nowrap} .grid3 .tile small{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.since .duo{display:grid;grid-template-columns:1fr 1fr}
+.since .duo > div + div{border-left:1px solid var(--line)}
+.since .duo .big{font-size:clamp(26px,min(9vw,5vh),40px)}
+.since .duo .lbl{font-size:11px}
+.since .duo-d{margin-top:4px}
 .tile{display:flex;flex-direction:column;gap:2px;padding:12px 14px}
 .tile .lbl{font-size:11px}
 .tile b{font-size:20px;font-variant-numeric:tabular-nums}

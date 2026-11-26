@@ -466,18 +466,21 @@ function homeHTML() {
       + [rp.seins.length && `sein ${dur(rp.seins.reduce((m, e) => m + sideMs(e), 0))}`, sn?.segs.length && `fin ${SIDE[sn.segs.at(-1).s].toLowerCase()}`, ml && `biberon ${ml} ml`].filter(Boolean).map(nb).join(' · ') }
   return `<section class="home idle">
     <button class="card since tap" data-view="history" aria-label="Voir l'historique">
-      <div class="lbl">${S.gapFrom === 'debut' ? 'Dernier repas il y a' : 'Fin du dernier repas il y a'}</div>
+      ${lastBib ? (() => { const [t1, t2 = ''] = sub.split('<br>');   // côte à côte : dernier repas | dernier biberon, puis le détail du repas
+        return `<div class="duo"><div><div class="lbl">${S.gapFrom === 'debut' ? 'Dernier repas' : 'Fin du dernier repas'}</div>
+            <div class="big" data-t="since">${meal ? '' : '—'}</div><div class="sub">${t1}</div></div>
+          <div><div class="lbl">Dernier biberon</div><div class="big" data-t="sinceBib"></div><div class="sub">${hm(lastBib.start)} · ${lastBib.ml} ml</div></div></div>
+          ${t2 ? `<div class="sub duo-d">${t2}</div>` : ''}` })()
+      : `<div class="lbl">${S.gapFrom === 'debut' ? 'Dernier repas il y a' : 'Fin du dernier repas il y a'}</div>
       <div class="big" data-t="since">${meal ? '' : '—'}</div>
-      <div class="sub">${sub}</div>
+      <div class="sub">${sub}</div>`}
       ${S.remind && meal ? `<div class="next" data-t="next"></div>` : ''}
     </button>
     ${S.remind && meal && nextMeal() && nextMeal().at - now() < 30 * 6e4 ? `<button class="link" data-act="snooze">Repousser le rappel de 30 min</button>` : ''}
-    <div class="grid3 mini-tiles">
-      <div class="card tile"><span class="lbl">Sein</span><b>${lastSein ? (lastSide ? SIDE[lastSide] : '—') : '—'}</b>
+    <div class="grid2 mini-tiles">
+      <div class="card tile"><span class="lbl">Dernier sein</span><b>${lastSein ? (lastSide ? SIDE[lastSide] : '—') : '—'}</b>
         <small>${lastSein ? `${hm(lastSein.start)} · ${dur(sideMs(lastSein))}` : 'aucune tétée'}</small></div>
-      <div class="card tile"><span class="lbl">Biberon</span><b data-t="sinceBib">${lastBib ? '' : '—'}</b>
-        <small>${lastBib ? `${hm(lastBib.start)} · ${lastBib.ml} ml` : 'aucun'}</small></div>
-      <div class="card tile"><span class="lbl">Couche</span><b data-t="sinceCouche">${lastCouche ? '' : '—'}</b>
+      <div class="card tile"><span class="lbl">Dernière couche</span><b data-t="sinceCouche">${lastCouche ? '' : '—'}</b>
         <small>${lastCouche ? `${hm(lastCouche.start)} · ${COUCHE[coucheKind(lastCouche)].l.toLowerCase()}` : 'aucune'}</small></div>
     </div>
     ${vitdHTML()}
@@ -853,7 +856,7 @@ function tick() {
       el.classList.toggle('late', d <= 0) } }
     else if (k === 'sleep') { const z = sleeping(); if (z) el.textContent = clock(t - z.start) }
     else if (k === 'sinceCouche') { const c = list().find(x => x.type === 'couche'); if (c) el.textContent = 'il y a ' + dur(t - c.start) }
-    else if (k === 'sinceBib') { const c = list().find(x => x.type === 'biberon'); if (c) el.textContent = 'il y a ' + dur(t - c.start) }
+    else if (k === 'sinceBib') { const c = list().find(x => x.type === 'biberon'); if (c) el.textContent = dur(t - c.start) }
     else if (!e) return;
     else if (k === 'startHm') el.textContent = hm(e.start);
     else if (k === 'total') el.textContent = clock(sideMs(e, null, t));
