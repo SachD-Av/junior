@@ -465,17 +465,23 @@ function homeHTML() {
     sub = `${[rp.end > meal.start ? `${hm(meal.start)} → ${hm(rp.end)}` : hm(meal.start), refNote(meal)].filter(Boolean).map(nb).join(' · ')}<br>`
       + [rp.seins.length && `sein ${dur(rp.seins.reduce((m, e) => m + sideMs(e), 0))}`, sn?.segs.length && `fin ${SIDE[sn.segs.at(-1).s].toLowerCase()}`, ml && `biberon ${ml} ml`].filter(Boolean).map(nb).join(' · ') }
   return `<section class="home idle">
-    <button class="card since tap" data-view="history" aria-label="Voir l'historique">
-      ${lastBib ? (() => { const [t1, t2 = ''] = sub.split('<br>');   // côte à côte : dernier repas | dernier biberon, puis le détail du repas
-        return `<div class="duo"><div><div class="lbl">${S.gapFrom === 'debut' ? 'Dernier repas' : 'Fin du dernier repas'}</div>
-            <div class="big" data-t="since">${meal ? '' : '—'}</div><div class="sub">${t1}</div></div>
-          <div><div class="lbl">Dernier biberon</div><div class="big" data-t="sinceBib"></div><div class="sub">${hm(lastBib.start)} · ${lastBib.ml} ml</div></div></div>
-          ${t2 ? `<div class="sub duo-d">${t2}</div>` : ''}` })()
-      : `<div class="lbl">${S.gapFrom === 'debut' ? 'Dernier repas il y a' : 'Fin du dernier repas il y a'}</div>
+    ${lastBib && rp?.seins.length && !rp.bibs.length ? (() => { const [t1, t2 = ''] = sub.split('<br>');
+      // dernier repas = tétée sans biberon : deux cases claires (repas | dernier biberon) ; sinon une seule case comme avant
+      return `<div class="grid2 duo">
+      <button class="card since tap" data-view="history" aria-label="Voir l'historique">
+        <div class="lbl">${S.gapFrom === 'debut' ? 'Dernier repas' : 'Fin du repas'}</div>
+        <div class="big" data-t="since">${meal ? '' : '—'}</div><div class="sub">${t1}${t2 ? `<br>${t2}` : ''}</div>
+        ${S.remind && meal ? `<div class="next" data-t="next"></div>` : ''}</button>
+      <button class="card since tap" data-view="history" aria-label="Voir l'historique">
+        <div class="lbl">Dernier biberon</div>
+        <div class="big" data-t="sinceBib"></div><div class="sub">${hm(lastBib.start)} · ${lastBib.ml} ml</div></button>
+    </div>` })()
+    : `<button class="card since tap" data-view="history" aria-label="Voir l'historique">
+      <div class="lbl">${S.gapFrom === 'debut' ? 'Dernier repas il y a' : 'Fin du dernier repas il y a'}</div>
       <div class="big" data-t="since">${meal ? '' : '—'}</div>
-      <div class="sub">${sub}</div>`}
+      <div class="sub">${sub}</div>
       ${S.remind && meal ? `<div class="next" data-t="next"></div>` : ''}
-    </button>
+    </button>`}
     ${S.remind && meal && nextMeal() && nextMeal().at - now() < 30 * 6e4 ? `<button class="link" data-act="snooze">Repousser le rappel de 30 min</button>` : ''}
     <div class="grid2 mini-tiles">
       <div class="card tile"><span class="lbl">Dernier sein</span><b>${lastSein ? (lastSide ? SIDE[lastSide] : '—') : '—'}</b>
