@@ -470,11 +470,11 @@ function homeHTML() {
       return `<div class="grid2 duo">
       <button class="card since tap" data-view="history" aria-label="Voir l'historique">
         <div class="lbl">${S.gapFrom === 'debut' ? 'Dernier repas' : 'Fin du repas'}</div>
-        <div class="big" data-t="since">${meal ? '' : '—'}</div><div class="sub">${t1}${t2 ? `<br>${t2}` : ''}</div>
+        <div class="big" data-t="since">${meal ? '' : '—'}</div><div class="sub"><span class="l1">${t1}</span>${t2 ? `<span class="l1">${t2}</span>` : ''}</div>
         ${S.remind && meal ? `<div class="next" data-t="next"></div>` : ''}</button>
       <button class="card since tap" data-view="history" aria-label="Voir l'historique">
         <div class="lbl">Dernier biberon</div>
-        <div class="big" data-t="sinceBib"></div><div class="sub">${hm(lastBib.start)} · ${lastBib.ml} ml</div></button>
+        <div class="big" data-t="sinceBib"></div><div class="sub"><span class="l1">${hm(lastBib.start)} · ${lastBib.ml} ml</span><span class="l1">lait ${lastBib.milk === 'maternel' ? 'maternel' : 'artificiel'}</span></div></button>
     </div>` })()
     : `<button class="card since tap" data-view="history" aria-label="Voir l'historique">
       <div class="lbl">${S.gapFrom === 'debut' ? 'Dernier repas il y a' : 'Fin du dernier repas il y a'}</div>
@@ -872,6 +872,12 @@ function tick() {
       el.textContent = o ? `début ${hm(e.start)}` : `en pause depuis ${clock(t - (last?.b ?? t))}`;
     }
   });
+  // deux cases du haut : le temps le plus long en noir, le plus court en gris (même taille)
+  const duo = document.querySelector('.duo');
+  if (duo) { const r = lastRepas(), b = list().find(x => x.type === 'biberon');
+    if (r && b) { const tr = t - fromRepas(r), tb = t - b.start;
+      duo.querySelector('[data-t="since"]')?.classList.toggle('soft', tr < tb);
+      duo.querySelector('[data-t="sinceBib"]')?.classList.toggle('soft', tb < tr) } }
 }
 setInterval(() => { tick(); checkReminder(); if (isNight() !== (document.documentElement.dataset.theme === 'night')) applyTheme() }, 1000);
 
