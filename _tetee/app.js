@@ -470,7 +470,7 @@ function homeHTML() {
       return `<div class="grid2 duo">
       <button class="card since tap" data-view="history" aria-label="Voir l'historique">
         <div class="lbl">${S.gapFrom === 'debut' ? 'Dernier repas' : 'Fin du repas'}</div>
-        <div class="big" data-t="since">${meal ? '' : '—'}</div><div class="sub">${t1}${t2 ? `<br>${t2}` : ''}</div>
+        <div class="big" data-t="since">${meal ? '' : '—'}</div><div class="sub"><span class="l1">${t1}</span>${t2 ? `<span class="l1">${t2}</span>` : ''}</div>
         ${S.remind && meal ? `<div class="next" data-t="next"></div>` : ''}</button>
       <button class="card since tap" data-view="history" aria-label="Voir l'historique">
         <div class="lbl">Dernier biberon</div>
