@@ -474,7 +474,7 @@ function homeHTML() {
         ${S.remind && meal ? `<div class="next" data-t="next"></div>` : ''}</button>
       <button class="card since tap" data-view="history" aria-label="Voir l'historique">
         <div class="lbl">Dernier biberon</div>
-        <div class="big" data-t="sinceBib"></div><div class="sub">${hm(lastBib.start)} · ${lastBib.ml} ml</div></button>
+        <div class="big" data-t="sinceBib"></div><div class="sub"><span class="l1">${hm(lastBib.start)} · ${lastBib.ml} ml</span><span class="l1">lait ${lastBib.milk === 'maternel' ? 'maternel' : 'artificiel'}</span></div></button>
     </div>` })()
     : `<button class="card since tap" data-view="history" aria-label="Voir l'historique">
       <div class="lbl">${S.gapFrom === 'debut' ? 'Dernier repas il y a' : 'Fin du dernier repas il y a'}</div>
