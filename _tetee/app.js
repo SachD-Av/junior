@@ -466,11 +466,11 @@ function homeHTML() {
       + [rp.seins.length && `sein ${dur(rp.seins.reduce((m, e) => m + sideMs(e), 0))}`, sn?.segs.length && `fin ${SIDE[sn.segs.at(-1).s].toLowerCase()}`, ml && `biberon ${ml} ml`].filter(Boolean).map(nb).join(' · ') }
   return `<section class="home idle">
     <button class="card since tap" data-view="history" aria-label="Voir l'historique">
-      ${lastBib ? (() => { const [t1, t2 = ''] = sub.split('<br>');   // côte à côte : dernier repas | dernier biberon, puis le détail du repas
+      ${lastBib && rp?.seins.length && !rp.bibs.length ? (() => { const [t1, t2 = ''] = sub.split('<br>');   // dernier repas = tétée sans biberon : côte à côte avec le dernier biberon (plus ancien) ; sinon un seul affichage
         return `<div class="duo"><div><div class="lbl">${S.gapFrom === 'debut' ? 'Dernier repas' : 'Fin du dernier repas'}</div>
-            <div class="big" data-t="since">${meal ? '' : '—'}</div><div class="sub">${t1}</div></div>
+            <div class="big" data-t="since">${meal ? '' : '—'}</div><div class="sub">${t1}${t2 ? `<br>${t2}` : ''}</div></div>
           <div><div class="lbl">Dernier biberon</div><div class="big" data-t="sinceBib"></div><div class="sub">${hm(lastBib.start)} · ${lastBib.ml} ml</div></div></div>
-          ${t2 ? `<div class="sub duo-d">${t2}</div>` : ''}` })()
+` })()
       : `<div class="lbl">${S.gapFrom === 'debut' ? 'Dernier repas il y a' : 'Fin du dernier repas il y a'}</div>
       <div class="big" data-t="since">${meal ? '' : '—'}</div>
       <div class="sub">${sub}</div>`}
