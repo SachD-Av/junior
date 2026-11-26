@@ -137,10 +137,9 @@ a.btn{text-decoration:none;color:inherit}
 .since .next{margin-top:8px;font-size:14px;font-weight:600;color:var(--d)}
 .since .next.late{color:var(--accent)}
 .mini-tiles{gap:12px}
-.since .duo{display:grid;grid-template-columns:1fr 1fr}
-.since .duo > div{padding:0 6px} .since .duo > div + div{border-left:1px solid var(--line)}
-.since .duo .big{font-size:clamp(26px,min(9vw,5vh),40px)}
-.since .duo .lbl{font-size:11px}
+.duo{gap:12px;align-items:stretch} .duo .since{padding-left:10px;padding-right:10px;display:flex;flex-direction:column;justify-content:center}
+.duo .since .lbl{font-size:11px;white-space:nowrap}
+.duo .since .sub{font-size:12.5px;line-height:1.3}
 .tile{display:flex;flex-direction:column;gap:2px;padding:12px 14px}
 .tile .lbl{font-size:11px}
 .tile b{font-size:20px;font-variant-numeric:tabular-nums}
