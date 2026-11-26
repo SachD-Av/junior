@@ -469,15 +469,14 @@ function homeHTML() {
       <div class="lbl">${S.gapFrom === 'debut' ? 'Dernier repas il y a' : 'Fin du dernier repas il y a'}</div>
       <div class="big" data-t="since">${meal ? '' : '—'}</div>
       <div class="sub">${sub}</div>
+      ${lastBib ? `<div class="bibline">Dernier biberon <b data-t="sinceBib"></b> <span>· ${hm(lastBib.start)} · ${lastBib.ml} ml</span></div>` : ''}
       ${S.remind && meal ? `<div class="next" data-t="next"></div>` : ''}
     </button>
     ${S.remind && meal && nextMeal() && nextMeal().at - now() < 30 * 6e4 ? `<button class="link" data-act="snooze">Repousser le rappel de 30 min</button>` : ''}
-    <div class="grid3 mini-tiles">
-      <div class="card tile"><span class="lbl">Sein</span><b>${lastSein ? (lastSide ? SIDE[lastSide] : '—') : '—'}</b>
+    <div class="grid2 mini-tiles">
+      <div class="card tile"><span class="lbl">Dernier sein</span><b>${lastSein ? (lastSide ? SIDE[lastSide] : '—') : '—'}</b>
         <small>${lastSein ? `${hm(lastSein.start)} · ${dur(sideMs(lastSein))}` : 'aucune tétée'}</small></div>
-      <div class="card tile"><span class="lbl">Biberon</span><b data-t="sinceBib">${lastBib ? '' : '—'}</b>
-        <small>${lastBib ? `${hm(lastBib.start)} · ${lastBib.ml} ml` : 'aucun'}</small></div>
-      <div class="card tile"><span class="lbl">Couche</span><b data-t="sinceCouche">${lastCouche ? '' : '—'}</b>
+      <div class="card tile"><span class="lbl">Dernière couche</span><b data-t="sinceCouche">${lastCouche ? '' : '—'}</b>
         <small>${lastCouche ? `${hm(lastCouche.start)} · ${COUCHE[coucheKind(lastCouche)].l.toLowerCase()}` : 'aucune'}</small></div>
     </div>
     ${vitdHTML()}
