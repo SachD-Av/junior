@@ -872,6 +872,12 @@ function tick() {
       el.textContent = o ? `début ${hm(e.start)}` : `en pause depuis ${clock(t - (last?.b ?? t))}`;
     }
   });
+  // deux cases du haut : le temps le plus long en noir, le plus court en gris (même taille)
+  const duo = document.querySelector('.duo');
+  if (duo) { const r = lastRepas(), b = list().find(x => x.type === 'biberon');
+    if (r && b) { const tr = t - fromRepas(r), tb = t - b.start;
+      duo.querySelector('[data-t="since"]')?.classList.toggle('soft', tr < tb);
+      duo.querySelector('[data-t="sinceBib"]')?.classList.toggle('soft', tb < tr) } }
 }
 setInterval(() => { tick(); checkReminder(); if (isNight() !== (document.documentElement.dataset.theme === 'night')) applyTheme() }, 1000);
 
