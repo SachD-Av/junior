@@ -853,7 +853,9 @@ function tick() {
       el.classList.toggle('late', d <= 0) } }
     else if (k === 'sleep') { const z = sleeping(); if (z) el.textContent = clock(t - z.start) }
     else if (k === 'sinceCouche') { const c = list().find(x => x.type === 'couche'); if (c) el.textContent = 'il y a ' + dur(t - c.start) }
-    else if (k === 'sinceBib') { const c = list().find(x => x.type === 'biberon'); if (c) el.textContent = 'il y a ' + dur(t - c.start) }
+    else if (k === 'sinceBib') { const c = list().find(x => x.type === 'biberon');
+      if (c) { const d = t - c.start; el.textContent = 'il y a ' + dur(d);
+        el.classList.toggle('warn', d >= 90 * 6e4 && d < 120 * 6e4); el.classList.toggle('late', d >= 120 * 6e4) } }   // orange dès 1h30, rouge dès 2h
     else if (!e) return;
     else if (k === 'startHm') el.textContent = hm(e.start);
     else if (k === 'total') el.textContent = clock(sideMs(e, null, t));
