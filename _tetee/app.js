@@ -473,7 +473,7 @@ function homeHTML() {
     <div class="grid3 mini-tiles">
       <div class="card tile"><span class="lbl">Dernier sein</span><b>${lastSein && lastSide ? SIDE[lastSide] : '—'}</b>${lastSein ? `<small class="tv">${dur(sideMs(lastSein))}</small>` : ''}</div>
       <div class="card tile"><span class="lbl">Biberon il y a</span><b data-t="sinceBib">${lastBib ? '' : '—'}</b>${lastBib ? `<small class="tv">${lastBib.ml} ml</small>` : ''}</div>
-      <div class="card tile"><span class="lbl">Couche il y a</span><b data-t="sinceCouche">${lastCouche ? '' : '—'}</b>${lastCouche ? `<small class="tv">${COUCHE[coucheKind(lastCouche)].l.toLowerCase()}</small>` : ''}</div>
+      <div class="card tile"><span class="lbl">Couche il y a</span><b data-t="sinceCouche">${lastCouche ? '' : '—'}</b>${lastCouche ? `<small class="tv ck-tv">${ic(COUCHE[coucheKind(lastCouche)].ic)}${COUCHE[coucheKind(lastCouche)].l.toLowerCase()}</small>` : ''}</div>
     </div>
     ${vitdHTML()}
     <div class="card today">
