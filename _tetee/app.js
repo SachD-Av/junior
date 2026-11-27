@@ -459,11 +459,9 @@ function homeHTML() {
   const lastSide = lastSein?.segs.at(-1)?.s, lastCouche = L.find(x => x.type === 'couche'), lastBib = L.find(x => x.type === 'biberon'), zz = sleeping();
   const t0 = dayStart(now()), today = summarize(L.filter(x => x.start >= t0));
   let sub = '—';
-  if (rp) { const sn = rp.seins.at(-1), ml = rp.bibs.reduce((m, e) => m + (+e.ml || 0), 0);
-    // deux lignes courtes : les heures, puis le détail ; jamais coupé au milieu d'un élément (« 25 / ml »)
+  if (rp) {   // sous le grand chiffre : juste les heures du repas (le détail est dans les petites cases)
     const nb = t => `<span style="white-space:nowrap">${t}</span>`;
-    sub = `${[rp.end > meal.start ? `${hm(meal.start)} → ${hm(rp.end)}` : hm(meal.start), refNote(meal)].filter(Boolean).map(nb).join(' · ')}<br>`
-      + [rp.seins.length && `sein ${dur(rp.seins.reduce((m, e) => m + sideMs(e), 0))}`, ml && `biberon ${ml} ml`].filter(Boolean).map(nb).join(' · ') }
+    sub = [rp.end > meal.start ? `${hm(meal.start)} → ${hm(rp.end)}` : hm(meal.start), refNote(meal)].filter(Boolean).map(nb).join(' · ') }   // juste les heures
   return `<section class="home idle">
     <button class="card since tap" data-view="history" aria-label="Voir l'historique">
       <div class="lbl">${S.gapFrom === 'debut' ? 'Dernier repas il y a' : 'Fin du dernier repas il y a'}</div>
@@ -475,7 +473,7 @@ function homeHTML() {
     <div class="grid3 mini-tiles">
       <div class="card tile"><span class="lbl">Dernier sein</span><b>${lastSein && lastSide ? SIDE[lastSide] : '—'}</b>${lastSein ? `<small class="tv">${dur(sideMs(lastSein))}</small>` : ''}</div>
       <div class="card tile"><span class="lbl">Biberon il y a</span><b data-t="sinceBib">${lastBib ? '' : '—'}</b>${lastBib ? `<small class="tv">${lastBib.ml} ml</small>` : ''}</div>
-      <div class="card tile"><span class="lbl">Couche il y a</span><b data-t="sinceCouche">${lastCouche ? '' : '—'}</b></div>
+      <div class="card tile"><span class="lbl">Couche il y a</span><b data-t="sinceCouche">${lastCouche ? '' : '—'}</b>${lastCouche ? `<small class="tv">${COUCHE[coucheKind(lastCouche)].l.toLowerCase()}</small>` : ''}</div>
     </div>
     ${vitdHTML()}
     <div class="card today">
