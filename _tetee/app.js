@@ -471,7 +471,7 @@ function homeHTML() {
     </button>
     ${S.remind && meal && nextMeal() && nextMeal().at - now() < 30 * 6e4 ? `<button class="link" data-act="snooze">Repousser le rappel de 30 min</button>` : ''}
     <div class="grid3 mini-tiles">
-      <div class="card tile"><span class="lbl">Dernier sein</span><b>${lastSein && lastSide ? SIDE[lastSide] : '—'}</b>${lastSein ? `<small class="tv">${dur(sideMs(lastSein))}</small>` : ''}</div>
+      <div class="card tile${lastSide === 'D' ? ' side-d' : ''}"><span class="lbl">Dernier sein</span><b>${lastSein && lastSide ? SIDE[lastSide] : '—'}</b>${lastSein ? `<small class="tv">${dur(sideMs(lastSein))}</small>` : ''}</div>
       <div class="card tile"><span class="lbl">Biberon il y a</span><b data-t="sinceBib">${lastBib ? '' : '—'}</b>${lastBib ? `<small class="tv">${lastBib.ml} ml</small>` : ''}</div>
       <div class="card tile"><span class="lbl">Couche il y a</span><b data-t="sinceCouche">${lastCouche ? '' : '—'}</b>${lastCouche ? `<small class="tv">${COUCHE[coucheKind(lastCouche)].l.toLowerCase()}</small>` : ''}</div>
     </div>
