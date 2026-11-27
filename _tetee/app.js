@@ -473,12 +473,9 @@ function homeHTML() {
     </button>
     ${S.remind && meal && nextMeal() && nextMeal().at - now() < 30 * 6e4 ? `<button class="link" data-act="snooze">Repousser le rappel de 30 min</button>` : ''}
     <div class="grid3 mini-tiles">
-      <div class="card tile"><span class="lbl">Sein</span><b>${lastSein ? (lastSide ? SIDE[lastSide] : '—') : '—'}</b>
-        <small>${lastSein ? `${hm(lastSein.start)} · ${dur(sideMs(lastSein))}` : 'aucune tétée'}</small></div>
-      <div class="card tile"><span class="lbl">Biberon</span><b data-t="sinceBib">${lastBib ? '' : '—'}</b>
-        <small>${lastBib ? `${hm(lastBib.start)} · ${lastBib.ml} ml` : 'aucun'}</small></div>
-      <div class="card tile"><span class="lbl">Couche</span><b data-t="sinceCouche">${lastCouche ? '' : '—'}</b>
-        <small>${lastCouche ? `${hm(lastCouche.start)} · ${COUCHE[coucheKind(lastCouche)].l.toLowerCase()}` : 'aucune'}</small></div>
+      <div class="card tile"><span class="lbl">Dernier sein</span><b>${lastSein && lastSide ? SIDE[lastSide] : '—'}</b></div>
+      <div class="card tile"><span class="lbl">Biberon il y a</span><b data-t="sinceBib">${lastBib ? '' : '—'}</b></div>
+      <div class="card tile"><span class="lbl">Couche il y a</span><b data-t="sinceCouche">${lastCouche ? '' : '—'}</b></div>
     </div>
     ${vitdHTML()}
     <div class="card today">
@@ -852,9 +849,9 @@ function tick() {
       el.textContent = d > 0 ? `Prochaine tétée vers ${hm(n.at)} · dans ${dur(d)}` : `Prochaine tétée prévue à ${hm(n.at)} · en retard de ${dur(-d)}`;
       el.classList.toggle('late', d <= 0) } }
     else if (k === 'sleep') { const z = sleeping(); if (z) el.textContent = clock(t - z.start) }
-    else if (k === 'sinceCouche') { const c = list().find(x => x.type === 'couche'); if (c) el.textContent = 'il y a ' + dur(t - c.start) }
+    else if (k === 'sinceCouche') { const c = list().find(x => x.type === 'couche'); if (c) el.textContent = dur(t - c.start) }
     else if (k === 'sinceBib') { const c = list().find(x => x.type === 'biberon');
-      if (c) { const d = t - c.start; el.textContent = 'il y a ' + dur(d);
+      if (c) { const d = t - c.start; el.textContent = dur(d);
         el.classList.toggle('warn', d >= 90 * 6e4 && d < 120 * 6e4); el.classList.toggle('late', d >= 120 * 6e4) } }   // orange dès 1h30, rouge dès 2h
     else if (!e) return;
     else if (k === 'startHm') el.textContent = hm(e.start);
