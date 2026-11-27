@@ -463,7 +463,7 @@ function homeHTML() {
     // deux lignes courtes : les heures, puis le détail ; jamais coupé au milieu d'un élément (« 25 / ml »)
     const nb = t => `<span style="white-space:nowrap">${t}</span>`;
     sub = `${[rp.end > meal.start ? `${hm(meal.start)} → ${hm(rp.end)}` : hm(meal.start), refNote(meal)].filter(Boolean).map(nb).join(' · ')}<br>`
-      + [rp.seins.length && `sein ${dur(rp.seins.reduce((m, e) => m + sideMs(e), 0))}`, sn?.segs.length && `fin ${SIDE[sn.segs.at(-1).s].toLowerCase()}`, ml && `biberon ${ml} ml`].filter(Boolean).map(nb).join(' · ') }
+      + [rp.seins.length && `sein ${dur(rp.seins.reduce((m, e) => m + sideMs(e), 0))}`, ml && `biberon ${ml} ml`].filter(Boolean).map(nb).join(' · ') }
   return `<section class="home idle">
     <button class="card since tap" data-view="history" aria-label="Voir l'historique">
       <div class="lbl">${S.gapFrom === 'debut' ? 'Dernier repas il y a' : 'Fin du dernier repas il y a'}</div>
@@ -473,8 +473,8 @@ function homeHTML() {
     </button>
     ${S.remind && meal && nextMeal() && nextMeal().at - now() < 30 * 6e4 ? `<button class="link" data-act="snooze">Repousser le rappel de 30 min</button>` : ''}
     <div class="grid3 mini-tiles">
-      <div class="card tile"><span class="lbl">Dernier sein</span><b>${lastSein && lastSide ? SIDE[lastSide] : '—'}</b></div>
-      <div class="card tile"><span class="lbl">Biberon il y a</span><b data-t="sinceBib">${lastBib ? '' : '—'}</b></div>
+      <div class="card tile"><span class="lbl">Dernier sein</span><b>${lastSein && lastSide ? SIDE[lastSide] : '—'}</b>${lastSein ? `<small class="tv">${dur(sideMs(lastSein))}</small>` : ''}</div>
+      <div class="card tile"><span class="lbl">Biberon il y a</span><b data-t="sinceBib">${lastBib ? '' : '—'}</b>${lastBib ? `<small class="tv">${lastBib.ml} ml</small>` : ''}</div>
       <div class="card tile"><span class="lbl">Couche il y a</span><b data-t="sinceCouche">${lastCouche ? '' : '—'}</b></div>
     </div>
     ${vitdHTML()}
