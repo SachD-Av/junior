@@ -137,10 +137,9 @@ a.btn{text-decoration:none;color:inherit}
 .since .next{margin-top:8px;font-size:14px;font-weight:600;color:var(--d)}
 .since .next.late{color:var(--accent)}
 .mini-tiles{gap:12px}
-.duo{gap:12px;align-items:stretch} .duo .since{padding-left:10px;padding-right:10px;display:flex;flex-direction:column;justify-content:flex-start}   /* titres, chiffres et lignes alignés d'une case à l'autre */
-.duo .since .lbl{font-size:11px;white-space:nowrap}
-.duo .since .sub .l1{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}   /* 2 lignes au plus */
-.duo .since .big.soft{color:var(--muted)}   /* le temps le plus court des deux, en gris */
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.grid3.mini-tiles .tile{padding:10px;min-width:0} .grid3 .tile .lbl{font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.grid3 .tile b{font-size:16px;white-space:nowrap} .grid3 .tile small{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .since .sub{opacity:.8}   /* heures et détail : plus discrets que le grand chiffre */
 .tile{display:flex;flex-direction:column;gap:2px;padding:12px 14px}
 .tile .lbl{font-size:11px}
