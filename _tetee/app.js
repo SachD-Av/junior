@@ -465,29 +465,17 @@ function homeHTML() {
     sub = `${[rp.end > meal.start ? `${hm(meal.start)} → ${hm(rp.end)}` : hm(meal.start), refNote(meal)].filter(Boolean).map(nb).join(' · ')}<br>`
       + [rp.seins.length && `sein ${dur(rp.seins.reduce((m, e) => m + sideMs(e), 0))}`, sn?.segs.length && `fin ${SIDE[sn.segs.at(-1).s].toLowerCase()}`, ml && `biberon ${ml} ml`].filter(Boolean).map(nb).join(' · ') }
   return `<section class="home idle">
-    ${lastBib && rp?.seins.length && !rp.bibs.length ? (() => { const [t1, t2 = ''] = sub.split('<br>');
-      // dernier repas = tétée sans biberon : deux cases claires (repas | dernier biberon) ; sinon une seule case comme avant
-      return `<div class="grid2 duo">
-      <button class="card since tap" data-view="history" aria-label="Voir l'historique">
-        <div class="lbl">${S.gapFrom === 'debut' ? 'Dernier repas' : 'Fin du repas'}</div>
-        <div class="big" data-t="since">${meal ? '' : '—'}</div><div class="sub"><span class="l1">${t1}</span>${t2 ? `<span class="l1">${t2}</span>` : ''}</div>
-        ${S.remind && meal ? `<div class="next" data-t="next"></div>` : ''}</button>
-      <button class="card since tap" data-view="history" aria-label="Voir l'historique">
-        <div class="lbl">Dernier biberon</div>
-        <div class="big" data-t="sinceBib"></div><div class="sub"><span class="l1">${hm(lastBib.start)} · ${lastBib.ml} ml</span><span class="l1">lait ${lastBib.milk === 'maternel' ? 'maternel' : 'artificiel'}</span></div></button>
-    </div>` })()
-    : `<button class="card since tap" data-view="history" aria-label="Voir l'historique">
+    <button class="card since tap" data-view="history" aria-label="Voir l'historique">
       <div class="lbl">${S.gapFrom === 'debut' ? 'Dernier repas il y a' : 'Fin du dernier repas il y a'}</div>
       <div class="big" data-t="since">${meal ? '' : '—'}</div>
       <div class="sub">${sub}</div>
       ${S.remind && meal ? `<div class="next" data-t="next"></div>` : ''}
-    </button>`}
+    </button>
     ${S.remind && meal && nextMeal() && nextMeal().at - now() < 30 * 6e4 ? `<button class="link" data-act="snooze">Repousser le rappel de 30 min</button>` : ''}
-    <div class="grid2 mini-tiles">
-      <div class="card tile"><span class="lbl">Dernier sein</span><b>${lastSein ? (lastSide ? SIDE[lastSide] : '—') : '—'}</b>
-        <small>${lastSein ? `${hm(lastSein.start)} · ${dur(sideMs(lastSein))}` : 'aucune tétée'}</small></div>
-      <div class="card tile"><span class="lbl">Dernière couche</span><b data-t="sinceCouche">${lastCouche ? '' : '—'}</b>
-        <small>${lastCouche ? `${hm(lastCouche.start)} · ${COUCHE[coucheKind(lastCouche)].l.toLowerCase()}` : 'aucune'}</small></div>
+    <div class="grid3 mini-tiles">
+      <div class="card tile"><span class="lbl">Dernier sein</span><b>${lastSein && lastSide ? SIDE[lastSide] : '—'}</b></div>
+      <div class="card tile"><span class="lbl">Biberon il y a</span><b data-t="sinceBib">${lastBib ? '' : '—'}</b></div>
+      <div class="card tile"><span class="lbl">Couche il y a</span><b data-t="sinceCouche">${lastCouche ? '' : '—'}</b></div>
     </div>
     ${vitdHTML()}
     <div class="card today">
@@ -861,8 +849,10 @@ function tick() {
       el.textContent = d > 0 ? `Prochaine tétée vers ${hm(n.at)} · dans ${dur(d)}` : `Prochaine tétée prévue à ${hm(n.at)} · en retard de ${dur(-d)}`;
       el.classList.toggle('late', d <= 0) } }
     else if (k === 'sleep') { const z = sleeping(); if (z) el.textContent = clock(t - z.start) }
-    else if (k === 'sinceCouche') { const c = list().find(x => x.type === 'couche'); if (c) el.textContent = 'il y a ' + dur(t - c.start) }
-    else if (k === 'sinceBib') { const c = list().find(x => x.type === 'biberon'); if (c) el.textContent = dur(t - c.start) }
+    else if (k === 'sinceCouche') { const c = list().find(x => x.type === 'couche'); if (c) el.textContent = dur(t - c.start) }
+    else if (k === 'sinceBib') { const c = list().find(x => x.type === 'biberon');
+      if (c) { const d = t - c.start; el.textContent = dur(d);
+        el.classList.toggle('warn', d >= 90 * 6e4 && d < 120 * 6e4); el.classList.toggle('late', d >= 120 * 6e4) } }   // orange dès 1h30, rouge dès 2h
     else if (!e) return;
     else if (k === 'startHm') el.textContent = hm(e.start);
     else if (k === 'total') el.textContent = clock(sideMs(e, null, t));
@@ -872,12 +862,6 @@ function tick() {
       el.textContent = o ? `début ${hm(e.start)}` : `en pause depuis ${clock(t - (last?.b ?? t))}`;
     }
   });
-  // deux cases du haut : le temps le plus long en noir, le plus court en gris (même taille)
-  const duo = document.querySelector('.duo');
-  if (duo) { const r = lastRepas(), b = list().find(x => x.type === 'biberon');
-    if (r && b) { const tr = t - fromRepas(r), tb = t - b.start;
-      duo.querySelector('[data-t="since"]')?.classList.toggle('soft', tr < tb);
-      duo.querySelector('[data-t="sinceBib"]')?.classList.toggle('soft', tb < tr) } }
 }
 setInterval(() => { tick(); checkReminder(); if (isNight() !== (document.documentElement.dataset.theme === 'night')) applyTheme() }, 1000);
 
